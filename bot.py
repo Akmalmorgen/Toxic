@@ -23,7 +23,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
     PreCheckoutQueryHandler, ChatMemberHandler, ContextTypes, filters,
 )
-from telegram.error import TelegramError
+from telegram.error import TelegramError, Conflict
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -2814,6 +2814,15 @@ def _keep_alive_server():
         log.warning("keep-alive server: %s", e)
 
 
+async def on_error(update, context):
+    """Глобальный обработчик ошибок — чтобы не падать и не спамить трейсбеками."""
+    err = context.error
+    if isinstance(err, Conflict):
+        log.warning("Conflict: бот запущен в нескольких местах. Оставь один инстанс!")
+        return
+    log.error("Ошибка при обработке апдейта: %s", err)
+
+
 def main():
     init_db()
     # фоновый веб-сервер (для Render и пр.) — не мешает боту на polling
@@ -2830,6 +2839,7 @@ def main():
     app.post_init = post_init
 
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_error_handler(on_error)
     app.add_handler(PreCheckoutQueryHandler(on_precheckout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, on_successful_payment))
     app.add_handler(ChatMemberHandler(on_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
