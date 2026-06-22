@@ -859,6 +859,21 @@ T = {
         "en": "💎 <b>Buy coins with Telegram Stars</b>\nChoose a package 👇",
     },
     # === Рефералы ===
+    "reveal_title": {
+        "ru": "👁 Раскрыть отправителя",
+        "uz": "👁 Yuboruvchini aniqlash",
+        "en": "👁 Reveal sender",
+    },
+    "reveal_desc": {
+        "ru": "Узнай, кто отправил тебе это анонимное сообщение",
+        "uz": "Sizga bu anonim xabarni kim yuborganini biling",
+        "en": "Find out who sent you this anonymous message",
+    },
+    "reveal_result": {
+        "ru": "👁 <b>Отправитель раскрыт!</b>\n\nИмя: <b>{name}</b>\nНик: {uname}\nID: <code>{tid}</code>",
+        "uz": "👁 <b>Yuboruvchi aniqlandi!</b>\n\nIsm: <b>{name}</b>\nNik: {uname}\nID: <code>{tid}</code>",
+        "en": "👁 <b>Sender revealed!</b>\n\nName: <b>{name}</b>\nUsername: {uname}\nID: <code>{tid}</code>",
+    },
     "invite_text": {
         "ru": "👥 <b>Пригласи друзей и получи коины!</b>\n\n🔗 Твоя реф-ссылка:\n{link}\n\n+{bonus} 💎 за каждого друга.",
         "uz": "👥 <b>Do'stlarni taklif qiling va coin oling!</b>\n\n🔗 Ref-havolangiz:\n{link}\n\n+{bonus} 💎 har bir do'st uchun.",
@@ -1366,6 +1381,9 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     buttons = [[InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{mid}")]]
     if allow_report:
         buttons.append([InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"report_anon:{mid}")])
+    # Кнопка раскрытия отправителя за 1 Star (только для первого сообщения, не для ответов)
+    if msg_type != "reply":
+        buttons.append([InlineKeyboardButton("👁 Узнать кто (1⭐)", callback_data=f"reveal:{mid}")])
     kb = InlineKeyboardMarkup(buttons)
 
     try:
@@ -2987,10 +3005,56 @@ async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.pre_checkout_query.answer(ok=True)
 
 
+# Кнопка «Узнать кто» — отправляет инвойс на 1 Star для раскрытия отправителя
+async def on_reveal_button(update, context):
+    query = update.callback_query
+    await query.answer()
+    mid = int(query.data.split(":")[1])
+    row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
+    if not row:
+        await query.answer("Сообщение не найдено.", show_alert=True)
+        return
+    # Только получатель может раскрыть
+    if query.from_user.id != row["to_id"]:
+        await query.answer("Только получатель может раскрыть отправителя.", show_alert=True)
+        return
+    # Отправляем инвойс на 1 Star
+    await context.bot.send_invoice(
+        chat_id=query.from_user.id,
+        title=t("reveal_title"),
+        description=t("reveal_desc"),
+        payload=f"reveal:{mid}",
+        provider_token="",
+        currency="XTR",
+        prices=[LabeledPrice(label="⭐", amount=1)],
+    )
+
+
 async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sp = update.message.successful_payment
     uid = update.effective_user.id
     payload = sp.invoice_payload or ""
+
+    # Оплата раскрытия отправителя
+    if payload.startswith("reveal:"):
+        mid = int(payload.split(":")[1])
+        row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
+        if not row:
+            await update.message.reply_text("Сообщение не найдено 😕")
+            return
+        sender = get_user(row["from_id"])
+        if sender:
+            name = sender["first_name"] or "—"
+            uname = f"@{sender['username']}" if sender["username"] else f"<a href='tg://user?id={sender['tg_id']}'>профиль</a>"
+            await update.message.reply_text(
+                t("reveal_result", name=html.escape(name), uname=uname, tid=sender["tg_id"]),
+                parse_mode="HTML",
+            )
+        else:
+            await update.message.reply_text(t("anon_not_found"))
+        return
+
+    # Оплата покупки коинов за Stars
     if not payload.startswith("coins:"):
         return
     pid = int(payload.split(":")[1])
@@ -3487,6 +3551,7 @@ def main():
     app.add_handler(CallbackQueryHandler(on_delete_button, pattern=r"^del:"))
     app.add_handler(CallbackQueryHandler(on_subcheck_button, pattern=r"^subcheck:"))
     app.add_handler(CallbackQueryHandler(on_report_anon, pattern=r"^report_anon:"))
+    app.add_handler(CallbackQueryHandler(on_reveal_button, pattern=r"^reveal:"))
     app.add_handler(CallbackQueryHandler(on_report_admin_decision, pattern=r"^repadm:"))
     app.add_handler(CallbackQueryHandler(on_roulette_cancel, pattern=r"^roulette_cancel$"))
     app.add_handler(CallbackQueryHandler(on_roulette_next, pattern=r"^roulette_next$"))
