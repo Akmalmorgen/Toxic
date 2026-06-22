@@ -1039,8 +1039,8 @@ def moder_menu_kb():
 
 def moder_decision_kb(app_id):
     return InlineKeyboardMarkup([[
-        InlineKeyboardButton("✅ Выдать", callback_data=f"modapp:ok:{app_id}"),
-        InlineKeyboardButton("❌ Отмена", callback_data=f"modapp:no:{app_id}"),
+        InlineKeyboardButton("› Выдать", callback_data=f"modapp:ok:{app_id}"),
+        InlineKeyboardButton("« Отказ »", callback_data=f"modapp:no:{app_id}"),
     ]])
 
 
@@ -1427,12 +1427,12 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     badge = "👑 " if vip_badge else ""
     header = badge + ANON_HEADERS.get(msg_type, "📩 <b>Новое анонимное сообщение</b>")
     buttons = [[
-        InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{mid}"),
-        InlineKeyboardButton("🚩", callback_data=f"report_anon:{mid}"),
+        InlineKeyboardButton("› Ответить", callback_data=f"reply:{mid}"),
+        InlineKeyboardButton("› Жалоба", callback_data=f"report_anon:{mid}"),
     ]]
     # Кнопка раскрытия отправителя за 1 Star (только для первого сообщения, не для ответов)
     if msg_type != "reply":
-        buttons.append([InlineKeyboardButton("⟡ Узнать кто (1⭐) ⟡", callback_data=f"reveal:{mid}")])
+        buttons.append([InlineKeyboardButton("⟡ Узнать кто · 1 Star ⟡", callback_data=f"reveal:{mid}")])
     kb = InlineKeyboardMarkup(buttons)
 
     try:
@@ -1459,7 +1459,7 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     conn.commit()
 
     # Подтверждение автору + кнопка удаления (сотрёт обе копии)
-    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("◆ Удалить", callback_data=f"del:{mid}")]])
+    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("∆ Удалить", callback_data=f"del:{mid}")]])
     try:
         author_msg = await context.bot.send_message(author_id, t("anon_sent"), reply_markup=del_kb)
         conn.execute("UPDATE anon_messages SET sender_chat_message_id=? WHERE id=?", (author_msg.message_id, mid))
@@ -1616,7 +1616,7 @@ async def on_delete_button(update, context):
         if not ok:
             text = "Чтобы удалить сообщение, подпишись на канал(ы):\n\n"
             text += "\n".join(f"https://t.me/{c['chat_username'].lstrip('@')}" for c in channels)
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton("✅ Я подписался, проверить", callback_data=f"subcheck:{msg_id}")]])
+            kb = InlineKeyboardMarkup([[InlineKeyboardButton("› Я подписался", callback_data=f"subcheck:{msg_id}")]])
             await query.message.reply_text(text, reply_markup=kb)
             return
     await do_delete_message(query, context, msg_id)
@@ -1737,8 +1737,8 @@ async def process_report_reason(update, context):
         msg = conn.execute("SELECT * FROM anon_messages WHERE id=?", (ref_id,)).fetchone()
         content_preview = msg["text"] if msg["content_type"] == "text" else "[голосовое сообщение]"
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("✅ Подтвердить (бан 7 дн.)", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
+            InlineKeyboardButton("› Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("« Отклонить »", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
             context,
@@ -1749,8 +1749,8 @@ async def process_report_reason(update, context):
         )
     else:
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("✅ Подтвердить (бан 7 дн.)", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
+            InlineKeyboardButton("› Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("« Отклонить »", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
             context,
@@ -1859,7 +1859,7 @@ def in_chat_kb():
     return InlineKeyboardMarkup([[
         InlineKeyboardButton("› Далее", callback_data="roulette_next"),
         InlineKeyboardButton("□ Стоп", callback_data="roulette_stop"),
-        InlineKeyboardButton("⚑ Жалоба", callback_data="roulette_report"),
+        InlineKeyboardButton("› Жалоба", callback_data="roulette_report"),
     ]])
 
 
@@ -3069,7 +3069,7 @@ async def on_reveal_button(update, context):
         return
     # Подтверждение покупки
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⟡ Да, раскрыть (1⭐) ⟡", callback_data=f"reveal_pay:{mid}")],
+        [InlineKeyboardButton("⟡ Да, раскрыть · 1 Star ⟡", callback_data=f"reveal_pay:{mid}")],
         [InlineKeyboardButton("« Отмена »", callback_data="reveal_cancel")],
     ])
     await context.bot.send_message(
