@@ -1,0 +1,8 @@
+# НЕ игнорируем .env — репозиторий приватный, токен нужен хостингу
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+users_export.txt
+.DS_Store
