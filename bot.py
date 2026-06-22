@@ -34,6 +34,8 @@ DAILY_LIMIT = 20
 BAN_DAYS = 7
 ROULETTE_TICK_SECONDS = 3
 LINK_CHANGE_COOLDOWN_DAYS = 7
+VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
+VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
@@ -193,6 +195,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN first_name TEXT",
         "ALTER TABLE users ADD COLUMN is_moder INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN last_bonus TEXT",
         "ALTER TABLE shop_items ADD COLUMN reward_type TEXT NOT NULL DEFAULT 'manual'",
         "ALTER TABLE shop_items ADD COLUMN reward_amount INTEGER",
     ]
@@ -281,6 +284,13 @@ def gender_label(code):
 
 def pref_label(code):
     return {"m": "Парня", "f": "Девушку", "any": "Любого"}.get(code, "—")
+
+
+def effective_price(price, user_row):
+    """Цена с учётом VIP-скидки."""
+    if is_vip(user_row):
+        return max(0, round(price * (100 - VIP_DISCOUNT_PERCENT) / 100))
+    return price
 
 
 async def try_delete_message(context, chat_id, message_id):
@@ -426,6 +436,22 @@ def profile_kb():
     ], resize_keyboard=True)
 
 
+async def grant_daily_bonus(uid, context):
+    """Ежедневный бонус VIP: +VIP_DAILY_BONUS коинов раз в день."""
+    u = get_user(uid)
+    if not is_vip(u):
+        return
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    if u["last_bonus"] == today:
+        return
+    conn.execute("UPDATE users SET coins = coins + ?, last_bonus=? WHERE tg_id=?", (VIP_DAILY_BONUS, today, uid))
+    conn.commit()
+    try:
+        await context.bot.send_message(uid, f"🎁 Ежедневный VIP-бонус: <b>+{VIP_DAILY_BONUS}</b> 💎", parse_mode="HTML")
+    except TelegramError:
+        pass
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     existed = get_user(tg_user.id) is not None
@@ -433,6 +459,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_banned(user):
         await update.message.reply_text("🚫 Вы заблокированы и не можете пользоваться ботом.")
         return
+    await grant_daily_bonus(tg_user.id, context)
     args = context.args
 
     if args:
@@ -700,13 +727,24 @@ async def process_anon_content(update, context):
             )
             context.user_data["state"] = None
             return
+    m = update.message
+    is_v = is_vip(sender_row)
+    is_media = bool(m.photo or m.sticker or m.animation or m.video or m.video_note or m.document)
     content_type, text, voice_file_id = None, None, None
-    if update.message.voice:
-        content_type, voice_file_id = "voice", update.message.voice.file_id
-    elif update.message.text:
-        content_type, text = "text", update.message.text
+    if m.text:
+        content_type, text = "text", m.text
+    elif m.voice:
+        content_type, voice_file_id = "voice", m.voice.file_id
+    elif is_media:
+        if not is_v:
+            await update.message.reply_text(
+                "📷 Фото/стикеры/гиф/видео могут отправлять только VIP 👑 (см. Магазин).\n"
+                "Отправь текст или голосовое.",
+            )
+            return
+        content_type = "media"
     else:
-        await update.message.reply_text("Поддерживается только текст или голосовое сообщение.")
+        await update.message.reply_text("Поддерживается текст, голосовое" + (", фото, стикеры, гиф, видео" if is_v else "") + ".")
         return
 
     cur = conn.execute(
@@ -734,9 +772,12 @@ async def process_anon_content(update, context):
                 parse_mode="HTML",
                 reply_markup=kb,
             )
-        else:
+        elif content_type == "voice":
             await context.bot.send_message(target_id, f"{header}:", parse_mode="HTML")
             sent = await context.bot.send_voice(target_id, voice_file_id, reply_markup=kb)
+        else:  # media (VIP) — копируем исходное сообщение с медиа
+            await context.bot.send_message(target_id, f"{header}:", parse_mode="HTML")
+            sent = await context.bot.copy_message(target_id, m.chat_id, m.message_id, reply_markup=kb)
     except TelegramError:
         await update.message.reply_text(
             "Не удалось доставить сообщение получателю 😕",
@@ -1296,9 +1337,14 @@ async def shop_router(update, context):
         return
     context.user_data["pending_item"] = item_id
     context.user_data["state"] = "shop_confirm"
+    price = effective_price(item["price"], get_user(uid))
+    if price != item["price"]:
+        price_txt = f"<b>{price}</b> 💎 (VIP-скидка, обычно {item['price']})"
+    else:
+        price_txt = f"<b>{price}</b> 💎"
     await nav(
         update, context,
-        f"Вы уверены, что хотите купить «<b>{html.escape(item['title'])}</b>» за <b>{item['price']}</b> 💎?",
+        f"Купить «<b>{html.escape(item['title'])}</b>» за {price_txt}?",
         yes_no_kb(), parse_mode="HTML",
     )
 
@@ -1324,24 +1370,25 @@ async def shop_confirm_router(update, context):
 async def do_purchase(update, context, item):
     uid = update.effective_user.id
     user = get_user(uid)
-    if user["coins"] < item["price"]:
+    price = effective_price(item["price"], user)
+    if user["coins"] < price:
         context.user_data["state"] = None
         await nav(update, context, "Недостаточно коинов 💎", main_menu_kb(uid))
         return
-    conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (item["price"], uid))
+    conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
     conn.execute(
         "INSERT INTO purchases (user_id, item_id, price_paid, created_at) VALUES (?, ?, ?, ?)",
-        (uid, item["id"], item["price"], now_iso()),
+        (uid, item["id"], price, now_iso()),
     )
     conn.commit()
     user = get_user(uid)
-    # уведомление админам с доступом к пользователю
+    discount_note = f" (со скидкой VIP, обычно {item['price']})" if price != item["price"] else ""
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(
                 admin_id,
                 f"💰 Покупка!\nПользователь: {user_mention(user)}\n"
-                f"Товар: {html.escape(item['title'])}\nЦена: {item['price']} 💎",
+                f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎{discount_note}",
                 parse_mode="HTML",
             )
         except TelegramError:
@@ -1364,7 +1411,7 @@ async def do_purchase(update, context, item):
         context.user_data["state"] = None
         await nav(update, context, f"✅ <b>Покупка совершена!</b> VIP активен на <b>{days}</b> дн. 👑", main_menu_kb(uid), parse_mode="HTML")
     elif rt == "moder":
-        context.user_data["moder_price"] = item["price"]
+        context.user_data["moder_price"] = price
         context.user_data["moder_item_id"] = item["id"]
         context.user_data["moder_app"] = {}
         context.user_data["state"] = "moder_q_gender"
@@ -2678,7 +2725,8 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await nav(update, context, "Не понял команду. Воспользуйтесь меню 👇", main_menu_kb(update.effective_user.id))
 
 
-async def voice_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Единый роутер для голоса/фото/стикеров/гиф/видео/кружков/документов."""
     _u = get_user(update.effective_user.id)
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         return
@@ -2694,25 +2742,6 @@ async def voice_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if await relay_roulette_message(update, context):
         return
-
-
-async def photo_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _u = get_user(update.effective_user.id)
-    if _u and is_banned(_u) and not is_admin(update.effective_user.id):
-        return
-    state = context.user_data.get("state")
-    if state == "adm_bcast_content":
-        await process_bcast_content(update, context)
-        return
-    if await relay_roulette_message(update, context):
-        return
-
-
-async def sticker_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _u = get_user(update.effective_user.id)
-    if _u and is_banned(_u) and not is_admin(update.effective_user.id):
-        return
-    await relay_roulette_message(update, context)
 
 
 
@@ -2745,9 +2774,11 @@ def main():
     app.add_handler(CallbackQueryHandler(on_roulette_stop, pattern=r"^roulette_stop$"))
     app.add_handler(CallbackQueryHandler(on_roulette_report, pattern=r"^rrep:"))
     app.add_handler(CallbackQueryHandler(on_moder_app_decision, pattern=r"^modapp:"))
-    app.add_handler(MessageHandler(filters.VOICE, voice_router))
-    app.add_handler(MessageHandler(filters.PHOTO, photo_router))
-    app.add_handler(MessageHandler(filters.Sticker.ALL, sticker_router))
+    media_filter = (
+        filters.VOICE | filters.PHOTO | filters.Sticker.ALL | filters.ANIMATION
+        | filters.VIDEO | filters.VIDEO_NOTE | filters.Document.ALL
+    )
+    app.add_handler(MessageHandler(media_filter, media_router))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_router))
     app.job_queue.run_repeating(roulette_matchmaker, interval=ROULETTE_TICK_SECONDS, first=ROULETTE_TICK_SECONDS)
     log.info("Бот запущен, поллинг...")
