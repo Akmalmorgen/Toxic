@@ -31,7 +31,7 @@ ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не задан. Скопируй .env.example в .env и впиши токен от @BotFather")
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "bot.db")
+DB_PATH = os.getenv("DB_PATH", "").strip() or os.path.join(os.path.dirname(__file__), "bot.db")
 DAILY_LIMIT = 20
 BAN_DAYS = 7
 ROULETTE_TICK_SECONDS = 3
@@ -772,11 +772,15 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
                 parse_mode="HTML", reply_markup=kb,
             )
         elif content_type == "voice":
-            await context.bot.send_message(recipient_id, f"{quote}{header}:", parse_mode="HTML")
-            sent = await context.bot.send_voice(recipient_id, voice_file_id, reply_markup=kb)
-        else:  # media (VIP) — копируем исходное сообщение с медиа
-            await context.bot.send_message(recipient_id, f"{quote}{header}:", parse_mode="HTML")
-            sent = await context.bot.copy_message(recipient_id, src_chat_id, src_message_id, reply_markup=kb)
+            sent = await context.bot.send_voice(
+                recipient_id, voice_file_id,
+                caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
+            )
+        else:  # media (VIP) — копируем исходное сообщение с медиа одним сообщением
+            sent = await context.bot.copy_message(
+                recipient_id, src_chat_id, src_message_id,
+                caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
+            )
     except TelegramError:
         return None
 
@@ -961,23 +965,43 @@ async def on_subcheck_button(update, context):
 
 async def do_delete_message(query, context, msg_id):
     row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (msg_id,)).fetchone()
-    if row:
-        # удалить у получателя
-        if row["owner_chat_message_id"]:
-            try:
-                await context.bot.delete_message(row["to_id"], row["owner_chat_message_id"])
-            except TelegramError:
-                pass
-        # удалить свою копию (у отправителя)
-        if row["sender_chat_message_id"]:
-            try:
-                await context.bot.delete_message(row["from_id"], row["sender_chat_message_id"])
-            except TelegramError:
-                pass
-        conn.execute("UPDATE anon_messages SET deleted=1 WHERE id=?", (msg_id,))
-        conn.commit()
+    if not row:
+        # Запись потеряна (например, после сброса БД на хостинге) — стираем хотя бы нажатое сообщение
+        try:
+            await query.message.delete()
+        except TelegramError:
+            pass
+        try:
+            await query.answer("Сообщение устарело (нет в базе) — удалено только у тебя.", show_alert=True)
+        except TelegramError:
+            pass
+        return
+    deleted_recipient = False
+    # удалить у получателя
+    if row["owner_chat_message_id"]:
+        try:
+            await context.bot.delete_message(row["to_id"], row["owner_chat_message_id"])
+            deleted_recipient = True
+        except TelegramError:
+            pass
+    # удалить свою копию (у отправителя)
+    if row["sender_chat_message_id"]:
+        try:
+            await context.bot.delete_message(row["from_id"], row["sender_chat_message_id"])
+        except TelegramError:
+            pass
+    # подстраховка: стираем само нажатое сообщение, если это не учтённая копия
     try:
-        await query.answer("Сообщение удалено ✅", show_alert=True)
+        await query.message.delete()
+    except TelegramError:
+        pass
+    conn.execute("UPDATE anon_messages SET deleted=1 WHERE id=?", (msg_id,))
+    conn.commit()
+    try:
+        if deleted_recipient:
+            await query.answer("Удалено у обоих ✅", show_alert=True)
+        else:
+            await query.answer("Удалено у тебя. У собеседника не вышло (старше 48ч?).", show_alert=True)
     except TelegramError:
         pass
 
