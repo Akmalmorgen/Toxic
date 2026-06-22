@@ -1,6 +1,6 @@
 """
 Анонимный бот: Анон.Вопрос / Валентинка + Чат-рулетка по полу + Магазин (коины, VIP) + Админка.
-Стек: python-telegram-bot (PTB) v21, sqlite3 (stdlib).
+Стек: aiogram v3, sqlite3 (stdlib) / PostgreSQL (Neon).
 """
 
 import os
@@ -9,27 +9,210 @@ import logging
 import random
 import string
 import html
+import asyncio
 import threading
+import contextvars
+from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
-from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup,
-    ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, LabeledPrice,
+from aiogram import Bot, Dispatcher, F
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ChatMemberStatus
+from aiogram.exceptions import TelegramAPIError, TelegramConflictError
+from aiogram.filters import CommandStart, CommandObject
+from aiogram.types import (
+    Message, CallbackQuery, ChatMemberUpdated, PreCheckoutQuery, ErrorEvent,
+    ReplyKeyboardRemove, ReplyParameters, BufferedInputFile, BotCommand,
+    KeyboardButton as _AiKeyboardButton,
+    ReplyKeyboardMarkup as _AiReplyKeyboardMarkup,
+    InlineKeyboardButton as _AiInlineKeyboardButton,
+    InlineKeyboardMarkup as _AiInlineKeyboardMarkup,
+    LabeledPrice as _AiLabeledPrice,
 )
-from telegram.constants import ChatMemberStatus
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-    PreCheckoutQueryHandler, ChatMemberHandler, ContextTypes, filters, TypeHandler,
-)
-from telegram.error import TelegramError, Conflict
+
+# aiogram бросает свои исключения; даём привычное имя для существующих try/except.
+TelegramError = TelegramAPIError
+
+
+# ========================= ЯЗЫК ТЕКУЩЕГО АПДЕЙТА (task-safe) =========================
+# Раньше это была глобальная переменная _CURLANG. aiogram обрабатывает апдейты
+# конкурентно (каждый в своей asyncio-задаче), поэтому используем ContextVar —
+# у каждой задачи свой изолированный язык, без гонок.
+_lang_var = contextvars.ContextVar("cur_lang", default="ru")
+
+
+def cur_lang():
+    return _lang_var.get()
+
+
+def set_cur_lang(value):
+    _lang_var.set(value)
+
+
+# ===================== PTB-совместимые фабрики поверх моделей aiogram =====================
+# Конструкторы aiogram требуют именованные аргументы (text=, keyboard=, ...),
+# а весь код ниже создаёт клавиатуры позиционно. Эти тонкие обёртки сохраняют
+# привычный синтаксис и при этом возвращают настоящие модели aiogram.
+def KeyboardButton(text, **kw):
+    return _AiKeyboardButton(text=text, **kw)
+
+
+class ReplyKeyboardMarkup(_AiReplyKeyboardMarkup):
+    # Класс (а не функция), потому что в коде есть isinstance(..., ReplyKeyboardMarkup).
+    def __init__(self, keyboard, resize_keyboard=False, one_time_keyboard=False, **kw):
+        super().__init__(
+            keyboard=keyboard,
+            resize_keyboard=resize_keyboard,
+            one_time_keyboard=one_time_keyboard,
+            **kw,
+        )
+
+
+def InlineKeyboardButton(text, **kw):
+    return _AiInlineKeyboardButton(text=text, **kw)
+
+
+def InlineKeyboardMarkup(inline_keyboard, **kw):
+    return _AiInlineKeyboardMarkup(inline_keyboard=inline_keyboard, **kw)
+
+
+def LabeledPrice(label=None, amount=None, **kw):
+    if label is not None:
+        kw.setdefault("label", label)
+    if amount is not None:
+        kw.setdefault("amount", amount)
+    return _AiLabeledPrice(**kw)
+
 
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не задан. Скопируй .env.example в .env и впиши токен от @BotFather")
+
+
+# ============================ ДВИЖОК aiogram + АДАПТЕРЫ ============================
+# Один экземпляр Bot/Dispatcher на всё приложение. parse_mode не задаём по умолчанию,
+# чтобы обычные сообщения не интерпретировались как HTML (HTML включается явно там,
+# где это нужно — как и было в исходном коде).
+bot = Bot(BOT_TOKEN, default=DefaultBotProperties())
+dp = Dispatcher()
+
+
+class _BotProxy:
+    """Адаптер aiogram Bot под вызовы в стиле PTB, которые использует код ниже.
+
+    Большинство методов проксируются как есть; переопределяем только то, где
+    сигнатуры/типы aiogram отличаются:
+      * send_message(..., reply_to_message_id=) -> reply_parameters
+      * send_document(..., document=<файловый объект>) -> BufferedInputFile
+    """
+
+    def __init__(self, real_bot):
+        self._bot = real_bot
+
+    def __getattr__(self, name):
+        return getattr(self._bot, name)
+
+    async def send_message(self, chat_id, text, reply_to_message_id=None, **kw):
+        if reply_to_message_id is not None:
+            kw["reply_parameters"] = ReplyParameters(message_id=reply_to_message_id)
+        return await self._bot.send_message(chat_id, text, **kw)
+
+    async def send_document(self, chat_id, document=None, **kw):
+        if hasattr(document, "read"):
+            raw = document.read()
+            if isinstance(raw, str):
+                raw = raw.encode("utf-8")
+            fname = os.path.basename(getattr(document, "name", "") or "file.txt")
+            document = BufferedInputFile(raw, filename=fname)
+        return await self._bot.send_document(chat_id, document, **kw)
+
+
+BOTP = _BotProxy(bot)
+
+# Хранилище пользовательских данных (аналог context.user_data из PTB) — в памяти,
+# по одному словарю на пользователя. Сбрасывается при рестарте (как и было).
+UD = defaultdict(dict)
+
+
+def ud(uid):
+    return UD[uid]
+
+
+class _Msg:
+    """Обёртка над aiogram Message с привычными PTB-методами (reply_text, chat_id)."""
+
+    def __init__(self, message):
+        self._m = message
+
+    def __getattr__(self, name):
+        return getattr(self._m, name)
+
+    @property
+    def chat_id(self):
+        return self._m.chat.id
+
+    async def reply_text(self, text, reply_markup=None, parse_mode=None,
+                         reply_to_message_id=None, **kw):
+        if reply_to_message_id is not None:
+            kw["reply_parameters"] = ReplyParameters(message_id=reply_to_message_id)
+        return await self._m.answer(text, reply_markup=reply_markup, parse_mode=parse_mode, **kw)
+
+    async def delete(self):
+        return await self._m.delete()
+
+
+class _CB:
+    """Обёртка над aiogram CallbackQuery в стиле PTB (answer, edit_message_text)."""
+
+    def __init__(self, cq):
+        self._cq = cq
+        self.data = cq.data
+        self.from_user = cq.from_user
+        self.message = _Msg(cq.message) if cq.message else None
+
+    async def answer(self, text=None, show_alert=False, **kw):
+        return await self._cq.answer(text=text, show_alert=show_alert, **kw)
+
+    async def edit_message_text(self, text, reply_markup=None, parse_mode=None, **kw):
+        return await self._cq.message.edit_text(
+            text, reply_markup=reply_markup, parse_mode=parse_mode, **kw
+        )
+
+
+class UpdateShim:
+    """Лёгкий аналог PTB Update: достаточно того, что реально используется в коде."""
+
+    def __init__(self, message=None, callback_query=None, pre_checkout_query=None,
+                 my_chat_member=None, effective_user=None, effective_chat=None):
+        self.message = _Msg(message) if message is not None else None
+        self.callback_query = callback_query
+        self.pre_checkout_query = pre_checkout_query
+        self.my_chat_member = my_chat_member
+        self.effective_user = effective_user
+        self.effective_chat = effective_chat
+
+
+# Имена-заглушки для аннотаций в сигнатурах (update: Update, context: ContextTypes...).
+Update = UpdateShim
+
+
+class ContextTypes:
+    DEFAULT_TYPE = object
+
+
+class Ctx:
+    """Аналог PTB context: .bot, .user_data, .args, .error."""
+
+    def __init__(self, uid, args=None, error=None):
+        self.bot = BOTP
+        self.user_data = UD[uid]
+        self.args = args or []
+        self.error = error
+
 
 DB_PATH = os.getenv("DB_PATH", "").strip() or os.path.join(os.path.dirname(__file__), "bot.db")
 DAILY_LIMIT = 20
@@ -469,8 +652,7 @@ for _ru, (_uz, _en) in BTN.items():
     _ALIAS[_uz] = _ru
     _ALIAS[_en] = _ru
 
-# Текущий язык обрабатываемого апдейта (updates идут последовательно — безопасно)
-_CURLANG = "ru"
+# Текущий язык апдейта хранится в ContextVar (см. cur_lang()/set_cur_lang() вверху файла).
 
 
 def get_lang(uid):
@@ -515,7 +697,7 @@ def styled(text, kind="default"):
 
 def tr_btn(ru_label, lang=None, kind="default"):
     """Перевод русской метки кнопки на текущий/заданный язык + стилизация."""
-    lang = lang or _CURLANG
+    lang = lang or cur_lang()
     if lang == "ru":
         base = ru_label
     else:
@@ -530,7 +712,7 @@ def tr_btn(ru_label, lang=None, kind="default"):
 def tr_kb(markup, lang=None):
     """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру.
     Уже стилизованные кнопки (⟡/«») не переводятся повторно."""
-    lang = lang or _CURLANG
+    lang = lang or cur_lang()
     if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
         return markup
     new_rows = []
@@ -931,7 +1113,7 @@ T = {
 
 def t(key, **kw):
     d = T.get(key, {})
-    s = d.get(_CURLANG) or d.get("ru") or key
+    s = d.get(cur_lang()) or d.get("ru") or key
     return s.format(**kw) if kw else s
 
 
@@ -958,21 +1140,19 @@ async def language_router(update, context):
     if not lang:
         await update.message.reply_text(t("pick_on_kb"), reply_markup=language_menu_kb())
         return
-    global _CURLANG
     set_lang(update.effective_user.id, lang)
-    _CURLANG = lang
+    set_cur_lang(lang)
     context.user_data["state"] = None
     await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
 
 
 async def set_lang_context(update, context):
-    """Запускается первым для каждого апдейта: подставляет язык пользователя в _CURLANG."""
-    global _CURLANG
+    """Подставляет язык пользователя в ContextVar текущего апдейта."""
     try:
         uid = update.effective_user.id if update.effective_user else None
-        _CURLANG = get_lang(uid) if uid else "ru"
+        set_cur_lang(get_lang(uid) if uid else "ru")
     except Exception:
-        _CURLANG = "ru"
+        set_cur_lang("ru")
 
 
 def main_menu_kb(tg_id):
@@ -1178,7 +1358,7 @@ async def set_gender_from_text(update, context):
     conn.commit()
     context.user_data["state"] = None
     g = {"m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
-         "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"}}[gender][_CURLANG]
+         "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"}}[gender][cur_lang()]
     await update.message.reply_text(
         t("gender_saved", g=g),
         parse_mode="HTML",
@@ -1599,7 +1779,7 @@ async def user_subscribed_all(context, user_id, channels):
     for ch in channels:
         try:
             member = await context.bot.get_chat_member(ch["chat_username"], user_id)
-            if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.BANNED):
+            if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
                 return False
         except TelegramError:
             return False
@@ -3595,60 +3775,143 @@ def _keep_alive_server():
         log.warning("keep-alive server: %s", e)
 
 
-async def on_error(update, context):
+async def on_error(event: ErrorEvent):
     """Глобальный обработчик ошибок — чтобы не падать и не спамить трейсбеками."""
-    err = context.error
-    if isinstance(err, Conflict):
+    err = event.exception
+    if isinstance(err, TelegramConflictError):
         log.warning("Conflict: бот запущен в нескольких местах. Оставь один инстанс!")
-        return
+        return True
     log.error("Ошибка при обработке апдейта: %s", err)
+    return True
+
+
+# ============================ РЕГИСТРАЦИЯ ХЕНДЛЕРОВ aiogram ============================
+def _mu(message):
+    """aiogram Message -> UpdateShim для текстовых/медиа-хендлеров."""
+    return UpdateShim(message=message, effective_user=message.from_user,
+                      effective_chat=message.chat)
+
+
+def _cu(cq):
+    """aiogram CallbackQuery -> UpdateShim для callback-хендлеров."""
+    return UpdateShim(callback_query=_CB(cq), effective_user=cq.from_user,
+                      effective_chat=(cq.message.chat if cq.message else None))
+
+
+async def _lang_middleware(handler, event, data):
+    """Перед каждым апдейтом кладём язык пользователя в ContextVar (task-safe)."""
+    user = data.get("event_from_user")
+    set_cur_lang(get_lang(user.id) if user else "ru")
+    return await handler(event, data)
+
+
+# --- обёртки апдейтов под существующие (update, context)-хендлеры ---
+async def _h_start(message: Message, command: CommandObject):
+    args = command.args.split() if command.args else []
+    await cmd_start(_mu(message), Ctx(message.from_user.id, args=args))
+
+
+async def _h_payment(message: Message):
+    await on_successful_payment(_mu(message), Ctx(message.from_user.id))
+
+
+async def _h_precheckout(pcq: PreCheckoutQuery):
+    upd = UpdateShim(pre_checkout_query=pcq, effective_user=pcq.from_user)
+    await on_precheckout(upd, Ctx(pcq.from_user.id))
+
+
+async def _h_my_chat_member(event: ChatMemberUpdated):
+    upd = UpdateShim(my_chat_member=event, effective_user=event.from_user,
+                     effective_chat=event.chat)
+    await on_my_chat_member(upd, Ctx(event.from_user.id))
+
+
+async def _h_media(message: Message):
+    await media_router(_mu(message), Ctx(message.from_user.id))
+
+
+async def _h_text(message: Message):
+    await text_router(_mu(message), Ctx(message.from_user.id))
+
+
+# Карта callback-хендлеров: (ключ, функция, точное_совпадение)
+_CALLBACKS = [
+    ("back_main", on_back_main, True),
+    ("reply:", on_reply_button, False),
+    ("del:", on_delete_button, False),
+    ("subcheck:", on_subcheck_button, False),
+    ("report_anon:", on_report_anon, False),
+    ("reveal:", on_reveal_button, False),
+    ("reveal_pay:", on_reveal_pay, False),
+    ("reveal_cancel", on_reveal_cancel, True),
+    ("repadm:", on_report_admin_decision, False),
+    ("roulette_cancel", on_roulette_cancel, True),
+    ("roulette_next", on_roulette_next, True),
+    ("roulette_stop", on_roulette_stop, True),
+    ("rrep:", on_roulette_report, False),
+    ("modapp:", on_moder_app_decision, False),
+]
+
+
+def _make_cb_handler(fn):
+    async def _handler(cq: CallbackQuery):
+        await fn(_cu(cq), Ctx(cq.from_user.id))
+    return _handler
+
+
+def register_handlers():
+    dp.update.outer_middleware(_lang_middleware)
+    dp.errors.register(on_error)
+
+    dp.message.register(_h_start, CommandStart())
+    dp.pre_checkout_query.register(_h_precheckout)
+    dp.message.register(_h_payment, F.successful_payment)
+    dp.my_chat_member.register(_h_my_chat_member)
+
+    for key, fn, exact in _CALLBACKS:
+        flt = (F.data == key) if exact else F.data.startswith(key)
+        dp.callback_query.register(_make_cb_handler(fn), flt)
+
+    media_filter = (
+        F.voice | F.photo | F.sticker | F.animation
+        | F.video | F.video_note | F.document
+    )
+    dp.message.register(_h_media, media_filter)
+    dp.message.register(_h_text, F.text & ~F.text.startswith("/"))
+
+
+async def _matchmaker_loop():
+    """Аналог job_queue.run_repeating: периодически сводит пары в рулетке."""
+    ctx = Ctx(0)
+    while True:
+        await asyncio.sleep(ROULETTE_TICK_SECONDS)
+        try:
+            await roulette_matchmaker(ctx)
+        except Exception as e:  # noqa
+            log.error("matchmaker: %s", e)
+
+
+async def _run():
+    init_db()
+    register_handlers()
+    try:
+        await bot.set_my_commands([BotCommand(command="start", description="Запустить бота")])
+    except Exception as e:  # noqa
+        log.warning("set_my_commands: %s", e)
+    # На случай, если ранее был установлен вебхук — иначе поллинг конфликтует.
+    try:
+        await bot.delete_webhook(drop_pending_updates=False)
+    except Exception as e:  # noqa
+        log.warning("delete_webhook: %s", e)
+    asyncio.create_task(_matchmaker_loop())
+    log.info("Бот запущен, поллинг...")
+    await dp.start_polling(bot)
 
 
 def main():
     # фоновый веб-сервер СНАЧАЛА (Render ждёт открытый PORT чтобы считать сервис живым)
     threading.Thread(target=_keep_alive_server, daemon=True).start()
-    init_db()
-    builder = Application.builder().token(BOT_TOKEN)
-    # Увеличенные таймауты (помогает при медленной/нестабильной сети)
-    builder = builder.connect_timeout(30).read_timeout(30).write_timeout(30).pool_timeout(30)
-    app = builder.build()
-
-    # Регистрируем команды бота (помогает клиенту TG с навигацией)
-    async def post_init(application):
-        await application.bot.set_my_commands([("start", "Запустить бота")])
-
-    app.post_init = post_init
-
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_error_handler(on_error)
-    # Подстановка языка пользователя перед обработкой любого апдейта
-    app.add_handler(TypeHandler(Update, set_lang_context), group=-1)
-    app.add_handler(PreCheckoutQueryHandler(on_precheckout))
-    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, on_successful_payment))
-    app.add_handler(ChatMemberHandler(on_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
-    app.add_handler(CallbackQueryHandler(on_back_main, pattern=r"^back_main$"))
-    app.add_handler(CallbackQueryHandler(on_reply_button, pattern=r"^reply:"))
-    app.add_handler(CallbackQueryHandler(on_delete_button, pattern=r"^del:"))
-    app.add_handler(CallbackQueryHandler(on_subcheck_button, pattern=r"^subcheck:"))
-    app.add_handler(CallbackQueryHandler(on_report_anon, pattern=r"^report_anon:"))
-    app.add_handler(CallbackQueryHandler(on_reveal_button, pattern=r"^reveal:"))
-    app.add_handler(CallbackQueryHandler(on_reveal_pay, pattern=r"^reveal_pay:"))
-    app.add_handler(CallbackQueryHandler(on_reveal_cancel, pattern=r"^reveal_cancel$"))
-    app.add_handler(CallbackQueryHandler(on_report_admin_decision, pattern=r"^repadm:"))
-    app.add_handler(CallbackQueryHandler(on_roulette_cancel, pattern=r"^roulette_cancel$"))
-    app.add_handler(CallbackQueryHandler(on_roulette_next, pattern=r"^roulette_next$"))
-    app.add_handler(CallbackQueryHandler(on_roulette_stop, pattern=r"^roulette_stop$"))
-    app.add_handler(CallbackQueryHandler(on_roulette_report, pattern=r"^rrep:"))
-    app.add_handler(CallbackQueryHandler(on_moder_app_decision, pattern=r"^modapp:"))
-    media_filter = (
-        filters.VOICE | filters.PHOTO | filters.Sticker.ALL | filters.ANIMATION
-        | filters.VIDEO | filters.VIDEO_NOTE | filters.Document.ALL
-    )
-    app.add_handler(MessageHandler(media_filter, media_router))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_router))
-    app.job_queue.run_repeating(roulette_matchmaker, interval=ROULETTE_TICK_SECONDS, first=ROULETTE_TICK_SECONDS)
-    log.info("Бот запущен, поллинг...")
-    app.run_polling()
+    asyncio.run(_run())
 
 
 if __name__ == "__main__":
