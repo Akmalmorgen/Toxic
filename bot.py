@@ -489,31 +489,63 @@ def set_lang(uid, lang):
 
 
 def canon(text):
-    """Любая языковая метка кнопки -> каноническая русская (для маршрутизации)."""
+    """Любая языковая метка кнопки -> каноническая русская (для маршрутизации).
+    Убирает декоративные обрамления styled() перед поиском."""
     if text is None:
         return None
-    return _ALIAS.get(text, text)
+    # Убираем styled() обрамления
+    t = text
+    if t.startswith("⟡ ") and t.endswith(" ⟡"):
+        t = t[2:-2]
+    elif t.startswith("« ") and t.endswith(" »"):
+        t = t[2:-2]
+    return _ALIAS.get(t, _ALIAS.get(text, text))
 
 
-def tr_btn(ru_label, lang=None):
-    """Перевод русской метки кнопки на текущий/заданный язык."""
+# Стилизация кнопок — единый декор применяется после получения перевода
+def styled(text, kind="default"):
+    """Добавляет декоративное обрамление к тексту кнопки.
+    kind: default — без изменений, premium — ⟡...⟡, accent — «...»"""
+    if kind == "premium":
+        return f"⟡ {text} ⟡"
+    if kind == "accent":
+        return f"« {text} »"
+    return text
+
+
+def tr_btn(ru_label, lang=None, kind="default"):
+    """Перевод русской метки кнопки на текущий/заданный язык + стилизация."""
     lang = lang or _CURLANG
     if lang == "ru":
-        return ru_label
-    pair = BTN.get(ru_label)
-    if not pair:
-        return ru_label
-    return pair[0] if lang == "uz" else pair[1]
+        base = ru_label
+    else:
+        pair = BTN.get(ru_label)
+        if not pair:
+            base = ru_label
+        else:
+            base = pair[0] if lang == "uz" else pair[1]
+    return styled(base, kind) if kind != "default" else base
 
 
 def tr_kb(markup, lang=None):
-    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру."""
+    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру.
+    Уже стилизованные кнопки (⟡/«») не переводятся повторно."""
     lang = lang or _CURLANG
     if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
         return markup
-    rows = [[KeyboardButton(tr_btn(canon(b.text), lang)) for b in row] for row in markup.keyboard]
+    new_rows = []
+    for row in markup.keyboard:
+        new_row = []
+        for b in row:
+            txt = b.text
+            # Если кнопка уже стилизована — оставляем как есть
+            if txt.startswith("⟡ ") or txt.startswith("« "):
+                new_row.append(KeyboardButton(txt))
+            else:
+                new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
+        new_rows.append(new_row)
     return ReplyKeyboardMarkup(
-        rows,
+        new_rows,
         resize_keyboard=markup.resize_keyboard,
         one_time_keyboard=markup.one_time_keyboard,
     )
@@ -950,9 +982,10 @@ def main_menu_kb(tg_id):
         [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("🌐 Язык")],
     ]
-    # Кнопка покупки коинов за Stars — только если админ добавил хотя бы один пакет
+    # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
-        rows.append([KeyboardButton("💎 Купить коины")])
+        star_label = styled(tr_btn("💎 Купить коины"), "premium")
+        rows.append([KeyboardButton(star_label)])
     if is_admin(tg_id):
         rows.append([KeyboardButton("🛠 Админка")])
     else:
@@ -1393,12 +1426,13 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
 
     badge = "👑 " if vip_badge else ""
     header = badge + ANON_HEADERS.get(msg_type, "📩 <b>Новое анонимное сообщение</b>")
-    buttons = [[InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{mid}")]]
-    if allow_report:
-        buttons.append([InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"report_anon:{mid}")])
+    buttons = [[
+        InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{mid}"),
+        InlineKeyboardButton("🚩", callback_data=f"report_anon:{mid}"),
+    ]]
     # Кнопка раскрытия отправителя за 1 Star (только для первого сообщения, не для ответов)
     if msg_type != "reply":
-        buttons.append([InlineKeyboardButton("👁 Узнать кто (1⭐)", callback_data=f"reveal:{mid}")])
+        buttons.append([InlineKeyboardButton("⟡ Узнать кто (1⭐) ⟡", callback_data=f"reveal:{mid}")])
     kb = InlineKeyboardMarkup(buttons)
 
     try:
@@ -1425,7 +1459,7 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     conn.commit()
 
     # Подтверждение автору + кнопка удаления (сотрёт обе копии)
-    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 Удалить", callback_data=f"del:{mid}")]])
+    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("◆ Удалить", callback_data=f"del:{mid}")]])
     try:
         author_msg = await context.bot.send_message(author_id, t("anon_sent"), reply_markup=del_kb)
         conn.execute("UPDATE anon_messages SET sender_chat_message_id=? WHERE id=?", (author_msg.message_id, mid))
@@ -1822,10 +1856,11 @@ def bcast_audience_kb():
 
 
 def in_chat_kb():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("➡️ Следующий", callback_data="roulette_next")],
-        [InlineKeyboardButton("⛔ Стоп", callback_data="roulette_stop")]
-    ])
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("› Далее", callback_data="roulette_next"),
+        InlineKeyboardButton("□ Стоп", callback_data="roulette_stop"),
+        InlineKeyboardButton("⚑ Жалоба", callback_data="roulette_report"),
+    ]])
 
 
 def get_active_session(user_id):
@@ -3034,8 +3069,8 @@ async def on_reveal_button(update, context):
         return
     # Подтверждение покупки
     kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✅ Да, раскрыть (1⭐)", callback_data=f"reveal_pay:{mid}")],
-        [InlineKeyboardButton("❌ Отмена", callback_data="reveal_cancel")],
+        [InlineKeyboardButton("⟡ Да, раскрыть (1⭐) ⟡", callback_data=f"reveal_pay:{mid}")],
+        [InlineKeyboardButton("« Отмена »", callback_data="reveal_cancel")],
     ])
     await context.bot.send_message(
         query.from_user.id,
