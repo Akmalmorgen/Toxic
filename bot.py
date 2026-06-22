@@ -305,7 +305,7 @@ def main_menu_kb(tg_id):
     rows = [
         [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
         [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
-        [KeyboardButton("👥 Пригласить")],
+        [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
     ]
     # Кнопка покупки коинов за Stars — только если админ добавил хотя бы один пакет
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
@@ -934,14 +934,25 @@ async def on_subcheck_button(update, context):
 
 async def do_delete_message(query, context, msg_id):
     row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (msg_id,)).fetchone()
-    if row and row["owner_chat_message_id"]:
-        try:
-            await context.bot.delete_message(row["to_id"], row["owner_chat_message_id"])
-        except TelegramError:
-            pass
-    conn.execute("UPDATE anon_messages SET deleted=1 WHERE id=?", (msg_id,))
-    conn.commit()
-    await query.message.reply_text("Сообщение удалено у получателя ✅")
+    if row:
+        # удалить у получателя
+        if row["owner_chat_message_id"]:
+            try:
+                await context.bot.delete_message(row["to_id"], row["owner_chat_message_id"])
+            except TelegramError:
+                pass
+        # удалить свою копию (у отправителя)
+        if row["sender_chat_message_id"]:
+            try:
+                await context.bot.delete_message(row["from_id"], row["sender_chat_message_id"])
+            except TelegramError:
+                pass
+        conn.execute("UPDATE anon_messages SET deleted=1 WHERE id=?", (msg_id,))
+        conn.commit()
+    try:
+        await query.answer("Сообщение удалено ✅", show_alert=True)
+    except TelegramError:
+        pass
 
 
 
@@ -2553,6 +2564,36 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.commit()
 
 
+async def show_help(update, context):
+    uid = update.effective_user.id
+    text = (
+        "ℹ️ <b>О боте ToxIcUz</b> 💙\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "Бот анонимных сообщений и общения.\n\n"
+        "🔗 <b>Моя ссылка</b> — твоя личная ссылка. Делись ей: тебе будут писать "
+        "анонимные вопросы и валентинки.\n"
+        "🎲 <b>Чат-рулетка</b> — поиск случайного собеседника по полу.\n"
+        "👤 <b>Профиль</b> — пол, коины, VIP-статус.\n"
+        "🛒 <b>Магазин</b> — трать коины на VIP и товары.\n"
+        "👥 <b>Пригласить</b> — зови друзей: +20 💎 (VIP +50 💎).\n"
+        "💎 <b>Купить коины</b> — пополнение за Telegram Stars ⭐.\n\n"
+        "💎 <b>Коины</b> — внутренняя валюта (за рефералов и покупки).\n"
+        "👑 <b>VIP даёт:</b>\n"
+        "<blockquote>• без лимита сообщений\n"
+        "• скидка 20% в магазине\n"
+        "• +5 💎 каждый день\n"
+        "• приоритет в рулетке\n"
+        "• корона в анонимках\n"
+        "• медиа (фото/видео/гиф) в анонимках\n"
+        "• безлимитная смена ссылки</blockquote>\n"
+        "❓ <b>Как пользоваться:</b>\n"
+        "1. Укажи пол.\n"
+        "2. Возьми ссылку в «🔗 Моя ссылка» и делись ею.\n"
+        "3. Отвечай на анонимки, играй в рулетке, зарабатывай коины."
+    )
+    await nav(update, context, text, main_menu_kb(uid), parse_mode="HTML")
+
+
 async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
     text = update.message.text if update.message else None
@@ -2694,6 +2735,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if text == "👥 Пригласить":
         await show_referral(update, context)
+        return
+    if text == "ℹ️ Помощь":
+        await show_help(update, context)
         return
     if text == "🛠 Админка":
         context.user_data["state"] = None
