@@ -26,8 +26,6 @@ from telegram.error import TelegramError
 load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 ADMIN_IDS = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()}
-PROXY_URL = os.getenv("PROXY_URL", "").strip()
-VIP_EMOJI_ID = os.getenv("VIP_EMOJI_ID", "").strip()  # id премиум-эмодзи для VIP (необязательно)  # напр. socks5://user:pass@host:port или http://host:port
 if not BOT_TOKEN:
     raise RuntimeError("BOT_TOKEN не задан. Скопируй .env.example в .env и впиши токен от @BotFather")
 
@@ -283,13 +281,6 @@ def gender_label(code):
 
 def pref_label(code):
     return {"m": "Парня", "f": "Девушку", "any": "Любого"}.get(code, "—")
-
-
-def vip_crown():
-    """Анимированный премиум-эмодзи для VIP, если задан VIP_EMOJI_ID; иначе обычная корона."""
-    if VIP_EMOJI_ID:
-        return f'<tg-emoji emoji-id="{VIP_EMOJI_ID}">👑</tg-emoji>'
-    return "👑"
 
 
 async def try_delete_message(context, chat_id, message_id):
@@ -1036,7 +1027,7 @@ async def show_profile(update, context):
     user = get_user(update.effective_user.id)
     vip_status = "—"
     if is_vip(user):
-        vip_status = f"до {user['vip_until'][:10]} {vip_crown()}"
+        vip_status = f"до {user['vip_until'][:10]} 👑"
     text = (
         "👤 <b>Ваш профиль</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -2730,10 +2721,6 @@ def main():
     builder = Application.builder().token(BOT_TOKEN)
     # Увеличенные таймауты (помогает при медленной/нестабильной сети)
     builder = builder.connect_timeout(30).read_timeout(30).write_timeout(30).pool_timeout(30)
-    # Прокси (если задан в .env) — обходит блокировку api.telegram.org
-    if PROXY_URL:
-        builder = builder.proxy(PROXY_URL).get_updates_proxy(PROXY_URL)
-        log.info("Используется прокси: %s", PROXY_URL)
     app = builder.build()
 
     # Регистрируем команды бота (помогает клиенту TG с навигацией)
