@@ -42,8 +42,95 @@ VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
 
-conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-conn.row_factory = sqlite3.Row
+DATABASE_URL = (
+    os.getenv("DATABASE_URL", "").strip()
+    or os.getenv("POSTGRES_URL", "").strip()
+    or os.getenv("NEON_DATABASE_URL", "").strip()
+)
+USE_PG = bool(DATABASE_URL)
+
+
+# === Слой совместимости БД: один и тот же код работает с sqlite и с PostgreSQL (Neon) ===
+if USE_PG:
+    import re as _re
+    import psycopg2
+
+    _pg_lock = threading.RLock()
+
+    # Унифицированная строка результата: доступ и по имени row["col"], и по индексу row[0]
+    class _Row(dict):
+        def __init__(self, cols, vals):
+            super().__init__(zip(cols, vals))
+            self._vals = list(vals)
+        def __getitem__(self, k):
+            if isinstance(k, int):
+                return self._vals[k]
+            return dict.__getitem__(self, k)
+
+    class _PgCursor:
+        def __init__(self, raw):
+            self._raw = raw
+            self._cols = [d[0] for d in raw.description] if raw.description else []
+        def fetchone(self):
+            r = self._raw.fetchone()
+            return _Row(self._cols, r) if r is not None else None
+        def fetchall(self):
+            return [_Row(self._cols, r) for r in self._raw.fetchall()]
+        @property
+        def lastrowid(self):
+            if "id" not in self._cols:
+                return None
+            idx = self._cols.index("id")
+            r = self._raw.fetchone()
+            return r[idx] if r else None
+
+    # Перевод схемы sqlite -> Postgres (типы)
+    def _translate_schema(script):
+        s = script.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "BIGSERIAL PRIMARY KEY")
+        s = _re.sub(r"\bINTEGER\b", "BIGINT", s)
+        return s
+
+    class _PgConnection:
+        def __init__(self, url):
+            self.url = url
+            self._connect()
+        def _connect(self):
+            self._conn = psycopg2.connect(
+                self.url, connect_timeout=10,
+                keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=5,
+            )
+            self._conn.autocommit = True
+        def execute(self, sql, params=()):
+            q = sql.replace("?", "%s")
+            # INSERT без RETURNING -> добавляем RETURNING * (чтобы работал lastrowid)
+            if sql.lstrip()[:6].upper() == "INSERT" and "returning" not in sql.lower():
+                q = q.rstrip().rstrip(";") + " RETURNING *"
+            with _pg_lock:
+                for attempt in (1, 2):
+                    try:
+                        cur = self._conn.cursor()
+                        cur.execute(q, params)
+                        return _PgCursor(cur)
+                    except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                        if attempt == 2:
+                            raise
+                        self._connect()  # потеряли соединение (Neon уснул) — переподключаемся
+        def executescript(self, script):
+            with _pg_lock:
+                cur = self._conn.cursor()
+                cur.execute(_translate_schema(script))
+                return _PgCursor(cur)
+        def commit(self):
+            pass  # autocommit
+        def cursor(self):
+            return self  # для init_db: conn.cursor().executescript(...)
+
+    conn = _PgConnection(DATABASE_URL)
+    log.info("БД: PostgreSQL (Neon)")
+else:
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    log.info("БД: sqlite (%s)", DB_PATH)
 
 
 def db():
@@ -206,8 +293,9 @@ def migrate():
     for sql in alters:
         try:
             conn.execute(sql)
-        except sqlite3.OperationalError:
-            pass  # колонка уже существует
+            conn.commit()
+        except Exception:
+            pass  # колонка уже существует (sqlite или postgres)
     conn.commit()
 
 
@@ -1227,7 +1315,8 @@ async def roulette_pref_router(update, context):
     user = get_user(update.effective_user.id)
     conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
     conn.execute(
-        "INSERT OR REPLACE INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
         (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
     )
     conn.commit()
@@ -1306,7 +1395,8 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     if requeue_ender:
         user = get_user(ender_id)
         conn.execute(
-            "INSERT OR REPLACE INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
             (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
         )
         conn.commit()
@@ -2243,7 +2333,8 @@ async def process_ad_send(update, context):
 
 def save_ad(ad):
     conn.execute(
-        "INSERT OR REPLACE INTO ad_config (id, text, button_text, button_url) VALUES (1, ?, ?, ?)",
+        "INSERT INTO ad_config (id, text, button_text, button_url) VALUES (1, ?, ?, ?) "
+        "ON CONFLICT(id) DO UPDATE SET text=excluded.text, button_text=excluded.button_text, button_url=excluded.button_url",
         (ad.get("text"), ad.get("button_text"), ad.get("button_url")),
     )
     conn.commit()
