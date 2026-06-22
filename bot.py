@@ -9,6 +9,8 @@ import logging
 import random
 import string
 import html
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -2789,8 +2791,33 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 
+def _keep_alive_server():
+    """Мини HTTP-сервер для хостингов типа Render (нужен открытый порт + пинг от UptimeRobot)."""
+    port = int(os.getenv("PORT", "8080"))
+
+    class H(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+        def do_HEAD(self):
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    try:
+        HTTPServer(("0.0.0.0", port), H).serve_forever()
+    except Exception as e:  # noqa
+        log.warning("keep-alive server: %s", e)
+
+
 def main():
     init_db()
+    # фоновый веб-сервер (для Render и пр.) — не мешает боту на polling
+    threading.Thread(target=_keep_alive_server, daemon=True).start()
     builder = Application.builder().token(BOT_TOKEN)
     # Увеличенные таймауты (помогает при медленной/нестабильной сети)
     builder = builder.connect_timeout(30).read_timeout(30).write_timeout(30).pool_timeout(30)
