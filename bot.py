@@ -80,6 +80,7 @@ def init_db():
         answer_voice_file_id TEXT,
         answered INTEGER NOT NULL DEFAULT 0,
         deleted INTEGER NOT NULL DEFAULT 0,
+        parent_id INTEGER,
         owner_chat_message_id INTEGER,
         sender_chat_message_id INTEGER,
         created_at TEXT NOT NULL
@@ -198,6 +199,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN is_moder INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN last_bonus TEXT",
+        "ALTER TABLE anon_messages ADD COLUMN parent_id INTEGER",
         "ALTER TABLE shop_items ADD COLUMN reward_type TEXT NOT NULL DEFAULT 'manual'",
         "ALTER TABLE shop_items ADD COLUMN reward_amount INTEGER",
     ]
@@ -710,12 +712,115 @@ async def on_anon_type_text(update, context):
     )
 
 
+# Заголовки доставляемого анонимного сообщения по типу
+ANON_HEADERS = {
+    "question": "📩 <b>Вам пришёл анонимный вопрос</b>",
+    "valentine": "💌 <b>Вам пришла анонимная валентинка</b>",
+    "reply": "💬 <b>Вам ответили</b>",
+}
+
+
+# Превью содержимого сообщения для цитаты в треде
+def anon_preview(row):
+    if not row:
+        return ""
+    if row["content_type"] == "text" and row["text"]:
+        p = row["text"]
+    elif row["content_type"] == "voice":
+        p = "🎤 голосовое сообщение"
+    else:
+        p = "📎 медиа"
+    if len(p) > 150:
+        p = p[:150] + "…"
+    return p
+
+
+# Универсальная доставка анонимного сообщения (вопрос/валентинка/ответ).
+# Создаёт запись, шлёт получателю с цитатой родителя + кнопкой «Ответить» (и опц. «Пожаловаться»),
+# а автору — подтверждение с кнопкой удаления. Так строится бесконечный двусторонний тред.
+async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
+                       text=None, voice_file_id=None, src_chat_id=None, src_message_id=None,
+                       parent_id=None, allow_report=True, vip_badge=False):
+    cur = conn.execute(
+        "INSERT INTO anon_messages (from_id, to_id, msg_type, content_type, text, voice_file_id, parent_id, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (author_id, recipient_id, msg_type, content_type, text, voice_file_id, parent_id, now_iso()),
+    )
+    conn.commit()
+    mid = cur.lastrowid
+
+    # Цитата родительского сообщения — чтобы не путаться, на что отвечают
+    quote = ""
+    if parent_id:
+        parent = conn.execute("SELECT * FROM anon_messages WHERE id=?", (parent_id,)).fetchone()
+        prev = anon_preview(parent)
+        if prev:
+            quote = f"↩️ <i>в ответ на:</i>\n<blockquote>{html.escape(prev)}</blockquote>\n"
+
+    badge = "👑 " if vip_badge else ""
+    header = badge + ANON_HEADERS.get(msg_type, "📩 <b>Новое анонимное сообщение</b>")
+    buttons = [[InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{mid}")]]
+    if allow_report:
+        buttons.append([InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"report_anon:{mid}")])
+    kb = InlineKeyboardMarkup(buttons)
+
+    try:
+        if content_type == "text":
+            sent = await context.bot.send_message(
+                recipient_id,
+                f"{quote}{header}:\n<blockquote>{html.escape(text or '')}</blockquote>",
+                parse_mode="HTML", reply_markup=kb,
+            )
+        elif content_type == "voice":
+            await context.bot.send_message(recipient_id, f"{quote}{header}:", parse_mode="HTML")
+            sent = await context.bot.send_voice(recipient_id, voice_file_id, reply_markup=kb)
+        else:  # media (VIP) — копируем исходное сообщение с медиа
+            await context.bot.send_message(recipient_id, f"{quote}{header}:", parse_mode="HTML")
+            sent = await context.bot.copy_message(recipient_id, src_chat_id, src_message_id, reply_markup=kb)
+    except TelegramError:
+        return None
+
+    conn.execute("UPDATE anon_messages SET owner_chat_message_id=? WHERE id=?", (sent.message_id, mid))
+    conn.commit()
+
+    # Подтверждение автору + кнопка удаления (сотрёт обе копии)
+    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 Удалить", callback_data=f"del:{mid}")]])
+    try:
+        author_msg = await context.bot.send_message(author_id, "✅ Отправлено", reply_markup=del_kb)
+        conn.execute("UPDATE anon_messages SET sender_chat_message_id=? WHERE id=?", (author_msg.message_id, mid))
+        conn.commit()
+    except TelegramError:
+        pass
+    return mid
+
+
+# Извлекает тип/текст/медиа из входящего сообщения. Возвращает (content_type, text, voice_file_id) либо None при ошибке.
+async def extract_anon_content(update, is_v):
+    m = update.message
+    is_media = bool(m.photo or m.sticker or m.animation or m.video or m.video_note or m.document)
+    if m.text:
+        return "text", m.text, None
+    if m.voice:
+        return "voice", None, m.voice.file_id
+    if is_media:
+        if not is_v:
+            await update.message.reply_text(
+                "📷 Фото/стикеры/гиф/видео могут отправлять только VIP 👑 (см. Магазин).\n"
+                "Отправь текст или голосовое.",
+            )
+            return None
+        return "media", None, None
+    await update.message.reply_text("Поддерживается текст, голосовое" + (", фото, стикеры, гиф, видео" if is_v else "") + ".")
+    return None
+
+
 async def process_anon_content(update, context):
     sender = update.effective_user
     sender_row = ensure_user(sender.id, sender.username, sender.first_name)
     target_id = context.user_data.get("anon_target")
     msg_type = context.user_data.get("anon_type")
-    if not is_vip(sender_row):
+    is_v = is_vip(sender_row)
+    if not is_v:
         since = (now_dt() - timedelta(days=1)).isoformat()
         count = conn.execute(
             "SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND created_at>?",
@@ -729,76 +834,26 @@ async def process_anon_content(update, context):
             )
             context.user_data["state"] = None
             return
+    extracted = await extract_anon_content(update, is_v)
+    if extracted is None:
+        return
+    content_type, text, voice_file_id = extracted
     m = update.message
-    is_v = is_vip(sender_row)
-    is_media = bool(m.photo or m.sticker or m.animation or m.video or m.video_note or m.document)
-    content_type, text, voice_file_id = None, None, None
-    if m.text:
-        content_type, text = "text", m.text
-    elif m.voice:
-        content_type, voice_file_id = "voice", m.voice.file_id
-    elif is_media:
-        if not is_v:
-            await update.message.reply_text(
-                "📷 Фото/стикеры/гиф/видео могут отправлять только VIP 👑 (см. Магазин).\n"
-                "Отправь текст или голосовое.",
-            )
-            return
-        content_type = "media"
-    else:
-        await update.message.reply_text("Поддерживается текст, голосовое" + (", фото, стикеры, гиф, видео" if is_v else "") + ".")
-        return
-
-    cur = conn.execute(
-        "INSERT INTO anon_messages (from_id, to_id, msg_type, content_type, text, voice_file_id, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (sender.id, target_id, msg_type, content_type, text, voice_file_id, now_iso()),
+    mid = await deliver_anon(
+        context, author_id=sender.id, recipient_id=target_id, msg_type=msg_type,
+        content_type=content_type, text=text, voice_file_id=voice_file_id,
+        src_chat_id=m.chat_id, src_message_id=m.message_id,
+        parent_id=None, allow_report=True, vip_badge=is_v,
     )
-    conn.commit()
-    msg_id = cur.lastrowid
-    vip_badge = "👑 " if is_vip(sender_row) else ""
-    if msg_type == "question":
-        header = f"{vip_badge}📩 <b>Вам пришёл анонимный вопрос</b>"
-    else:
-        header = f"{vip_badge}💌 <b>Вам пришла анонимная валентинка</b>"
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("✍️ Ответить", callback_data=f"reply:{msg_id}")],
-        [InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"report_anon:{msg_id}")],
-    ])
-    sent = None
-    try:
-        if content_type == "text":
-            sent = await context.bot.send_message(
-                target_id,
-                f"{header}:\n<blockquote>{html.escape(text)}</blockquote>",
-                parse_mode="HTML",
-                reply_markup=kb,
-            )
-        elif content_type == "voice":
-            await context.bot.send_message(target_id, f"{header}:", parse_mode="HTML")
-            sent = await context.bot.send_voice(target_id, voice_file_id, reply_markup=kb)
-        else:  # media (VIP) — копируем исходное сообщение с медиа
-            await context.bot.send_message(target_id, f"{header}:", parse_mode="HTML")
-            sent = await context.bot.copy_message(target_id, m.chat_id, m.message_id, reply_markup=kb)
-    except TelegramError:
-        await update.message.reply_text(
-            "Не удалось доставить сообщение получателю 😕",
-            reply_markup=main_menu_kb(sender.id)
-        )
-        context.user_data["state"] = None
-        return
-    conn.execute("UPDATE anon_messages SET owner_chat_message_id=? WHERE id=?", (sent.message_id, msg_id))
-    conn.commit()
     context.user_data["state"] = None
     context.user_data.pop("anon_target", None)
     context.user_data.pop("anon_type", None)
-    # Возвращаем клавиатуру меню
+    if mid is None:
+        await context.bot.send_message(
+            sender.id, "Не удалось доставить сообщение получателю 😕", reply_markup=main_menu_kb(sender.id)
+        )
+        return
     await context.bot.send_message(sender.id, "Главное меню 👇", reply_markup=main_menu_kb(sender.id))
-    # Компактное подтверждение с маленькой кнопкой удаления
-    del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑", callback_data=f"del:{msg_id}")]])
-    sender_msg = await context.bot.send_message(sender.id, "✅ Отправлено", reply_markup=del_kb)
-    conn.execute("UPDATE anon_messages SET sender_chat_message_id=? WHERE id=?", (sender_msg.message_id, msg_id))
-    conn.commit()
 
 
 async def on_reply_button(update, context):
@@ -822,72 +877,42 @@ async def on_reply_button(update, context):
 
 
 async def process_reply_content(update, context):
+    replier = update.effective_user
+    replier_row = ensure_user(replier.id, replier.username, replier.first_name)
     msg_id = context.user_data.get("reply_target_msg")
-    row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (msg_id,)).fetchone()
-    if not row:
-        await update.message.reply_text("Сообщение не найдено.")
+    parent = conn.execute("SELECT * FROM anon_messages WHERE id=?", (msg_id,)).fetchone()
+    if not parent:
+        await update.message.reply_text("Сообщение не найдено.", reply_markup=main_menu_kb(replier.id))
         context.user_data["state"] = None
         return
-    answer_msg_id = None
-    # Цитата исходного вопроса/валентинки для отправителя
-    orig_preview = row["text"] if row["content_type"] == "text" else "[голосовое сообщение]"
-    quoted_block = f"<blockquote>{html.escape(orig_preview)}</blockquote>\n"
-    if update.message.text:
-        conn.execute("UPDATE anon_messages SET answer_text=?, answered=1 WHERE id=?", (update.message.text, msg_id))
-        conn.commit()
-        try:
-            answer_msg = await context.bot.send_message(
-                row["from_id"],
-                f"{quoted_block}💬 <b>Тебе ответили:</b>\n\n{html.escape(update.message.text)}",
-                parse_mode="HTML",
-            )
-            answer_msg_id = answer_msg.message_id
-        except TelegramError:
-            pass
-    elif update.message.voice:
-        conn.execute(
-            "UPDATE anon_messages SET answer_voice_file_id=?, answered=1 WHERE id=?",
-            (update.message.voice.file_id, msg_id)
-        )
-        conn.commit()
-        try:
-            await context.bot.send_message(
-                row["from_id"],
-                f"{quoted_block}💬 <b>Тебе пришёл голосовой ответ:</b>",
-                parse_mode="HTML",
-            )
-            answer_msg = await context.bot.send_voice(row["from_id"], update.message.voice.file_id)
-            answer_msg_id = answer_msg.message_id
-        except TelegramError:
-            pass
-    await update.message.reply_text("Ответ отправлен ✅")
-    if answer_msg_id and row["sender_chat_message_id"]:
-        try:
-            del_kb = InlineKeyboardMarkup([[InlineKeyboardButton("🗑 Удалить ответ", callback_data=f"del_answer:{msg_id}:{answer_msg_id}")]])
-            await context.bot.edit_message_reply_markup(
-                row["from_id"],
-                row["sender_chat_message_id"],
-                reply_markup=del_kb
-            )
-        except TelegramError:
-            pass
+    # Получатель ответа — это другая сторона переписки (не тот, кто сейчас отвечает)
+    recipient_id = parent["from_id"] if replier.id == parent["to_id"] else parent["to_id"]
+    is_v = is_vip(replier_row)
+    extracted = await extract_anon_content(update, is_v)
+    if extracted is None:
+        return
+    content_type, text, voice_file_id = extracted
+    # Сохраняем ответ в родителя (для истории/жалоб) и помечаем отвеченным
+    if content_type == "text":
+        conn.execute("UPDATE anon_messages SET answer_text=?, answered=1 WHERE id=?", (text, msg_id))
+    elif content_type == "voice":
+        conn.execute("UPDATE anon_messages SET answer_voice_file_id=?, answered=1 WHERE id=?", (voice_file_id, msg_id))
+    else:
+        conn.execute("UPDATE anon_messages SET answered=1 WHERE id=?", (msg_id,))
+    conn.commit()
+    m = update.message
+    mid = await deliver_anon(
+        context, author_id=replier.id, recipient_id=recipient_id, msg_type="reply",
+        content_type=content_type, text=text, voice_file_id=voice_file_id,
+        src_chat_id=m.chat_id, src_message_id=m.message_id,
+        parent_id=msg_id, allow_report=True, vip_badge=is_v,
+    )
     context.user_data["state"] = None
     context.user_data.pop("reply_target_msg", None)
-
-
-async def on_delete_answer_button(update, context):
-    query = update.callback_query
-    await query.answer()
-    parts = query.data.split(":")
-    msg_id = int(parts[1])
-    answer_msg_id = int(parts[2])
-    row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (msg_id,)).fetchone()
-    if row:
-        try:
-            await context.bot.delete_message(row["from_id"], answer_msg_id)
-            await query.message.reply_text("Ответ удалён ✅")
-        except TelegramError:
-            await query.message.reply_text("Не удалось удалить ответ 😕")
+    if mid is None:
+        await update.message.reply_text("Не удалось доставить ответ 😕", reply_markup=main_menu_kb(replier.id))
+        return
+    await update.message.reply_text("Ответ отправлен ✅", reply_markup=main_menu_kb(replier.id))
 
 
 
@@ -2847,7 +2872,6 @@ def main():
     app.add_handler(CallbackQueryHandler(on_reply_button, pattern=r"^reply:"))
     app.add_handler(CallbackQueryHandler(on_delete_button, pattern=r"^del:"))
     app.add_handler(CallbackQueryHandler(on_subcheck_button, pattern=r"^subcheck:"))
-    app.add_handler(CallbackQueryHandler(on_delete_answer_button, pattern=r"^del_answer:"))
     app.add_handler(CallbackQueryHandler(on_report_anon, pattern=r"^report_anon:"))
     app.add_handler(CallbackQueryHandler(on_report_admin_decision, pattern=r"^repadm:"))
     app.add_handler(CallbackQueryHandler(on_roulette_cancel, pattern=r"^roulette_cancel$"))
