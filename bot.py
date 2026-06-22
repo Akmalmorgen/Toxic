@@ -21,7 +21,7 @@ from telegram import (
 from telegram.constants import ChatMemberStatus
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler,
-    PreCheckoutQueryHandler, ChatMemberHandler, ContextTypes, filters,
+    PreCheckoutQueryHandler, ChatMemberHandler, ContextTypes, filters, TypeHandler,
 )
 from telegram.error import TelegramError, Conflict
 
@@ -153,6 +153,8 @@ def init_db():
         vip_until TEXT,
         is_moder INTEGER NOT NULL DEFAULT 0,
         is_banned INTEGER NOT NULL DEFAULT 0,
+        last_bonus TEXT,
+        lang TEXT NOT NULL DEFAULT 'ru',
         created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS anon_messages (
@@ -286,6 +288,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN is_moder INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN is_banned INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN last_bonus TEXT",
+        "ALTER TABLE users ADD COLUMN lang TEXT NOT NULL DEFAULT 'ru'",
         "ALTER TABLE anon_messages ADD COLUMN parent_id INTEGER",
         "ALTER TABLE shop_items ADD COLUMN reward_type TEXT NOT NULL DEFAULT 'manual'",
         "ALTER TABLE shop_items ADD COLUMN reward_amount INTEGER",
@@ -392,12 +395,301 @@ async def try_delete_message(context, chat_id, message_id):
         pass
 
 
+# ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
+LANGS = ("ru", "uz", "en")
+LANG_BUTTONS = {"🇷🇺 Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
+
+# Реестр кнопок: каноническая русская метка -> перевод (uz, en). Эмодзи одинаковые во всех языках.
+BTN = {
+    "🔗 Моя ссылка": ("🔗 Havolam", "🔗 My link"),
+    "🎲 Чат-рулетка": ("🎲 Chat-ruletka", "🎲 Chat roulette"),
+    "👤 Профиль": ("👤 Profil", "👤 Profile"),
+    "🛒 Магазин": ("🛒 Do'kon", "🛒 Shop"),
+    "👥 Пригласить": ("👥 Taklif qilish", "👥 Invite"),
+    "ℹ️ Помощь": ("ℹ️ Yordam", "ℹ️ Help"),
+    "🌐 Язык": ("🌐 Til", "🌐 Language"),
+    "💎 Купить коины": ("💎 Coin sotib olish", "💎 Buy coins"),
+    "🛠 Админка": ("🛠 Admin panel", "🛠 Admin"),
+    "🛡 Модерка": ("🛡 Moderator", "🛡 Moderation"),
+    "✅ Да": ("✅ Ha", "✅ Yes"),
+    "❌ Отмена": ("❌ Bekor qilish", "❌ Cancel"),
+    "💎 Коины": ("💎 Coinlar", "💎 Coins"),
+    "⏳ VIP": ("⏳ VIP", "⏳ VIP"),
+    "🛡 Модер": ("🛡 Moder", "🛡 Moder"),
+    "📦 Вручную": ("📦 Qo'lda", "📦 Manual"),
+    "📊 Статистика": ("📊 Statistika", "📊 Statistics"),
+    "📤 Выгрузить пользователей": ("📤 Foydalanuvchilarni yuklash", "📤 Export users"),
+    "💰 Начислить коины": ("💰 Coin qo'shish", "💰 Add coins"),
+    "📢 Обязательные каналы": ("📢 Majburiy kanallar", "📢 Required channels"),
+    "📣 Реклама": ("📣 Reklama", "📣 Ad"),
+    "✉️ Рассылка": ("✉️ Xabar tarqatish", "✉️ Broadcast"),
+    "📢 Рассылка": ("📢 Xabar tarqatish", "📢 Broadcast"),
+    "🛡 Модеры": ("🛡 Moderatorlar", "🛡 Moderators"),
+    "🔨 Бан / Разбан": ("🔨 Ban / Unban", "🔨 Ban / Unban"),
+    "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
+    "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
+    "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
+    "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
+    "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
+    "👨 Мужской": ("👨 Erkak", "👨 Male"),
+    "👩 Женский": ("👩 Ayol", "👩 Female"),
+    "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
+    "✏️ Сменить ссылку": ("✏️ Havolani o'zgartirish", "✏️ Change link"),
+    "👨 Парня": ("👨 Yigit", "👨 A guy"),
+    "👩 Девушку": ("👩 Qiz", "👩 A girl"),
+    "🤷 Любого": ("🤷 Farqi yo'q", "🤷 Anyone"),
+    "❓ Вопрос": ("❓ Savol", "❓ Question"),
+    "💌 Валентинка": ("💌 Valentinka", "💌 Valentine"),
+    "🤬 Мат": ("🤬 So'kinish", "🤬 Swearing"),
+    "💰 Мошенничество": ("💰 Firibgarlik", "💰 Fraud"),
+    "😡 Оскорбление": ("😡 Haqorat", "😡 Insult"),
+    "🔞 18+ стикеры": ("🔞 18+ stikerlar", "🔞 18+ stickers"),
+    "👎 Не нравится": ("👎 Yoqmadi", "👎 Dislike"),
+    "✏️ Сменить пол": ("✏️ Jinsni o'zgartirish", "✏️ Change gender"),
+    "👥 Всем": ("👥 Hammaga", "👥 Everyone"),
+    "👨 Мужчинам": ("👨 Erkaklarga", "👨 To men"),
+    "👩 Женщинам": ("👩 Ayollarga", "👩 To women"),
+    "➕ Выдать модера": ("➕ Moder berish", "➕ Grant moder"),
+    "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
+    "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
+    "➕ Добавить товар": ("➕ Mahsulot qo'shish", "➕ Add item"),
+    "🗑 Удалить товар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
+    "📝 Название": ("📝 Nomi", "📝 Name"),
+    "💰 Цена": ("💰 Narxi", "💰 Price"),
+    "⏳ Срок VIP": ("⏳ VIP muddati", "⏳ VIP duration"),
+    "💎 Сумма коинов": ("💎 Coin miqdori", "💎 Coin amount"),
+    "🏆 Топ пригласивших": ("🏆 Top taklif qilganlar", "🏆 Top inviters"),
+    "⛔ Отменить поиск": ("⛔ Qidiruvni bekor qilish", "⛔ Stop search"),
+    "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
+}
+# Обратная карта: метка на любом языке -> каноническая русская метка
+_ALIAS = {}
+for _ru, (_uz, _en) in BTN.items():
+    _ALIAS[_ru] = _ru
+    _ALIAS[_uz] = _ru
+    _ALIAS[_en] = _ru
+
+# Текущий язык обрабатываемого апдейта (updates идут последовательно — безопасно)
+_CURLANG = "ru"
+
+
+def get_lang(uid):
+    try:
+        u = get_user(uid)
+        if u and u["lang"] in LANGS:
+            return u["lang"]
+    except Exception:
+        pass
+    return "ru"
+
+
+def set_lang(uid, lang):
+    conn.execute("UPDATE users SET lang=? WHERE tg_id=?", (lang, uid))
+    conn.commit()
+
+
+def canon(text):
+    """Любая языковая метка кнопки -> каноническая русская (для маршрутизации)."""
+    if text is None:
+        return None
+    return _ALIAS.get(text, text)
+
+
+def tr_btn(ru_label, lang=None):
+    """Перевод русской метки кнопки на текущий/заданный язык."""
+    lang = lang or _CURLANG
+    if lang == "ru":
+        return ru_label
+    pair = BTN.get(ru_label)
+    if not pair:
+        return ru_label
+    return pair[0] if lang == "uz" else pair[1]
+
+
+def tr_kb(markup, lang=None):
+    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру."""
+    lang = lang or _CURLANG
+    if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
+        return markup
+    rows = [[KeyboardButton(tr_btn(canon(b.text), lang)) for b in row] for row in markup.keyboard]
+    return ReplyKeyboardMarkup(
+        rows,
+        resize_keyboard=markup.resize_keyboard,
+        one_time_keyboard=markup.one_time_keyboard,
+    )
+
+
+# Реестр переводов экранов/сообщений
+T = {
+    "main_menu": {
+        "ru": "Главное меню 👇",
+        "uz": "Asosiy menyu 👇",
+        "en": "Main menu 👇",
+    },
+    "pick_on_kb": {
+        "ru": "Выберите вариант на клавиатуре 👇",
+        "uz": "Klaviaturadan variantni tanlang 👇",
+        "en": "Please choose an option on the keyboard 👇",
+    },
+    "not_understood": {
+        "ru": "Не понял команду. Воспользуйтесь меню 👇",
+        "uz": "Buyruqni tushunmadim. Menyudan foydalaning 👇",
+        "en": "I didn't get that. Please use the menu 👇",
+    },
+    "search_cancelled": {
+        "ru": "Поиск отменён. Главное меню 👇",
+        "uz": "Qidiruv bekor qilindi. Asosiy menyu 👇",
+        "en": "Search cancelled. Main menu 👇",
+    },
+    "gender_saved": {
+        "ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню 👇",
+        "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu 👇",
+        "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu 👇",
+    },
+    "lang_choose": {
+        "ru": "🌐 Выберите язык интерфейса:",
+        "uz": "🌐 Interfeys tilini tanlang:",
+        "en": "🌐 Choose the interface language:",
+    },
+    "lang_set": {
+        "ru": "✅ Язык изменён на Русский 🇷🇺\n\nГлавное меню 👇",
+        "uz": "✅ Til O'zbekchaga o'zgartirildi 🇺🇿\n\nAsosiy menyu 👇",
+        "en": "✅ Language changed to English 🇬🇧\n\nMain menu 👇",
+    },
+    "welcome": {
+        "ru": (
+            "✨ <b>ДОБРО ПОЖАЛОВАТЬ, {name}!</b> 🔥\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🚀 <b>ToxIcUz</b> 💙 — <i>твой личный бот для весёлого общения и тайных признаний.</i>\n\n"
+            "💎 <b>Что умеет бот:</b>\n"
+            "<blockquote>├ принимать вопросы и валентинки анонимно\n"
+            "├ искать собеседника в рулетке\n"
+            "└ держать всё в тайне</blockquote>\n"
+            "👑 Чтобы продолжить, укажите свой пол:"
+        ),
+        "uz": (
+            "✨ <b>XUSH KELIBSIZ, {name}!</b> 🔥\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🚀 <b>ToxIcUz</b> 💙 — <i>qiziqarli muloqot va sirli e'tiroflar uchun shaxsiy botingiz.</i>\n\n"
+            "💎 <b>Bot nima qila oladi:</b>\n"
+            "<blockquote>├ savol va valentinkalarni anonim qabul qilish\n"
+            "├ ruletkada suhbatdosh topish\n"
+            "└ hammasini sir saqlash</blockquote>\n"
+            "👑 Davom etish uchun jinsingizni tanlang:"
+        ),
+        "en": (
+            "✨ <b>WELCOME, {name}!</b> 🔥\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "🚀 <b>ToxIcUz</b> 💙 — <i>your personal bot for fun chatting and secret confessions.</i>\n\n"
+            "💎 <b>What the bot can do:</b>\n"
+            "<blockquote>├ receive questions and valentines anonymously\n"
+            "├ find a partner in roulette\n"
+            "└ keep everything secret</blockquote>\n"
+            "👑 To continue, choose your gender:"
+        ),
+    },
+    "help": {
+        "ru": (
+            "ℹ️ <b>О боте ToxIcUz</b> 💙\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Бот анонимных сообщений и общения.\n\n"
+            "🔗 <b>Моя ссылка</b> — твоя личная ссылка. Делись ей: тебе будут писать "
+            "анонимные вопросы и валентинки.\n"
+            "🎲 <b>Чат-рулетка</b> — поиск случайного собеседника по полу.\n"
+            "👤 <b>Профиль</b> — пол, коины, VIP-статус.\n"
+            "🛒 <b>Магазин</b> — трать коины на VIP и товары.\n"
+            "👥 <b>Пригласить</b> — зови друзей: +20 💎 (VIP +50 💎).\n"
+            "💎 <b>Купить коины</b> — пополнение за Telegram Stars ⭐.\n"
+            "🌐 <b>Язык</b> — сменить язык интерфейса.\n\n"
+            "👑 <b>VIP даёт:</b> без лимита сообщений, скидку 20%, +5 💎 в день, "
+            "приоритет в рулетке, корону и медиа в анонимках, безлимитную смену ссылки."
+        ),
+        "uz": (
+            "ℹ️ <b>ToxIcUz boti haqida</b> 💙\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Anonim xabarlar va muloqot uchun bot.\n\n"
+            "🔗 <b>Havolam</b> — shaxsiy havolangiz. Uni ulashing: sizga anonim "
+            "savol va valentinkalar yoziladi.\n"
+            "🎲 <b>Chat-ruletka</b> — jins bo'yicha tasodifiy suhbatdosh qidirish.\n"
+            "👤 <b>Profil</b> — jins, coinlar, VIP holati.\n"
+            "🛒 <b>Do'kon</b> — coinlarni VIP va mahsulotlarga sarflang.\n"
+            "👥 <b>Taklif qilish</b> — do'stlarni chaqiring: +20 💎 (VIP +50 💎).\n"
+            "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali to'ldirish.\n"
+            "🌐 <b>Til</b> — interfeys tilini o'zgartirish.\n\n"
+            "👑 <b>VIP beradi:</b> xabarlar limitisiz, 20% chegirma, kuniga +5 💎, "
+            "ruletkada ustunlik, anonimlarda toj va media, havolani cheksiz o'zgartirish."
+        ),
+        "en": (
+            "ℹ️ <b>About ToxIcUz bot</b> 💙\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "A bot for anonymous messages and chatting.\n\n"
+            "🔗 <b>My link</b> — your personal link. Share it: people will send you "
+            "anonymous questions and valentines.\n"
+            "🎲 <b>Chat roulette</b> — find a random partner by gender.\n"
+            "👤 <b>Profile</b> — gender, coins, VIP status.\n"
+            "🛒 <b>Shop</b> — spend coins on VIP and items.\n"
+            "👥 <b>Invite</b> — invite friends: +20 💎 (VIP +50 💎).\n"
+            "💎 <b>Buy coins</b> — top up with Telegram Stars ⭐.\n"
+            "🌐 <b>Language</b> — change the interface language.\n\n"
+            "👑 <b>VIP gives:</b> no message limit, 20% discount, +5 💎 daily, "
+            "roulette priority, crown and media in anon messages, unlimited link change."
+        ),
+    },
+}
+
+
+def t(key, **kw):
+    d = T.get(key, {})
+    s = d.get(_CURLANG) or d.get("ru") or key
+    return s.format(**kw) if kw else s
+
+
+def language_menu_kb():
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
+        [KeyboardButton("🇬🇧 English")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True, one_time_keyboard=True)
+
+
+async def show_language_menu(update, context):
+    context.user_data["state"] = "language"
+    await nav(update, context, t("lang_choose"), language_menu_kb())
+
+
+async def language_router(update, context):
+    text = canon(update.message.text)
+    if canon(text) == "⬅️ Назад":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    lang = LANG_BUTTONS.get(text)
+    if not lang:
+        await update.message.reply_text(t("pick_on_kb"), reply_markup=language_menu_kb())
+        return
+    global _CURLANG
+    set_lang(update.effective_user.id, lang)
+    _CURLANG = lang
+    context.user_data["state"] = None
+    await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
+
+
+async def set_lang_context(update, context):
+    """Запускается первым для каждого апдейта: подставляет язык пользователя в _CURLANG."""
+    global _CURLANG
+    try:
+        uid = update.effective_user.id if update.effective_user else None
+        _CURLANG = get_lang(uid) if uid else "ru"
+    except Exception:
+        _CURLANG = "ru"
+
 
 def main_menu_kb(tg_id):
     rows = [
         [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
         [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
         [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
+        [KeyboardButton("🌐 Язык")],
     ]
     # Кнопка покупки коинов за Stars — только если админ добавил хотя бы один пакет
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
@@ -408,49 +700,49 @@ def main_menu_kb(tg_id):
         u = get_user(tg_id)
         if is_moder(u):
             rows.append([KeyboardButton("🛡 Модерка")])
-    return ReplyKeyboardMarkup(rows, resize_keyboard=True)
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def yes_no_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("✅ Да"), KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 def reward_type_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("💎 Коины"), KeyboardButton("⏳ VIP")],
         [KeyboardButton("🛡 Модер"), KeyboardButton("📦 Вручную")],
         [KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 def admin_menu_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 def star_admin_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("➕ Добавить пакет коинов")],
         [KeyboardButton("🗑 Удалить пакет коинов")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 def moder_menu_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📤 Выгрузить пользователей"), KeyboardButton("📊 Статистика")],
         [KeyboardButton("📢 Рассылка")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 def moder_decision_kb(app_id):
@@ -464,37 +756,37 @@ def gender_kb(with_back=False):
     rows = [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")]]
     if with_back:
         rows.append([KeyboardButton("⬅️ Назад")])
-    return ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True)
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True))
 
 
 def link_menu_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🔗 Показать ссылку"), KeyboardButton("✏️ Сменить ссылку")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 def roulette_pref_reply_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 def anon_type_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("❓ Вопрос"), KeyboardButton("💌 Валентинка")],
         [KeyboardButton("❌ Отмена")]
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 def report_reason_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🤬 Мат"), KeyboardButton("💰 Мошенничество")],
         [KeyboardButton("😡 Оскорбление"), KeyboardButton("🔞 18+ стикеры")],
         [KeyboardButton("👎 Не нравится")],
         [KeyboardButton("❌ Отмена")]
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 async def clean_screen(update, context):
@@ -522,10 +814,10 @@ async def nav(update, context, text, reply_markup=None, parse_mode=None):
 
 
 def profile_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("✏️ Сменить пол")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 async def grant_daily_bonus(uid, context):
@@ -567,41 +859,36 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["state"] = "set_gender_first"
         name = tg_user.first_name or "друг"
         await update.message.reply_text(
-            f"✨ <b>ДОБРО ПОЖАЛОВАТЬ, {html.escape(name)}!</b> 🔥\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "🚀 <b>ToxIcUz</b> 💙 — <i>твой личный бот для весёлого общения и тайных признаний.</i>\n\n"
-            "💎 <b>Что умеет бот:</b>\n"
-            "<blockquote>├ принимать вопросы и валентинки анонимно\n"
-            "├ искать собеседника в рулетке\n"
-            "└ держать всё в тайне</blockquote>\n"
-            "👑 Чтобы продолжить, укажите свой пол:",
+            t("welcome", name=html.escape(name)),
             parse_mode="HTML",
             reply_markup=gender_kb(),
         )
         return
 
     await update.message.reply_text(
-        "Главное меню 👇", reply_markup=main_menu_kb(tg_user.id)
+        t("main_menu"), reply_markup=main_menu_kb(tg_user.id)
     )
 
 
 async def set_gender_from_text(update, context):
     """Обработка выбора/смены пола через reply-клавиатуру."""
-    text = update.message.text
+    text = canon(update.message.text)
     state = context.user_data.get("state")
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     gender = {"👨 Мужской": "m", "👩 Женский": "f"}.get(text)
     if not gender:
-        await update.message.reply_text("Выберите вариант на клавиатуре 👇", reply_markup=gender_kb(state == "set_gender_profile"))
+        await update.message.reply_text(t("pick_on_kb"), reply_markup=gender_kb(state == "set_gender_profile"))
         return
     conn.execute("UPDATE users SET gender=? WHERE tg_id=?", (gender, update.effective_user.id))
     conn.commit()
     context.user_data["state"] = None
+    g = {"m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
+         "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"}}[gender][_CURLANG]
     await update.message.reply_text(
-        f"✅ Готово! Ваш пол: <b>{gender_label(gender)}</b>\n\nГлавное меню 👇",
+        t("gender_saved", g=g),
         parse_mode="HTML",
         reply_markup=main_menu_kb(update.effective_user.id),
     )
@@ -617,7 +904,7 @@ async def on_gender_set(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(f"Пол сохранён: {gender_label(gender)} ✅")
     await context.bot.send_message(
         chat_id=query.from_user.id,
-        text="Главное меню 👇",
+        text=t("main_menu"),
         reply_markup=main_menu_kb(query.from_user.id),
     )
 
@@ -628,7 +915,7 @@ async def on_back_main(update, context):
     await try_delete_message(context, query.message.chat_id, query.message.message_id)
     await context.bot.send_message(
         query.from_user.id,
-        "Главное меню 👇",
+        t("main_menu"),
         reply_markup=main_menu_kb(query.from_user.id)
     )
 
@@ -665,10 +952,10 @@ async def show_link_menu(update, context):
 
 
 async def link_menu_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     if text == "🔗 Показать ссылку":
         await show_my_link(update, context)
@@ -775,7 +1062,7 @@ async def handle_incoming_link(update, context, code):
 
 
 async def on_anon_type_text(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "❌ Отмена":
         context.user_data["state"] = None
         context.user_data.pop("anon_target", None)
@@ -945,7 +1232,7 @@ async def process_anon_content(update, context):
             sender.id, "Не удалось доставить сообщение получателю 😕", reply_markup=main_menu_kb(sender.id)
         )
         return
-    await context.bot.send_message(sender.id, "Главное меню 👇", reply_markup=main_menu_kb(sender.id))
+    await context.bot.send_message(sender.id, t("main_menu"), reply_markup=main_menu_kb(sender.id))
 
 
 async def on_reply_button(update, context):
@@ -1110,7 +1397,7 @@ async def on_report_anon(update, context):
 
 
 async def process_report_reason(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "❌ Отмена":
         context.user_data["state"] = None
         context.user_data.pop("report_context", None)
@@ -1235,10 +1522,10 @@ async def show_profile(update, context):
 
 
 async def profile_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     if text == "✏️ Сменить пол":
         context.user_data["state"] = "set_gender_profile"
@@ -1257,19 +1544,19 @@ def roulette_pref_kb():
 
 
 def searching_kb():
-    return ReplyKeyboardMarkup([[KeyboardButton("⛔ Отменить поиск")]], resize_keyboard=True)
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⛔ Отменить поиск")]], resize_keyboard=True))
 
 
 def cancel_reply_kb():
-    return ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True, one_time_keyboard=True)
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True, one_time_keyboard=True))
 
 
 def bcast_audience_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👥 Всем")],
         [KeyboardButton("👨 Мужчинам"), KeyboardButton("👩 Женщинам")],
         [KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True, one_time_keyboard=True))
 
 
 def in_chat_kb():
@@ -1303,10 +1590,10 @@ async def show_roulette_entry(update, context):
 
 
 async def roulette_pref_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     pref = {"👨 Парня": "m", "👩 Девушку": "f", "🤷 Любого": "any"}.get(text)
     if not pref:
@@ -1331,7 +1618,7 @@ async def on_roulette_cancel(update, context):
     conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (query.from_user.id,))
     conn.commit()
     await query.edit_message_text("Поиск отменён.")
-    await context.bot.send_message(query.from_user.id, "Главное меню 👇", reply_markup=main_menu_kb(query.from_user.id))
+    await context.bot.send_message(query.from_user.id, t("main_menu"), reply_markup=main_menu_kb(query.from_user.id))
 
 
 def compatible(a, b):
@@ -1389,7 +1676,7 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     kb = InlineKeyboardMarkup([[InlineKeyboardButton("🚩 Жалоба на собеседника", callback_data=f"rrep:{session['id']}")]])
     try:
         await context.bot.send_message(other_id, "Собеседник покинул чат.", reply_markup=kb)
-        await context.bot.send_message(other_id, "Главное меню 👇", reply_markup=main_menu_kb(other_id))
+        await context.bot.send_message(other_id, t("main_menu"), reply_markup=main_menu_kb(other_id))
     except TelegramError:
         pass
     if requeue_ender:
@@ -1461,15 +1748,15 @@ async def show_shop(update, context):
         rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
     rows.append([KeyboardButton("⬅️ Назад")])
     text = "🛒 <b>Магазин</b>\nВыберите товар 👇" if items else "🛒 <b>Магазин пока пуст.</b>"
-    await nav(update, context, text, ReplyKeyboardMarkup(rows, resize_keyboard=True), parse_mode="HTML")
+    await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
 
 
 async def shop_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(uid))
+        await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
     if text == "➕ Добавить товар" and is_admin(uid):
         context.user_data["state"] = "shop_add_title"
@@ -1481,7 +1768,7 @@ async def shop_router(update, context):
         return
     item_id = context.user_data.get("shop_map", {}).get(text)
     if item_id is None:
-        await nav(update, context, "Выберите товар на клавиатуре 👇", ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True))
+        await nav(update, context, "Выберите товар на клавиатуре 👇", tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True)))
         return
     item = conn.execute("SELECT * FROM shop_items WHERE id=? AND active=1", (item_id,)).fetchone()
     if not item:
@@ -1502,7 +1789,7 @@ async def shop_router(update, context):
 
 
 async def shop_confirm_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "❌ Отмена":
         await show_shop(update, context)
@@ -1570,10 +1857,10 @@ async def do_purchase(update, context, item):
         await nav(
             update, context,
             "📝 <b>Анкета на модератора.</b>\n\nВаш пол?",
-            ReplyKeyboardMarkup(
+            tr_kb(ReplyKeyboardMarkup(
                 [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")], [KeyboardButton("❌ Отмена")]],
                 resize_keyboard=True, one_time_keyboard=True,
-            ),
+            )),
             parse_mode="HTML",
         )
     else:  # manual
@@ -1589,7 +1876,7 @@ async def do_purchase(update, context, item):
 
 async def moder_q_router(update, context):
     state = context.user_data.get("state")
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "❌ Отмена":
         price = context.user_data.get("moder_price", 0)
@@ -1700,7 +1987,7 @@ async def on_moder_app_decision(update, context):
 
 async def process_shop_add(update, context):
     state = context.user_data["state"]
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     item = context.user_data.setdefault("new_item", {})
     if text == "❌ Отмена":
         context.user_data["state"] = None
@@ -1787,7 +2074,7 @@ async def shop_edit_list(update, context):
     rows.append([KeyboardButton("⬅️ Назад")])
     context.user_data["edit_map"] = edit_map
     context.user_data["state"] = "shop_edit_pick"
-    await update.message.reply_text("Выберите товар для изменения 👇", reply_markup=ReplyKeyboardMarkup(rows, resize_keyboard=True))
+    await update.message.reply_text("Выберите товар для изменения 👇", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
 
 
 def shop_edit_item_kb(item):
@@ -1798,12 +2085,12 @@ def shop_edit_item_kb(item):
         rows.append([KeyboardButton("⏳ Срок VIP")])
     rows.append([KeyboardButton("🗑 Удалить товар")])
     rows.append([KeyboardButton("⬅️ Назад")])
-    return ReplyKeyboardMarkup(rows, resize_keyboard=True)
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 async def shop_edit_router(update, context):
     state = context.user_data.get("state")
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if state == "shop_edit_pick":
         if text == "⬅️ Назад":
@@ -1857,7 +2144,7 @@ async def shop_edit_router(update, context):
 
 async def process_shop_edit_value(update, context):
     state = context.user_data["state"]
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     item_id = context.user_data.get("edit_item_id")
     if text == "❌ Отмена":
         context.user_data["state"] = "shop_edit_menu"
@@ -1912,10 +2199,10 @@ async def show_moder_menu(update, context):
 
 
 def admin_moder_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("➕ Выдать модера"), KeyboardButton("➖ Забрать модера")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 async def show_admin_moder(update, context):
@@ -1924,7 +2211,7 @@ async def show_admin_moder(update, context):
 
 
 async def admin_moder_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "⬅️ Назад":
         await show_admin_menu(update, context)
         return
@@ -1941,7 +2228,7 @@ async def admin_moder_router(update, context):
 
 async def process_moder_give_take(update, context):
     state = context.user_data["state"]
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     if text == "❌ Отмена":
         await show_admin_moder(update, context)
         return
@@ -1982,7 +2269,7 @@ async def start_ban(update, context, back_state):
 
 
 async def process_ban(update, context):
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     back_state = context.user_data.get("ban_back", "admin")
     back_kb = admin_menu_kb() if back_state == "admin" else moder_menu_kb()
     if text == "❌ Отмена":
@@ -2023,11 +2310,11 @@ async def process_ban(update, context):
 
 
 async def moder_panel_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await update.message.reply_text("Главное меню 👇", reply_markup=main_menu_kb(uid))
+        await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
         return
     if text == "🚩 Жалобы":
         await show_pending_reports(update, context)
@@ -2118,7 +2405,7 @@ async def adm_channels_msg(update, context):
 
 
 async def process_bcast_audience_text(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "❌ Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
@@ -2172,7 +2459,7 @@ async def on_adm_coins(update, context):
 
 async def process_adm_coins_wizard(update, context):
     state = context.user_data["state"]
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     if text == "❌ Отмена":
         context.user_data["state"] = None
         await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
@@ -2259,7 +2546,7 @@ async def on_adm_ad(update, context):
 
 async def process_adm_ad_wizard(update, context):
     state = context.user_data["state"]
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     ad = context.user_data["ad"]
     if text == "❌ Отмена":
         context.user_data["state"] = None
@@ -2296,15 +2583,15 @@ async def ad_preview_and_offer(update, context):
     await update.message.reply_text(ad["text"], reply_markup=ad_markup(ad))
     await update.message.reply_text(
         "Разослать рекламу всем пользователям?",
-        reply_markup=ReplyKeyboardMarkup(
+        reply_markup=tr_kb(ReplyKeyboardMarkup(
             [[KeyboardButton("📤 Отправить всем")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True, one_time_keyboard=True,
-        ),
+        )),
     )
 
 
 async def process_ad_send(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "❌ Отмена":
         context.user_data["state"] = None
         await update.message.reply_text("Реклама сохранена, рассылка отменена.", reply_markup=admin_menu_kb())
@@ -2363,7 +2650,7 @@ async def on_bcast_audience(update, context):
 async def process_bcast_content(update, context):
     uid = update.effective_user.id
     back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
-    if update.message.text == "❌ Отмена":
+    if canon(update.message.text) == "❌ Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
         await update.message.reply_text("Отменено.", reply_markup=back_kb)
         return
@@ -2410,15 +2697,15 @@ async def show_star_shop(update, context):
     context.user_data["star_map"] = smap
     context.user_data["state"] = "star_shop"
     await nav(update, context, "💎 <b>Покупка коинов за Telegram Stars</b>\nВыбери пакет 👇",
-              ReplyKeyboardMarkup(rows, resize_keyboard=True), parse_mode="HTML")
+              tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
 
 
 async def star_shop_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(uid))
+        await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
     pid = context.user_data.get("star_map", {}).get(text)
     if pid is None:
@@ -2438,7 +2725,7 @@ async def star_shop_router(update, context):
 
 
 async def star_confirm_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "❌ Отмена":
         await show_star_shop(update, context)
@@ -2513,7 +2800,7 @@ async def show_star_admin(update, context):
 
 
 async def star_admin_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     if text == "⬅️ Назад":
         await show_admin_menu(update, context)
         return
@@ -2535,14 +2822,14 @@ async def star_admin_router(update, context):
         rows.append([KeyboardButton("❌ Отмена")])
         context.user_data["star_del_map"] = smap
         context.user_data["state"] = "star_del"
-        await update.message.reply_text("Какой пакет удалить?", reply_markup=ReplyKeyboardMarkup(rows, resize_keyboard=True))
+        await update.message.reply_text("Какой пакет удалить?", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
         return
     await update.message.reply_text("Выбери действие 👇", reply_markup=star_admin_kb())
 
 
 async def process_star_wizard(update, context):
     state = context.user_data.get("state")
-    text = update.message.text.strip()
+    text = canon(update.message.text.strip())
     if text == "❌ Отмена":
         context.user_data["state"] = "star_admin"
         await update.message.reply_text("Отменено.", reply_markup=star_admin_kb())
@@ -2640,18 +2927,18 @@ async def show_referral(update, context):
 
 
 def referral_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🏆 Топ пригласивших")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 async def referral_router(update, context):
-    text = update.message.text
+    text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(uid))
+        await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
     if text == "🏆 Топ пригласивших":
         await show_top(update, context)
@@ -2708,37 +2995,12 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_help(update, context):
     uid = update.effective_user.id
-    text = (
-        "ℹ️ <b>О боте ToxIcUz</b> 💙\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "Бот анонимных сообщений и общения.\n\n"
-        "🔗 <b>Моя ссылка</b> — твоя личная ссылка. Делись ей: тебе будут писать "
-        "анонимные вопросы и валентинки.\n"
-        "🎲 <b>Чат-рулетка</b> — поиск случайного собеседника по полу.\n"
-        "👤 <b>Профиль</b> — пол, коины, VIP-статус.\n"
-        "🛒 <b>Магазин</b> — трать коины на VIP и товары.\n"
-        "👥 <b>Пригласить</b> — зови друзей: +20 💎 (VIP +50 💎).\n"
-        "💎 <b>Купить коины</b> — пополнение за Telegram Stars ⭐.\n\n"
-        "💎 <b>Коины</b> — внутренняя валюта (за рефералов и покупки).\n"
-        "👑 <b>VIP даёт:</b>\n"
-        "<blockquote>• без лимита сообщений\n"
-        "• скидка 20% в магазине\n"
-        "• +5 💎 каждый день\n"
-        "• приоритет в рулетке\n"
-        "• корона в анонимках\n"
-        "• медиа (фото/видео/гиф) в анонимках\n"
-        "• безлимитная смена ссылки</blockquote>\n"
-        "❓ <b>Как пользоваться:</b>\n"
-        "1. Укажи пол.\n"
-        "2. Возьми ссылку в «🔗 Моя ссылка» и делись ею.\n"
-        "3. Отвечай на анонимки, играй в рулетке, зарабатывай коины."
-    )
-    await nav(update, context, text, main_menu_kb(uid), parse_mode="HTML")
+    await nav(update, context, t("help"), main_menu_kb(uid), parse_mode="HTML")
 
 
 async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     state = context.user_data.get("state")
-    text = update.message.text if update.message else None
+    text = canon(update.message.text) if update.message else None
     _u = get_user(update.effective_user.id)
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         await update.message.reply_text("🚫 Вы заблокированы и не можете пользоваться ботом.")
@@ -2823,7 +3085,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "⛔ Отменить поиск":
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (update.effective_user.id,))
         conn.commit()
-        await nav(update, context, "Поиск отменён. Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("search_cancelled"), main_menu_kb(update.effective_user.id))
         return
     # Кнопки админ-клавиатуры
     if is_admin(update.effective_user.id):
@@ -2881,6 +3143,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "ℹ️ Помощь":
         await show_help(update, context)
         return
+    if text == "🌐 Язык":
+        await show_language_menu(update, context)
+        return
     if text == "🛠 Админка":
         context.user_data["state"] = None
         await show_admin_menu(update, context)
@@ -2891,6 +3156,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Под-меню разделов (reply-клавиатуры)
     if state == "moder":
         await moder_panel_router(update, context)
+        return
+    if state == "language":
+        await language_router(update, context)
         return
     if state == "referral":
         await referral_router(update, context)
@@ -2906,9 +3174,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if text == "⬅️ Назад":
         context.user_data["state"] = None
-        await nav(update, context, "Главное меню 👇", main_menu_kb(update.effective_user.id))
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
-    await nav(update, context, "Не понял команду. Воспользуйтесь меню 👇", main_menu_kb(update.effective_user.id))
+    await nav(update, context, t("not_understood"), main_menu_kb(update.effective_user.id))
 
 
 async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2980,6 +3248,8 @@ def main():
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_error_handler(on_error)
+    # Подстановка языка пользователя перед обработкой любого апдейта
+    app.add_handler(TypeHandler(Update, set_lang_context), group=-1)
     app.add_handler(PreCheckoutQueryHandler(on_precheckout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, on_successful_payment))
     app.add_handler(ChatMemberHandler(on_my_chat_member, ChatMemberHandler.MY_CHAT_MEMBER))
