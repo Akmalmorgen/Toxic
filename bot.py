@@ -874,6 +874,21 @@ T = {
         "uz": "👁 <b>Yuboruvchi aniqlandi!</b>\n\nIsm: <b>{name}</b>\nNik: {uname}\nID: <code>{tid}</code>",
         "en": "👁 <b>Sender revealed!</b>\n\nName: <b>{name}</b>\nUsername: {uname}\nID: <code>{tid}</code>",
     },
+    "reveal_confirm": {
+        "ru": "👁 Раскрыть отправителя этого сообщения за <b>1 ⭐ Star</b>?",
+        "uz": "👁 Ushbu xabar yuboruvchini <b>1 ⭐ Star</b> uchun aniqlaysizmi?",
+        "en": "👁 Reveal the sender of this message for <b>1 ⭐ Star</b>?",
+    },
+    "reveal_paying": {
+        "ru": "⏳ Оплатите инвойс ниже...",
+        "uz": "⏳ Quyidagi hisob-fakturani to'lang...",
+        "en": "⏳ Pay the invoice below...",
+    },
+    "reveal_only_recipient": {
+        "ru": "Только получатель может раскрыть отправителя.",
+        "uz": "Faqat qabul qiluvchi yuboruvchini aniqlay oladi.",
+        "en": "Only the recipient can reveal the sender.",
+    },
     "invite_text": {
         "ru": "👥 <b>Пригласи друзей и получи коины!</b>\n\n🔗 Твоя реф-ссылка:\n{link}\n\n+{bonus} 💎 за каждого друга.",
         "uz": "👥 <b>Do'stlarni taklif qiling va coin oling!</b>\n\n🔗 Ref-havolangiz:\n{link}\n\n+{bonus} 💎 har bir do'st uchun.",
@@ -3005,19 +3020,42 @@ async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.pre_checkout_query.answer(ok=True)
 
 
-# Кнопка «Узнать кто» — отправляет инвойс на 1 Star для раскрытия отправителя
+# Кнопка «Узнать кто» — спрашивает подтверждение перед оплатой
 async def on_reveal_button(update, context):
     query = update.callback_query
     await query.answer()
     mid = int(query.data.split(":")[1])
     row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
     if not row:
-        await query.answer("Сообщение не найдено.", show_alert=True)
+        await query.answer(t("anon_not_found"), show_alert=True)
         return
-    # Только получатель может раскрыть
     if query.from_user.id != row["to_id"]:
-        await query.answer("Только получатель может раскрыть отправителя.", show_alert=True)
+        await query.answer(t("reveal_only_recipient"), show_alert=True)
         return
+    # Подтверждение покупки
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Да, раскрыть (1⭐)", callback_data=f"reveal_pay:{mid}")],
+        [InlineKeyboardButton("❌ Отмена", callback_data="reveal_cancel")],
+    ])
+    await context.bot.send_message(
+        query.from_user.id,
+        t("reveal_confirm"),
+        parse_mode="HTML",
+        reply_markup=kb,
+    )
+
+
+# Подтверждение — отправляем инвойс
+async def on_reveal_pay(update, context):
+    query = update.callback_query
+    await query.answer()
+    mid = int(query.data.split(":")[1])
+    row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
+    if not row:
+        await query.edit_message_text(t("anon_not_found"))
+        return
+    # Убираем кнопки подтверждения
+    await query.edit_message_text(t("reveal_paying"))
     # Отправляем инвойс на 1 Star
     await context.bot.send_invoice(
         chat_id=query.from_user.id,
@@ -3028,6 +3066,13 @@ async def on_reveal_button(update, context):
         currency="XTR",
         prices=[LabeledPrice(label="⭐", amount=1)],
     )
+
+
+# Отмена раскрытия
+async def on_reveal_cancel(update, context):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(t("cancelled"))
 
 
 async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3552,6 +3597,8 @@ def main():
     app.add_handler(CallbackQueryHandler(on_subcheck_button, pattern=r"^subcheck:"))
     app.add_handler(CallbackQueryHandler(on_report_anon, pattern=r"^report_anon:"))
     app.add_handler(CallbackQueryHandler(on_reveal_button, pattern=r"^reveal:"))
+    app.add_handler(CallbackQueryHandler(on_reveal_pay, pattern=r"^reveal_pay:"))
+    app.add_handler(CallbackQueryHandler(on_reveal_cancel, pattern=r"^reveal_cancel$"))
     app.add_handler(CallbackQueryHandler(on_report_admin_decision, pattern=r"^repadm:"))
     app.add_handler(CallbackQueryHandler(on_roulette_cancel, pattern=r"^roulette_cancel$"))
     app.add_handler(CallbackQueryHandler(on_roulette_next, pattern=r"^roulette_next$"))
