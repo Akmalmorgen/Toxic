@@ -96,7 +96,7 @@ if USE_PG:
             self._connect()
         def _connect(self):
             self._conn = psycopg2.connect(
-                self.url, connect_timeout=10,
+                self.url, connect_timeout=30,
                 keepalives=1, keepalives_idle=30, keepalives_interval=10, keepalives_count=5,
             )
             self._conn.autocommit = True
@@ -3605,9 +3605,9 @@ async def on_error(update, context):
 
 
 def main():
-    init_db()
-    # фоновый веб-сервер (для Render и пр.) — не мешает боту на polling
+    # фоновый веб-сервер СНАЧАЛА (Render ждёт открытый PORT чтобы считать сервис живым)
     threading.Thread(target=_keep_alive_server, daemon=True).start()
+    init_db()
     builder = Application.builder().token(BOT_TOKEN)
     # Увеличенные таймауты (помогает при медленной/нестабильной сети)
     builder = builder.connect_timeout(30).read_timeout(30).write_timeout(30).pool_timeout(30)
