@@ -609,9 +609,8 @@ def pref_label(code):
 
 
 def effective_price(price, user_row):
-    """Цена с учётом VIP-скидки. Для админа/модера — всё бесплатно (бесконечные коины)."""
-    if is_unlimited(user_row):
-        return 0
+    """Цена с учётом VIP-скидки. У админа/модера — сниженная (со скидкой),
+    но при покупке с них всё равно не списываются коины (см. do_purchase)."""
     if is_vip(user_row):
         return max(0, round(price * (100 - VIP_DISCOUNT_PERCENT) / 100))
     return price
@@ -908,6 +907,11 @@ T = {
         "ru": "🗑 Собеседник удалил своё анонимное сообщение.",
         "uz": "🗑 Suhbatdosh o'zining anonim xabarini o'chirdi.",
         "en": "🗑 The sender deleted their anonymous message.",
+    },
+    "cant_ban_staff": {
+        "ru": "Нельзя забанить администратора или модератора. Жалоба отклонена.",
+        "uz": "Administrator yoki moderatorni bloklab bo'lmaydi. Shikoyat rad etildi.",
+        "en": "You can't ban an admin or moderator. The report was rejected.",
     },
     # === Рулетка (доп.) ===
     "roulette_who": {
@@ -2567,6 +2571,12 @@ async def on_report_admin_decision(update, context):
         await query.edit_message_text(t("report_already_handled"))
         return
     if decision == "ok":
+        # Админа/модера нельзя забанить по жалобе
+        if is_staff(report["reported_id"]):
+            conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
+            conn.commit()
+            await query.edit_message_text(t("cant_ban_staff"))
+            return
         until = (now_dt() + timedelta(days=BAN_DAYS)).isoformat()
         conn.execute(
             "INSERT INTO bans (owner_id, banned_id, until, created_at) VALUES (?, ?, ?, ?)",
@@ -3008,11 +3018,14 @@ async def do_purchase(update, context, item):
     uid = update.effective_user.id
     user = get_user(uid)
     price = effective_price(item["price"], user)
-    if user["coins"] < price:
-        context.user_data["state"] = None
-        await nav(update, context, t("not_enough_coins"), main_menu_kb(uid))
-        return
-    conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
+    unlimited = is_unlimited(user)
+    # У админа/модера — бесконечные коины: не проверяем баланс и не списываем
+    if not unlimited:
+        if user["coins"] < price:
+            context.user_data["state"] = None
+            await nav(update, context, t("not_enough_coins"), main_menu_kb(uid))
+            return
+        conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
     conn.execute(
         "INSERT INTO purchases (user_id, item_id, price_paid, created_at) VALUES (?, ?, ?, ?)",
         (uid, item["id"], price, now_iso()),
