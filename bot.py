@@ -779,7 +779,7 @@ T = {
     },
     # === Общие ===
     "banned": {
-        "ru": t("banned"),
+        "ru": "🚫 Вы заблокированы и не можете пользоваться ботом.",
         "uz": "🚫 Siz bloklangansiz va botdan foydalana olmaysiz.",
         "en": "🚫 You are blocked and cannot use the bot.",
     },
