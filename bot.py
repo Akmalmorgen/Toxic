@@ -7,6 +7,7 @@ import os
 import sqlite3
 import logging
 import random
+import re
 import string
 import html
 import asyncio
@@ -595,6 +596,31 @@ def is_unlimited(user_row):
 UNLIMITED_COINS = 10 ** 9
 
 
+def has_forbidden_contacts(text):
+    """True, если в тексте есть @юзернеймы, ссылки, домены, соцсети или длинные числа (ID/телефон).
+    Используется для запрета обмена контактами/рекламы каналов в анонимках и рулетке."""
+    if not text:
+        return False
+    low = text.lower()
+    # @username
+    if re.search(r'@[a-z][a-z0-9_]{2,}', low):
+        return True
+    # ссылки / приглашения в каналы
+    if re.search(r'https?://|www\.|t\.me|telegram\.me|telegram\.dog|joinchat|tg://', low):
+        return True
+    # домены вида name.com / name.ru / name.uz и т.п.
+    if re.search(r'\b[a-z0-9][a-z0-9-]*\.(com|ru|uz|net|org|io|me|info|biz|tv|app|link|site|online|club|store|xyz|kz)\b', low):
+        return True
+    # явные названия соцсетей/мессенджеров
+    if re.search(r'\b(instagram|insta|tiktok|youtube|youtu|whatsapp|watsap|vatsap|facebook|snapchat|discord|onlyfans|vkontakte|тикток|инстаграм|ютуб|ватсап|вотсап)\b', low):
+        return True
+    # длинные числовые последовательности (ID Telegram / номер телефона): 7+ цифр подряд (с разделителями)
+    for m in re.finditer(r'[\d\s\-()+]{7,}', text):
+        if sum(c.isdigit() for c in m.group()) >= 7:
+            return True
+    return False
+
+
 def gender_label(code):
     return {
         "m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
@@ -914,6 +940,11 @@ T = {
         "ru": "🗑 Собеседник удалил своё анонимное сообщение.",
         "uz": "🗑 Suhbatdosh o'zining anonim xabarini o'chirdi.",
         "en": "🗑 The sender deleted their anonymous message.",
+    },
+    "no_contacts": {
+        "ru": "🚫 Нельзя отправлять ссылки, @юзернеймы, номера, ID и упоминания соцсетей/каналов. Сообщение не отправлено.",
+        "uz": "🚫 Havola, @username, raqam, ID va ijtimoiy tarmoq/kanal nomlarini yuborib bo'lmaydi. Xabar yuborilmadi.",
+        "en": "🚫 You can't send links, @usernames, numbers, IDs or social/channel mentions. Message not sent.",
     },
     "cant_ban_staff": {
         "ru": "Нельзя забанить администратора или модератора. Жалоба отклонена.",
@@ -2301,6 +2332,10 @@ async def process_anon_content(update, context):
     if extracted is None:
         return
     content_type, text, voice_file_id = extracted
+    # Анти-спам: запрет контактов/ссылок/соцсетей (кроме персонала)
+    if content_type == "text" and not is_staff(sender.id) and has_forbidden_contacts(text):
+        await update.message.reply_text(t("no_contacts"))
+        return
     m = update.message
     mid = await deliver_anon(
         context, author_id=sender.id, recipient_id=target_id, msg_type=msg_type,
@@ -2355,6 +2390,10 @@ async def process_reply_content(update, context):
     if extracted is None:
         return
     content_type, text, voice_file_id = extracted
+    # Анти-спам: запрет контактов/ссылок/соцсетей (кроме персонала)
+    if content_type == "text" and not is_staff(replier.id) and has_forbidden_contacts(text):
+        await update.message.reply_text(t("no_contacts"))
+        return
     # Сохраняем ответ в родителя (для истории/жалоб) и помечаем отвеченным
     if content_type == "text":
         conn.execute("UPDATE anon_messages SET answer_text=?, answered=1 WHERE id=?", (text, msg_id))
@@ -2906,6 +2945,14 @@ async def relay_roulette_message(update, context):
     if not session:
         return False
     other_id = session["user2_id"] if session["user1_id"] == update.effective_user.id else session["user1_id"]
+    # Анти-спам: блокируем контакты/ссылки/соцсети в рулетке (кроме персонала)
+    txt = update.message.text if update.message else None
+    if txt and not is_staff(update.effective_user.id) and has_forbidden_contacts(txt):
+        try:
+            await update.message.reply_text(t("no_contacts"))
+        except TelegramError:
+            pass
+        return True
     try:
         await context.bot.copy_message(other_id, update.effective_chat.id, update.message.message_id)
     except TelegramError:
