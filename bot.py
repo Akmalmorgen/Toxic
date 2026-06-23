@@ -478,6 +478,15 @@ def init_db():
         active INTEGER NOT NULL DEFAULT 1,
         created_at TEXT NOT NULL
     );
+
+    -- Состояние незавершённого анона по ссылке (переживает рестарт бота).
+    CREATE TABLE IF NOT EXISTS link_flow (
+        user_id INTEGER PRIMARY KEY,
+        target_id INTEGER NOT NULL,
+        msg_type TEXT,
+        state TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
     """)
     conn.commit()
     migrate()
@@ -2048,6 +2057,49 @@ def valid_link_code(code: str) -> bool:
     return 1 <= len(code) <= 10 and all(c in LINK_ALPHABET for c in code)
 
 
+# === Персистентное состояние анона по ссылке (переживает рестарт процесса) ===
+LINK_FLOW_TTL_HOURS = 6  # незавершённый флоу старше этого — игнорируем
+
+
+def save_link_flow(user_id, target_id, state, msg_type=None):
+    """Сохраняет/обновляет незавершённый флоу анона по ссылке в БД."""
+    try:
+        conn.execute("DELETE FROM link_flow WHERE user_id=?", (user_id,))
+        conn.execute(
+            "INSERT INTO link_flow (user_id, target_id, msg_type, state, updated_at) "
+            "VALUES (?,?,?,?,?)",
+            (user_id, target_id, msg_type, state, now_iso()),
+        )
+        conn.commit()
+    except Exception as e:  # noqa
+        log.warning("save_link_flow: %s", e)
+
+
+def load_link_flow(user_id):
+    """Возвращает строку незавершённого флоу (если не протух), иначе None."""
+    try:
+        row = conn.execute("SELECT * FROM link_flow WHERE user_id=?", (user_id,)).fetchone()
+    except Exception:
+        return None
+    if not row:
+        return None
+    try:
+        if now_dt() - datetime.fromisoformat(row["updated_at"]) > timedelta(hours=LINK_FLOW_TTL_HOURS):
+            clear_link_flow(user_id)
+            return None
+    except Exception:
+        pass
+    return row
+
+
+def clear_link_flow(user_id):
+    try:
+        conn.execute("DELETE FROM link_flow WHERE user_id=?", (user_id,))
+        conn.commit()
+    except Exception as e:  # noqa
+        log.warning("clear_link_flow: %s", e)
+
+
 def share_kb(link, text):
     """Инлайн-кнопка «Поделиться» — открывает в Telegram выбор чата для пересылки ссылки."""
     share_url = ("https://t.me/share/url?url=" + urllib.parse.quote(link, safe="")
@@ -2182,6 +2234,7 @@ async def handle_incoming_link(update, context, code):
         return
     context.user_data["state"] = "awaiting_anon_type"
     context.user_data["anon_target"] = owner["tg_id"]
+    save_link_flow(sender_id, owner["tg_id"], "awaiting_anon_type")
     await update.message.reply_text(t("anon_what_send"), reply_markup=anon_type_kb())
 
 
@@ -2191,6 +2244,7 @@ async def on_anon_type_text(update, context):
     if text == "❌ Отмена":
         context.user_data["state"] = None
         context.user_data.pop("anon_target", None)
+        clear_link_flow(update.effective_user.id)
         await update.message.reply_text(
             t("anon_cancelled_menu"),
             reply_markup=main_menu_kb(update.effective_user.id)
@@ -2205,6 +2259,9 @@ async def on_anon_type_text(update, context):
         return
     context.user_data["anon_type"] = msg_type
     context.user_data["state"] = "awaiting_anon_content"
+    target = context.user_data.get("anon_target")
+    if target:
+        save_link_flow(update.effective_user.id, target, "awaiting_anon_content", msg_type)
     label = t("anon_label_question") if msg_type == "question" else t("anon_label_valentine")
     await update.message.reply_text(
         t("anon_write_prompt", label=label),
@@ -2350,6 +2407,7 @@ async def process_anon_content(update, context):
                 reply_markup=main_menu_kb(sender.id)
             )
             context.user_data["state"] = None
+            clear_link_flow(sender.id)
             return
     extracted = await extract_anon_content(update, is_v)
     if extracted is None:
@@ -2369,6 +2427,7 @@ async def process_anon_content(update, context):
     context.user_data["state"] = None
     context.user_data.pop("anon_target", None)
     context.user_data.pop("anon_type", None)
+    clear_link_flow(sender.id)
     if mid is None:
         await context.bot.send_message(
             sender.id, t("anon_failed"), reply_markup=main_menu_kb(sender.id)
@@ -4266,6 +4325,16 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         await update.message.reply_text(t("banned"))
         return
+    # Восстановление незавершённого анона по ссылке после рестарта бота
+    # (состояние в памяти UD теряется — поднимаем его из БД).
+    if not state:
+        _fl = load_link_flow(update.effective_user.id)
+        if _fl:
+            context.user_data["state"] = _fl["state"]
+            context.user_data["anon_target"] = _fl["target_id"]
+            if _fl["msg_type"]:
+                context.user_data["anon_type"] = _fl["msg_type"]
+            state = _fl["state"]
     # Чат-рулетка: кнопки управления — reply-клавиатура снизу (перехват до релея)
     if state == "rchat":
         if text == "➡️ Далее":
@@ -4473,6 +4542,14 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         return
     state = context.user_data.get("state")
+    if not state:
+        _fl = load_link_flow(update.effective_user.id)
+        if _fl:
+            context.user_data["state"] = _fl["state"]
+            context.user_data["anon_target"] = _fl["target_id"]
+            if _fl["msg_type"]:
+                context.user_data["anon_type"] = _fl["msg_type"]
+            state = _fl["state"]
     if state == "awaiting_anon_content":
         await process_anon_content(update, context)
         return
