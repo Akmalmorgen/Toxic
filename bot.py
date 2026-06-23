@@ -217,6 +217,8 @@ class Ctx:
 DB_PATH = os.getenv("DB_PATH", "").strip() or os.path.join(os.path.dirname(__file__), "bot.db")
 DAILY_LIMIT = 20
 BAN_DAYS = 7
+ROULETTE_BAN_DAYS = 30           # бан по жалобе из рулетки — на месяц
+ANON_BAN_FOREVER = "9999-12-31T23:59:59"  # бан по жалобе из анонимки — навсегда (попарно)
 ROULETTE_TICK_SECONDS = 3
 LINK_CHANGE_COOLDOWN_DAYS = 7
 VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
@@ -899,9 +901,14 @@ T = {
         "en": "forever 👑",
     },
     "you_were_banned": {
-        "ru": "🚫 На вас поступила жалоба — вы заблокированы на {days} дн.",
-        "uz": "🚫 Sizga shikoyat tushdi — siz {days} kunga bloklandingiz.",
-        "en": "🚫 You were reported and have been blocked for {days} days.",
+        "ru": "🚫 На вас поступила жалоба — на {days} дн. вы не сможете попасть к этому собеседнику в рулетке.",
+        "uz": "🚫 Sizga shikoyat tushdi — {days} kun davomida ruletkada bu suhbatdoshga tusha olmaysiz.",
+        "en": "🚫 You were reported — for {days} days you won't be matched with this person in roulette.",
+    },
+    "you_were_banned_forever": {
+        "ru": "🚫 На вас поступила жалоба. Вы <b>навсегда</b> заблокированы для этого пользователя: писать ему нельзя. Другим — можно.",
+        "uz": "🚫 Sizga shikoyat tushdi. Siz bu foydalanuvchi uchun <b>abadiy</b> bloklandingiz: unga yoza olmaysiz. Boshqalarga — mumkin.",
+        "en": "🚫 You were reported. You are <b>permanently</b> blocked for this user: you can't message them. Others are fine.",
     },
     "anon_deleted_notice": {
         "ru": "🗑 Собеседник удалил своё анонимное сообщение.",
@@ -1023,9 +1030,14 @@ T = {
     },
     # === Жалоба (доп., для пользователя) ===
     "report_confirmed_user": {
-        "ru": "Жалоба подтверждена. Отправитель заблокирован на {days} дней ✅",
-        "uz": "Shikoyat tasdiqlandi. Yuboruvchi {days} kunga bloklandi ✅",
-        "en": "Report confirmed. The sender is blocked for {days} days ✅",
+        "ru": "✅ Жалоба подтверждена. Этот пользователь не сможет беспокоить вас {days} дн.",
+        "uz": "✅ Shikoyat tasdiqlandi. Bu foydalanuvchi sizni {days} kun bezovta qila olmaydi.",
+        "en": "✅ Report confirmed. This user can't bother you for {days} days.",
+    },
+    "report_confirmed_forever": {
+        "ru": "✅ Жалоба подтверждена. Этот пользователь больше <b>никогда</b> не сможет писать вам.",
+        "uz": "✅ Shikoyat tasdiqlandi. Bu foydalanuvchi endi sizga <b>hech qachon</b> yoza olmaydi.",
+        "en": "✅ Report confirmed. This user can <b>never</b> message you again.",
     },
     "report_rejected_user": {
         "ru": "Жалоба отклонена администратором.",
@@ -2522,7 +2534,7 @@ async def process_report_reason(update, context):
         msg = conn.execute("SELECT * FROM anon_messages WHERE id=?", (ref_id,)).fetchone()
         content_preview = msg["text"] if msg["content_type"] == "text" else "[голосовое сообщение]"
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("🔨 Бан навсегда", callback_data=f"repadm:ok:{report_id}"),
             InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
@@ -2534,7 +2546,7 @@ async def process_report_reason(update, context):
         )
     else:
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("🔨 Бан 30 дн.", callback_data=f"repadm:ok:{report_id}"),
             InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
@@ -2564,17 +2576,24 @@ async def on_report_admin_decision(update, context):
             await query.edit_message_text(t("cant_ban_staff"))
             return
         until = (now_dt() + timedelta(days=BAN_DAYS)).isoformat()
+        is_anon = report["context"] == "anon"
+        if is_anon:
+            until = ANON_BAN_FOREVER          # анонимка → бан навсегда (попарно)
+        else:
+            until = (now_dt() + timedelta(days=ROULETTE_BAN_DAYS)).isoformat()  # рулетка → месяц
         conn.execute(
             "INSERT INTO bans (owner_id, banned_id, until, created_at) VALUES (?, ?, ?, ?)",
             (report["reporter_id"], report["reported_id"], until, now_iso()),
         )
         conn.execute("UPDATE reports SET status='confirmed' WHERE id=?", (report_id,))
         conn.commit()
+        # Уведомляем жалобщика (на его языке)
         try:
             _sl = cur_lang()
             set_cur_lang(get_lang(report["reporter_id"]))
             await context.bot.send_message(
-                report["reporter_id"], t("report_confirmed_user", days=BAN_DAYS)
+                report["reporter_id"],
+                t("report_confirmed_forever") if is_anon else t("report_confirmed_user", days=ROULETTE_BAN_DAYS),
             )
             set_cur_lang(_sl)
         except TelegramError:
@@ -2583,7 +2602,10 @@ async def on_report_admin_decision(update, context):
         try:
             _sl2 = cur_lang()
             set_cur_lang(get_lang(report["reported_id"]))
-            await context.bot.send_message(report["reported_id"], t("you_were_banned", days=BAN_DAYS))
+            await context.bot.send_message(
+                report["reported_id"],
+                t("you_were_banned_forever") if is_anon else t("you_were_banned", days=ROULETTE_BAN_DAYS),
+            )
             set_cur_lang(_sl2)
         except TelegramError:
             pass
@@ -3545,8 +3567,9 @@ async def show_pending_reports(update, context):
             body = f"🚩 Жалоба #{r['id']} (анон)\nПричина: {r['reason']}\nСодержание: {preview}"
         else:
             body = f"🚩 Жалоба #{r['id']} (рулетка)\nПричина: {r['reason']}"
+        ban_label = "🔨 Бан навсегда" if r["context"] == "anon" else "🔨 Бан 30 дн."
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{r['id']}"),
+            InlineKeyboardButton(ban_label, callback_data=f"repadm:ok:{r['id']}"),
             InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{r['id']}"),
         ]])
         await context.bot.send_message(update.effective_chat.id, body, reply_markup=kb)
