@@ -1349,7 +1349,7 @@ T = {
         "ru": (
             "👋 <b>Привет, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "Добро пожаловать в <b>NextUz</b> 💙\n"
+            "Добро пожаловать в <b>👾 NEXT — Анонимный Чат</b> 💙\n"
             "<i>Место, где тебе пишут анонимно — а ты пишешь кому угодно.</i>\n\n"
             "<blockquote>🔗 Анонимные вопросы и валентинки по твоей ссылке\n"
             "🎲 Чат-рулетка — собеседник по выбранному полу\n"
@@ -1359,7 +1359,7 @@ T = {
         "uz": (
             "👋 <b>Salom, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>NextUz</b> ga xush kelibsiz 💙\n"
+            "<b>👾 NEXT — Anonim Chat</b>ga xush kelibsiz 💙\n"
             "<i>Bu yerda sizga anonim yozishadi — siz esa istalgan kishiga.</i>\n\n"
             "<blockquote>🔗 Havolangiz orqali anonim savol va valentinkalar\n"
             "🎲 Chat-ruletka — tanlangan jins bo'yicha suhbatdosh\n"
@@ -1369,7 +1369,7 @@ T = {
         "en": (
             "👋 <b>Hi, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "Welcome to <b>NextUz</b> 💙\n"
+            "Welcome to <b>👾 NEXT — Anonymous Chat</b> 💙\n"
             "<i>A place where people message you anonymously — and you message anyone.</i>\n\n"
             "<blockquote>🔗 Anonymous questions and valentines via your link\n"
             "🎲 Chat roulette — a partner by the chosen gender\n"
@@ -1379,7 +1379,7 @@ T = {
     },
     "help": {
         "ru": (
-            "ℹ️ <b>О боте NextUz</b> 💙\n"
+            "ℹ️ <b>👾 NEXT — Анонимный Чат</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Анонимные сообщения, тайные признания и живое общение — в одном месте.</i>\n\n"
             "✨ <b>Основные разделы:</b>\n"
@@ -1404,7 +1404,7 @@ T = {
             "💬 <i>Выбери раздел в меню ниже 👇</i>"
         ),
         "uz": (
-            "ℹ️ <b>NextUz boti haqida</b> 💙\n"
+            "ℹ️ <b>👾 NEXT — Anonim Chat</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonim xabarlar, sirli e'tiroflar va jonli muloqot — bir joyda.</i>\n\n"
             "✨ <b>Asosiy bo'limlar:</b>\n"
@@ -1429,7 +1429,7 @@ T = {
             "💬 <i>Quyidagi menyudan bo'limni tanlang 👇</i>"
         ),
         "en": (
-            "ℹ️ <b>About NextUz bot</b> 💙\n"
+            "ℹ️ <b>👾 NEXT — Anonymous Chat</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonymous messages, secret confessions and live chatting — all in one place.</i>\n\n"
             "✨ <b>Main sections:</b>\n"
