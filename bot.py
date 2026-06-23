@@ -9,6 +9,7 @@ import logging
 import random
 import re
 import string
+import urllib.parse
 import html
 import asyncio
 import threading
@@ -865,14 +866,24 @@ T = {
         "en": "🔗 <b>«My link» section</b>\n\nChoose an action 👇",
     },
     "link_show": {
-        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<blockquote>{link}</blockquote><i>Делитесь ей — вам будут писать анонимно</i> 💌",
-        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<blockquote>{link}</blockquote><i>Uni ulashing — sizga anonim yozishadi</i> 💌",
-        "en": "🔗 <b>Your personal link:</b>\n<blockquote>{link}</blockquote><i>Share it — people will message you anonymously</i> 💌",
+        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<blockquote>{link}</blockquote>📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
+        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<blockquote>{link}</blockquote>📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
+        "en": "🔗 <b>Your personal link:</b>\n<blockquote>{link}</blockquote>📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
     },
     "link_done": {
-        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<blockquote>{link}</blockquote>",
-        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<blockquote>{link}</blockquote>",
-        "en": "✅ <b>Done! Your link:</b>\n<blockquote>{link}</blockquote>",
+        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<blockquote>{link}</blockquote>📤 Нажми «Поделиться», чтобы отправить её 💌",
+        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<blockquote>{link}</blockquote>📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
+        "en": "✅ <b>Done! Your link:</b>\n<blockquote>{link}</blockquote>📤 Tap «Share» to send it 💌",
+    },
+    "btn_share": {
+        "ru": "📤 Поделиться",
+        "uz": "📤 Ulashish",
+        "en": "📤 Share",
+    },
+    "share_text": {
+        "ru": "Напиши мне что-нибудь анонимно 👀",
+        "uz": "Menga anonim biror narsa yozing 👀",
+        "en": "Send me something anonymously 👀",
     },
     # === Анонимка (доп.) ===
     "anon_cancelled_menu": {
@@ -2037,6 +2048,13 @@ def valid_link_code(code: str) -> bool:
     return 1 <= len(code) <= 10 and all(c in LINK_ALPHABET for c in code)
 
 
+def share_kb(link, text):
+    """Инлайн-кнопка «Поделиться» — открывает в Telegram выбор чата для пересылки ссылки."""
+    share_url = ("https://t.me/share/url?url=" + urllib.parse.quote(link, safe="")
+                 + "&text=" + urllib.parse.quote(text, safe=""))
+    return InlineKeyboardMarkup([[InlineKeyboardButton(t("btn_share"), url=share_url)]])
+
+
 def can_change_link(user_row):
     if is_vip(user_row):
         return True, None
@@ -2086,11 +2104,11 @@ async def show_my_link(update, context):
         )
         return
     bot_username = (await context.bot.get_me()).username
-    link = f"t.me/{bot_username}?start={user['custom_link']}"
+    link = f"https://t.me/{bot_username}?start={user['custom_link']}"
     await update.message.reply_text(
         t("link_show", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=link_menu_kb(),
+        reply_markup=share_kb(link, t("share_text")),
     )
 
 
@@ -2130,12 +2148,13 @@ async def process_link_code(update, context, code):
     conn.commit()
     context.user_data["state"] = "link_menu"
     bot_username = (await context.bot.get_me()).username
-    link = f"t.me/{bot_username}?start={code}"
+    link = f"https://t.me/{bot_username}?start={code}"
     await update.message.reply_text(
         t("link_done", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=link_menu_kb(),
+        reply_markup=share_kb(link, t("share_text")),
     )
+    await update.message.reply_text(t("link_menu"), reply_markup=link_menu_kb())
 
 
 async def handle_incoming_link(update, context, code):
