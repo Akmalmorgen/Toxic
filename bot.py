@@ -1906,6 +1906,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_banned(user):
         await update.message.reply_text(t("banned"))
         return
+    # Уведомляем персонал о новом пользователе
+    if not existed:
+        await notify_staff(
+            context,
+            f"🆕 Новый пользователь: {user_mention(user)}",
+            parse_mode="HTML",
+        )
     await grant_daily_bonus(tg_user.id, context)
     args = context.args
 
@@ -2564,6 +2571,14 @@ async def on_report_admin_decision(update, context):
             set_cur_lang(_sl)
         except TelegramError:
             pass
+        # Уведомляем весь персонал о бане
+        banned_user = get_user(report["reported_id"])
+        await notify_staff(
+            context,
+            f"🔨 Пользователь {user_mention(banned_user)} заблокирован на {BAN_DAYS} дн.\n"
+            f"По жалобе #{report_id} · причина: {report['reason']}",
+            parse_mode="HTML",
+        )
         await query.edit_message_text(t("report_confirmed_staff"))
     else:
         conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
@@ -3470,6 +3485,7 @@ async def process_ban(update, context):
     new_val = 0 if u["is_banned"] else 1
     conn.execute("UPDATE users SET is_banned=? WHERE tg_id=?", (new_val, target))
     conn.commit()
+    actor = get_user(update.effective_user.id)
     if new_val:
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
         conn.commit()
@@ -3478,12 +3494,22 @@ async def process_ban(update, context):
         except TelegramError:
             pass
         await update.message.reply_text(f"🔨 Пользователь {target} забанен.", reply_markup=back_kb)
+        await notify_staff(
+            context,
+            f"🔨 {user_mention(actor)} заблокировал пользователя {user_mention(u)}.",
+            parse_mode="HTML",
+        )
     else:
         try:
             await context.bot.send_message(target, "✅ Вы разблокированы.", reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
         await update.message.reply_text(f"♻️ Пользователь {target} разбанен.", reply_markup=back_kb)
+        await notify_staff(
+            context,
+            f"♻️ {user_mention(actor)} разблокировал пользователя {user_mention(u)}.",
+            parse_mode="HTML",
+        )
     context.user_data["state"] = back_state
 
 
@@ -4230,6 +4256,12 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     new_status = cm.new_chat_member.status
     uid = cm.from_user.id
     if new_status in ("kicked", "banned"):
+        # Уведомляем персонал, что пользователь заблокировал бота
+        await notify_staff(
+            context,
+            f"🚫 Пользователь {user_mention(get_user(uid))} заблокировал бота.",
+            parse_mode="HTML",
+        )
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=1", (uid,)).fetchone()
         if ref:
             conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (ref["coins_awarded"], ref["referrer_id"]))
@@ -4247,6 +4279,12 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except TelegramError:
                 pass
     elif new_status == "member":
+        # Уведомляем персонал, что пользователь разблокировал/вернул бота
+        await notify_staff(
+            context,
+            f"✅ Пользователь {user_mention(get_user(uid))} разблокировал бота.",
+            parse_mode="HTML",
+        )
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=0", (uid,)).fetchone()
         if ref:
             conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (ref["coins_awarded"], ref["referrer_id"]))
