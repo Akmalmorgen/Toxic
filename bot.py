@@ -559,7 +559,15 @@ def user_mention(user_row):
 
 
 def is_vip(user_row):
-    if not user_row or not user_row["vip_until"]:
+    if not user_row:
+        return False
+    # Админы и модеры — VIP навсегда, без ограничений
+    try:
+        if is_admin(user_row["tg_id"]) or is_moder(user_row):
+            return True
+    except (KeyError, TypeError):
+        pass
+    if not user_row["vip_until"]:
         return False
     try:
         return datetime.fromisoformat(user_row["vip_until"]) > now_dt()
@@ -569,6 +577,20 @@ def is_vip(user_row):
 
 def is_admin(tg_id):
     return tg_id in ADMIN_IDS
+
+
+def is_unlimited(user_row):
+    """Админ или модер — безлимитный аккаунт: бесконечные коины, VIP навсегда, без лимитов."""
+    if not user_row:
+        return False
+    try:
+        return is_admin(user_row["tg_id"]) or is_moder(user_row)
+    except (KeyError, TypeError):
+        return False
+
+
+# Условный «бесконечный» баланс для отображения у админа/модера
+UNLIMITED_COINS = 10 ** 9
 
 
 def gender_label(code):
@@ -587,7 +609,9 @@ def pref_label(code):
 
 
 def effective_price(price, user_row):
-    """Цена с учётом VIP-скидки."""
+    """Цена с учётом VIP-скидки. Для админа/модера — всё бесплатно (бесконечные коины)."""
+    if is_unlimited(user_row):
+        return 0
     if is_vip(user_row):
         return max(0, round(price * (100 - VIP_DISCOUNT_PERCENT) / 100))
     return price
@@ -869,6 +893,11 @@ T = {
         "ru": "до {date} 👑",
         "uz": "{date} gacha 👑",
         "en": "until {date} 👑",
+    },
+    "vip_forever": {
+        "ru": "навсегда 👑",
+        "uz": "abadiy 👑",
+        "en": "forever 👑",
     },
     # === Рулетка (доп.) ===
     "roulette_who": {
@@ -2552,14 +2581,20 @@ async def on_report_admin_decision(update, context):
 
 async def show_profile(update, context):
     user = get_user(update.effective_user.id)
-    vip_status = t("vip_none")
-    if is_vip(user):
+    if is_unlimited(user):
+        vip_status = t("vip_forever")
+        coins_display = "∞"
+    elif is_vip(user):
         vip_status = t("vip_until", date=user['vip_until'][:10])
+        coins_display = user['coins']
+    else:
+        vip_status = t("vip_none")
+        coins_display = user['coins']
     text = t(
         "profile_full",
         gender=gender_label(user['gender']),
         pref=pref_label(user['search_pref']) if user['search_pref'] else t("vip_none"),
-        coins=user['coins'],
+        coins=coins_display,
         vip=vip_status,
     )
     await clean_screen(update, context)
@@ -2958,16 +2993,12 @@ async def do_purchase(update, context, item):
     conn.commit()
     user = get_user(uid)
     discount_note = f" (со скидкой VIP, обычно {item['price']})" if price != item["price"] else ""
-    for admin_id in ADMIN_IDS:
-        try:
-            await context.bot.send_message(
-                admin_id,
-                f"💰 Покупка!\nПользователь: {user_mention(user)}\n"
-                f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎{discount_note}",
-                parse_mode="HTML",
-            )
-        except TelegramError:
-            pass
+    await notify_staff(
+        context,
+        f"💰 Покупка!\nПользователь: {user_mention(user)}\n"
+        f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎{discount_note}",
+        parse_mode="HTML",
+    )
     rt = item["reward_type"] or "manual"
     if rt == "manual" and item["is_vip"]:
         rt = "vip"
@@ -3503,14 +3534,14 @@ async def show_pending_reports(update, context):
         await context.bot.send_message(update.effective_chat.id, body, reply_markup=kb)
 
 
-async def notify_staff(context, text, reply_markup=None):
+async def notify_staff(context, text, reply_markup=None, parse_mode=None):
     """Уведомление всем админам и модерам."""
     targets = set(ADMIN_IDS)
     for r in conn.execute("SELECT tg_id FROM users WHERE is_moder=1").fetchall():
         targets.add(r["tg_id"])
     for tid in targets:
         try:
-            await context.bot.send_message(tid, text, reply_markup=reply_markup)
+            await context.bot.send_message(tid, text, reply_markup=reply_markup, parse_mode=parse_mode)
         except TelegramError:
             pass
 
@@ -3906,6 +3937,16 @@ async def on_precheckout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # Кнопка «Узнать кто» — спрашивает подтверждение перед оплатой
+def reveal_sender_text(row):
+    """Формирует текст с данными отправителя анонимного сообщения."""
+    sender = get_user(row["from_id"])
+    if not sender:
+        return None
+    name = sender["first_name"] or "—"
+    uname = f"@{sender['username']}" if sender["username"] else f"<a href='tg://user?id={sender['tg_id']}'>{t('reveal_profile_link')}</a>"
+    return t("reveal_result", name=html.escape(name), uname=uname, tid=sender["tg_id"])
+
+
 async def on_reveal_button(update, context):
     query = update.callback_query
     await query.answer()
@@ -3916,6 +3957,14 @@ async def on_reveal_button(update, context):
         return
     if query.from_user.id != row["to_id"]:
         await query.answer(t("reveal_only_recipient"), show_alert=True)
+        return
+    # Админ/модер раскрывают бесплатно и сразу, без оплаты
+    if is_unlimited(get_user(query.from_user.id)):
+        await context.bot.send_message(
+            query.from_user.id,
+            reveal_sender_text(row) or t("anon_not_found"),
+            parse_mode="HTML",
+        )
         return
     # Подтверждение покупки
     kb = InlineKeyboardMarkup([
@@ -3972,16 +4021,8 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         if not row:
             await update.message.reply_text(t("msg_not_found"))
             return
-        sender = get_user(row["from_id"])
-        if sender:
-            name = sender["first_name"] or "—"
-            uname = f"@{sender['username']}" if sender["username"] else f"<a href='tg://user?id={sender['tg_id']}'>{t('reveal_profile_link')}</a>"
-            await update.message.reply_text(
-                t("reveal_result", name=html.escape(name), uname=uname, tid=sender["tg_id"]),
-                parse_mode="HTML",
-            )
-        else:
-            await update.message.reply_text(t("anon_not_found"))
+        txt = reveal_sender_text(row)
+        await update.message.reply_text(txt or t("anon_not_found"), parse_mode="HTML")
         return
 
     # Оплата покупки коинов за Stars
@@ -4001,16 +4042,12 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         parse_mode="HTML", reply_markup=main_menu_kb(uid),
     )
     user = get_user(uid)
-    for aid in ADMIN_IDS:
-        try:
-            await context.bot.send_message(
-                aid,
-                f"⭐ Покупка коинов!\n{user_mention(user)}\n"
-                f"Пакет: {html.escape(pkg['title']) if pkg else '-'}\nКоинов: {coins} / Звёзд: {sp.total_amount}",
-                parse_mode="HTML",
-            )
-        except TelegramError:
-            pass
+    await notify_staff(
+        context,
+        f"⭐ Покупка коинов!\n{user_mention(user)}\n"
+        f"Пакет: {html.escape(pkg['title']) if pkg else '-'}\nКоинов: {coins} / Звёзд: {sp.total_amount}",
+        parse_mode="HTML",
+    )
 
 
 # ── Админ: управление пакетами коинов за Stars ──
