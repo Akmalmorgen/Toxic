@@ -912,14 +912,14 @@ T = {
         "en": "Looking for a new partner...",
     },
     "btn_next": {
-        "ru": "› Далее",
-        "uz": "› Keyingi",
-        "en": "› Next",
+        "ru": "➡️ Далее",
+        "uz": "➡️ Keyingi",
+        "en": "➡️ Next",
     },
     "btn_stop": {
-        "ru": "□ Стоп",
-        "uz": "□ To'xtatish",
-        "en": "□ Stop",
+        "ru": "⏹️ Стоп",
+        "uz": "⏹️ To'xtatish",
+        "en": "⏹️ Stop",
     },
     "btn_new_search": {
         "ru": "🔍 Новый поиск",
@@ -1192,14 +1192,14 @@ T = {
         "en": "profile",
     },
     "btn_reveal_yes": {
-        "ru": "⟡ Да, раскрыть · 1 Star ⟡",
-        "uz": "⟡ Ha, aniqlash · 1 Star ⟡",
-        "en": "⟡ Yes, reveal · 1 Star ⟡",
+        "ru": "👁️ Да, раскрыть · 1 ⭐",
+        "uz": "👁️ Ha, aniqlash · 1 ⭐",
+        "en": "👁️ Yes, reveal · 1 ⭐",
     },
     "btn_cancel_accent": {
-        "ru": "« Отмена »",
-        "uz": "« Bekor qilish »",
-        "en": "« Cancel »",
+        "ru": "✖️ Отмена",
+        "uz": "✖️ Bekor qilish",
+        "en": "✖️ Cancel",
     },
 
 
@@ -1253,29 +1253,29 @@ T = {
         "en": "📎 media",
     },
     "btn_reply": {
-        "ru": "› Ответить",
-        "uz": "› Javob berish",
-        "en": "› Reply",
+        "ru": "💬 Ответить",
+        "uz": "💬 Javob berish",
+        "en": "💬 Reply",
     },
     "btn_report": {
-        "ru": "› Жалоба",
-        "uz": "› Shikoyat",
-        "en": "› Report",
+        "ru": "🚩 Пожаловаться",
+        "uz": "🚩 Shikoyat",
+        "en": "🚩 Report",
     },
     "btn_reveal": {
-        "ru": "⟡ Узнать кто · 1 Star ⟡",
-        "uz": "⟡ Kim ekanini bilish · 1 Star ⟡",
-        "en": "⟡ Reveal who · 1 Star ⟡",
+        "ru": "👁️ Узнать кто · 1 ⭐",
+        "uz": "👁️ Kim ekan? · 1 ⭐",
+        "en": "👁️ Reveal who · 1 ⭐",
     },
     "btn_delete": {
-        "ru": "∆ Удалить",
-        "uz": "∆ O'chirish",
-        "en": "∆ Delete",
+        "ru": "🗑️ Удалить",
+        "uz": "🗑️ O'chirish",
+        "en": "🗑️ Delete",
     },
     "btn_subscribed": {
-        "ru": "› Я подписался",
-        "uz": "› Obuna bo'ldim",
-        "en": "› I subscribed",
+        "ru": "✅ Я подписался",
+        "uz": "✅ Obuna bo'ldim",
+        "en": "✅ I subscribed",
     },
     "anon_formats_vip": {
         "ru": ", фото, стикеры, гиф, видео",
@@ -1781,8 +1781,8 @@ def moder_menu_kb():
 
 def moder_decision_kb(app_id):
     return InlineKeyboardMarkup([[
-        InlineKeyboardButton("› Выдать", callback_data=f"modapp:ok:{app_id}"),
-        InlineKeyboardButton("« Отказ »", callback_data=f"modapp:no:{app_id}"),
+        InlineKeyboardButton("✅ Выдать", callback_data=f"modapp:ok:{app_id}"),
+        InlineKeyboardButton("❌ Отказ", callback_data=f"modapp:no:{app_id}"),
     ]])
 
 
@@ -2484,8 +2484,8 @@ async def process_report_reason(update, context):
         msg = conn.execute("SELECT * FROM anon_messages WHERE id=?", (ref_id,)).fetchone()
         content_preview = msg["text"] if msg["content_type"] == "text" else "[голосовое сообщение]"
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("› Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("« Отклонить »", callback_data=f"repadm:no:{report_id}"),
+            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
             context,
@@ -2496,8 +2496,8 @@ async def process_report_reason(update, context):
         )
     else:
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("› Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("« Отклонить »", callback_data=f"repadm:no:{report_id}"),
+            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{report_id}"),
         ]])
         await notify_staff(
             context,
@@ -3497,7 +3497,7 @@ async def show_pending_reports(update, context):
         else:
             body = f"🚩 Жалоба #{r['id']} (рулетка)\nПричина: {r['reason']}"
         kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("✅ Бан 7 дн.", callback_data=f"repadm:ok:{r['id']}"),
+            InlineKeyboardButton("🔨 Бан 7 дн.", callback_data=f"repadm:ok:{r['id']}"),
             InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{r['id']}"),
         ]])
         await context.bot.send_message(update.effective_chat.id, body, reply_markup=kb)
