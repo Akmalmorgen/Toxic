@@ -2156,11 +2156,11 @@ async def show_my_link(update, context):
         )
         return
     bot_username = (await context.bot.get_me()).username
-    link = f"https://t.me/{bot_username}?start={user['custom_link']}"
+    link = f"t.me/{bot_username}?start={user['custom_link']}"
     await update.message.reply_text(
         t("link_show", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=share_kb(link, t("share_text")),
+        reply_markup=share_kb(f"https://{link}", t("share_text")),
     )
 
 
@@ -2200,11 +2200,11 @@ async def process_link_code(update, context, code):
     conn.commit()
     context.user_data["state"] = "link_menu"
     bot_username = (await context.bot.get_me()).username
-    link = f"https://t.me/{bot_username}?start={code}"
+    link = f"t.me/{bot_username}?start={code}"
     await update.message.reply_text(
         t("link_done", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=share_kb(link, t("share_text")),
+        reply_markup=share_kb(f"https://{link}", t("share_text")),
     )
     await update.message.reply_text(t("link_menu"), reply_markup=link_menu_kb())
 
