@@ -1972,20 +1972,6 @@ async def set_gender_from_text(update, context):
 
 
 
-async def on_gender_set(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    gender = query.data.split(":")[1]
-    conn.execute("UPDATE users SET gender=? WHERE tg_id=?", (gender, query.from_user.id))
-    conn.commit()
-    await query.edit_message_text(t("gender_set_short", g=gender_label(gender)))
-    await context.bot.send_message(
-        chat_id=query.from_user.id,
-        text=t("main_menu"),
-        reply_markup=main_menu_kb(query.from_user.id),
-    )
-
-
 async def on_back_main(update, context):
     query = update.callback_query
     await query.answer()
@@ -2651,14 +2637,6 @@ async def profile_router(update, context):
         await send_menu(update, context, t("choose_new_gender"), gender_kb(with_back=True))
         return
     await context.bot.send_message(update.effective_chat.id, t("choose_action"), reply_markup=profile_kb())
-
-
-def roulette_pref_kb():
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton("👨 Парня", callback_data="rpref:m"),
-        InlineKeyboardButton("👩 Девушку", callback_data="rpref:f"),
-        InlineKeyboardButton("🤷 Любого", callback_data="rpref:any"),
-    ]])
 
 
 def searching_kb():
@@ -3643,38 +3621,6 @@ async def process_bcast_audience_text(update, context):
 
 
 
-async def on_adm_stats(update, context):
-    query = update.callback_query
-    await query.answer()
-    users_count = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-    msgs_count = conn.execute("SELECT COUNT(*) c FROM anon_messages").fetchone()["c"]
-    sessions_count = conn.execute("SELECT COUNT(*) c FROM roulette_sessions").fetchone()["c"]
-    vip_count = conn.execute("SELECT COUNT(*) c FROM users WHERE vip_until>?", (now_iso(),)).fetchone()["c"]
-    await query.message.reply_text(
-        f"📊 Статистика:\nПользователей: {users_count}\nАнон-сообщений: {msgs_count}\n"
-        f"Сессий рулетки: {sessions_count}\nVIP сейчас: {vip_count}"
-    )
-
-
-async def on_adm_export(update, context):
-    query = update.callback_query
-    await query.answer()
-    rows = conn.execute("SELECT tg_id, username, gender FROM users").fetchall()
-    path = os.path.join(os.path.dirname(__file__), "users_export.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        for r in rows:
-            f.write(f"id={r['tg_id']} | username=@{r['username']} | gender={r['gender']}\n")
-    with open(path, "rb") as f:
-        await context.bot.send_document(query.from_user.id, document=f)
-
-
-async def on_adm_coins(update, context):
-    query = update.callback_query
-    await query.answer()
-    context.user_data["state"] = "adm_coins_id"
-    await query.message.reply_text("Введи tg_id пользователя:")
-
-
 async def process_adm_coins_wizard(update, context):
     state = context.user_data["state"]
     text = canon(update.message.text.strip())
@@ -3707,25 +3653,6 @@ async def process_adm_coins_wizard(update, context):
 
 
 
-async def on_adm_channels(update, context):
-    query = update.callback_query
-    await query.answer()
-    channels = await get_mandatory_channels()
-    text = "Обязательные каналы:\n" + ("\n".join(c["chat_username"] for c in channels) or "(пусто)")
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton("➕ Добавить канал", callback_data="adm_channel_add")],
-        [InlineKeyboardButton("⬅️ Назад", callback_data="admin_menu")]
-    ])
-    await query.message.reply_text(text, reply_markup=kb)
-
-
-async def on_adm_channel_add(update, context):
-    query = update.callback_query
-    await query.answer()
-    context.user_data["state"] = "adm_channel_add"
-    await query.message.reply_text("Пришли @username канала:")
-
-
 async def process_adm_channel_wizard(update, context):
     username = update.message.text.strip()
     if username == "❌ Отмена":
@@ -3736,30 +3663,6 @@ async def process_adm_channel_wizard(update, context):
     conn.commit()
     context.user_data["state"] = None
     await update.message.reply_text(f"Канал {username} добавлен ✅", reply_markup=admin_menu_kb())
-
-
-async def on_admin_menu_callback(update, context):
-    query = update.callback_query
-    await query.answer()
-    await try_delete_message(context, query.message.chat_id, query.message.message_id)
-    class FakeMessage:
-        def __init__(self, chat_id, user_id):
-            self.chat_id = chat_id
-            self.message_id = None
-    class FakeUpdate:
-        def __init__(self, user_id, chat_id):
-            self.effective_user = type('User', (), {'id': user_id})()
-            self.message = FakeMessage(chat_id, user_id)
-    fake_update = FakeUpdate(query.from_user.id, query.message.chat_id)
-    await show_admin_menu(fake_update, context)
-
-
-async def on_adm_ad(update, context):
-    query = update.callback_query
-    await query.answer()
-    context.user_data["state"] = "adm_ad_text"
-    context.user_data["ad"] = {}
-    await query.message.reply_text("Текст рекламы:")
 
 
 async def process_adm_ad_wizard(update, context):
@@ -3843,26 +3746,6 @@ def save_ad(ad):
         (ad.get("text"), ad.get("button_text"), ad.get("button_url")),
     )
     conn.commit()
-
-
-async def on_adm_broadcast(update, context):
-    query = update.callback_query
-    await query.answer()
-    kb = InlineKeyboardMarkup([[
-        InlineKeyboardButton("Всем", callback_data="bcast_aud:all"),
-        InlineKeyboardButton("Мужчинам", callback_data="bcast_aud:m"),
-        InlineKeyboardButton("Женщинам", callback_data="bcast_aud:f"),
-    ]])
-    await query.message.reply_text("Кому отправить рассылку?", reply_markup=kb)
-
-
-async def on_bcast_audience(update, context):
-    query = update.callback_query
-    await query.answer()
-    aud = query.data.split(":")[1]
-    context.user_data["state"] = "adm_bcast_content"
-    context.user_data["bcast_aud"] = aud
-    await query.message.reply_text("Отправь сообщение для рассылки (текст/фото/голосовое):")
 
 
 async def process_bcast_content(update, context):
