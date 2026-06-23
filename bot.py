@@ -1349,7 +1349,7 @@ T = {
         "ru": (
             "👋 <b>Привет, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "👾 <b>𝗡𝗲𝘅𝘁</b> — это анонимность без границ.\n"
+            "👾 <b>𝗡𝗘𝗫𝗧</b> — это анонимность без границ.\n"
             "<i>Тебе пишут тайно, а ты отвечаешь кому угодно.</i>\n\n"
             "<blockquote>🔗 Личная ссылка для анонимок\n"
             "🎲 Чат-рулетка по интересам\n"
@@ -1359,7 +1359,7 @@ T = {
         "uz": (
             "👋 <b>Salom, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "👾 <b>𝗡𝗲𝘅𝘁</b> — chegarasiz anonimlik.\n"
+            "👾 <b>𝗡𝗘𝗫𝗧</b> — chegarasiz anonimlik.\n"
             "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz.</i>\n\n"
             "<blockquote>🔗 Anonim xabarlar uchun shaxsiy havola\n"
             "🎲 Qiziqish bo'yicha chat-ruletka\n"
@@ -1369,7 +1369,7 @@ T = {
         "en": (
             "👋 <b>Hi, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "👾 <b>𝗡𝗲𝘅𝘁</b> — anonymity without limits.\n"
+            "👾 <b>𝗡𝗘𝗫𝗧</b> — anonymity without limits.\n"
             "<i>People message you secretly, and you reply to anyone.</i>\n\n"
             "<blockquote>🔗 Personal link for anonymous messages\n"
             "🎲 Chat roulette by interest\n"
@@ -1379,7 +1379,7 @@ T = {
     },
     "help": {
         "ru": (
-            "ℹ️ <b>👾 𝗡𝗲𝘅𝘁</b> 💙\n"
+            "ℹ️ <b>👾 𝗡𝗘𝗫𝗧</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Анонимные сообщения, тайные признания и живое общение — в одном месте.</i>\n\n"
             "✨ <b>Основные разделы:</b>\n"
@@ -1404,7 +1404,7 @@ T = {
             "💬 <i>Выбери раздел в меню ниже 👇</i>"
         ),
         "uz": (
-            "ℹ️ <b>👾 𝗡𝗲𝘅𝘁</b> 💙\n"
+            "ℹ️ <b>👾 𝗡𝗘𝗫𝗧</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonim xabarlar, sirli e'tiroflar va jonli muloqot — bir joyda.</i>\n\n"
             "✨ <b>Asosiy bo'limlar:</b>\n"
@@ -1429,7 +1429,7 @@ T = {
             "💬 <i>Quyidagi menyudan bo'limni tanlang 👇</i>"
         ),
         "en": (
-            "ℹ️ <b>👾 𝗡𝗲𝘅𝘁</b> 💙\n"
+            "ℹ️ <b>👾 𝗡𝗘𝗫𝗧</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonymous messages, secret confessions and live chatting — all in one place.</i>\n\n"
             "✨ <b>Main sections:</b>\n"
