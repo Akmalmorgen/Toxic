@@ -716,6 +716,10 @@ BTN = {
     "💎 Сумма коинов": ("💎 Coin miqdori", "💎 Coin amount"),
     "🏆 Топ пригласивших": ("🏆 Top taklif qilganlar", "🏆 Top inviters"),
     "⛔ Отменить поиск": ("⛔ Qidiruvni bekor qilish", "⛔ Stop search"),
+    "➡️ Далее": ("➡️ Keyingi", "➡️ Next"),
+    "⏹️ Стоп": ("⏹️ To'xtatish", "⏹️ Stop"),
+    "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
+    "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
     "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
 }
 # Обратная карта: метка на любом языке -> каноническая русская метка
@@ -2717,18 +2721,18 @@ def bcast_audience_kb():
 
 
 def in_chat_kb():
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton(t("btn_next"), callback_data="roulette_next"),
-        InlineKeyboardButton(t("btn_stop"), callback_data="roulette_stop"),
-    ]])
+    """Reply-клавиатура управления чатом — закреплена ВНИЗУ экрана (не уезжает с перепиской)."""
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("➡️ Далее"), KeyboardButton("⏹️ Стоп")],
+    ], resize_keyboard=True))
 
 
-def left_chat_kb(session_id):
-    """Панель после того, как собеседник покинул чат: новый поиск + жалоба."""
-    return InlineKeyboardMarkup([[
-        InlineKeyboardButton(t("btn_new_search"), callback_data="roulette_research"),
-        InlineKeyboardButton(t("btn_complain"), callback_data=f"rrep:{session_id}"),
-    ]])
+def left_chat_kb():
+    """Reply-клавиатура после ухода собеседника: новый поиск / жалоба / меню."""
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("🔍 Новый поиск")],
+        [KeyboardButton("🚩 Пожаловаться"), KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
 
 
 def get_active_session(user_id):
@@ -2744,8 +2748,8 @@ async def show_roulette_entry(update, context):
     active = get_active_session(user["tg_id"])
     await clean_screen(update, context)
     if active:
-        sent = await context.bot.send_message(update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb())
-        UD[user["tg_id"]]["roulette_msg_id"] = sent.message_id
+        UD[user["tg_id"]]["state"] = "rchat"
+        await context.bot.send_message(update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb())
         return
     in_queue = conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (user["tg_id"],)).fetchone()
     if in_queue:
@@ -2823,9 +2827,8 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
                 matched_ids.add(b["user_id"])
                 for uid in (a["user_id"], b["user_id"]):
                     try:
-                        sent = await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
-                        # Запоминаем id «панели чата», чтобы потом отредактировать её
-                        UD[uid]["roulette_msg_id"] = sent.message_id
+                        await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                        UD[uid]["state"] = "rchat"   # в чате — кнопки управления внизу
                     except TelegramError:
                         pass
                 break
@@ -2841,31 +2844,15 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
         (ender_id, now_iso(), session["id"]),
     )
     conn.commit()
-    # Второму участнику: меняем его «панель чата» на сообщение «собеседник ушёл»
-    # с кнопками «Новый поиск» и «Пожаловаться» — без спама новыми сообщениями.
-    # Рендерим на ЕГО языке.
+    # Второму участнику: сообщение «собеседник ушёл» + reply-клавиатура снизу (на его языке)
+    UD[other_id]["state"] = "rleft"
+    UD[other_id]["last_session"] = session["id"]
     _sl = cur_lang()
     set_cur_lang(get_lang(other_id))
-    kb = left_chat_kb(session["id"])
-    other_msg_id = UD[other_id].get("roulette_msg_id")
-    edited = False
-    if other_msg_id:
-        try:
-            await context.bot.edit_message_text(
-                text=t("roulette_left"),
-                chat_id=other_id,
-                message_id=other_msg_id,
-                reply_markup=kb,
-            )
-            edited = True
-        except TelegramError:
-            pass
-    if not edited:
-        try:
-            sent = await context.bot.send_message(other_id, t("roulette_left"), reply_markup=kb)
-            UD[other_id]["roulette_msg_id"] = sent.message_id
-        except TelegramError:
-            pass
+    try:
+        await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
+    except TelegramError:
+        pass
     set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
@@ -2887,56 +2874,57 @@ async def _requeue_and_search(context, uid):
         (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
     )
     conn.commit()
+    UD[uid]["state"] = None
     await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
 
 
-async def on_roulette_next(update, context):
-    query = update.callback_query
-    await query.answer(t("roulette_searching_new"))
-    # Убираем кнопки с нажатой панели, чтобы по ней нельзя было кликать повторно
-    try:
-        await query.edit_message_text(t("roulette_chat_ended"))
-    except TelegramError:
-        pass
-    await end_roulette_session(context, query.from_user.id, requeue_ender=True)
-    # Новая панель чата появится при следующем матче; пока показываем reply-клаву отмены
-    await _requeue_and_search(context, query.from_user.id)
+# ── Управление чат-рулеткой через reply-кнопки (снизу) ──
 
-
-async def on_roulette_stop(update, context):
-    query = update.callback_query
-    await query.answer(t("roulette_chat_stopped"))
-    # Убираем кнопки с панели завершённого чата
-    try:
-        await query.edit_message_text(t("roulette_chat_stopped"))
-    except TelegramError:
-        pass
-    await end_roulette_session(context, query.from_user.id, requeue_ender=False)
-    # Сам нажал «Стоп» → возвращаем к выбору, кого искать
-    context.user_data["state"] = "roulette_pref"
-    await context.bot.send_message(
-        query.from_user.id,
-        t("roulette_who"),
-        reply_markup=roulette_pref_reply_kb(),
-    )
-
-
-async def on_roulette_research(update, context):
-    """Кнопка «Новый поиск» у того, кого покинули: ищем заново с прежними настройками."""
-    query = update.callback_query
-    uid = query.from_user.id
-    if get_active_session(uid):
-        await query.answer(t("roulette_already_short"))
-        return
-    await query.answer(t("roulette_searching_new"))
-    # уже в очереди?
-    if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
-        return
-    try:
-        await query.edit_message_text(t("roulette_finding_new"))
-    except TelegramError:
-        pass
+async def rchat_next(update, context):
+    """Кнопка «Далее»: завершить чат и искать нового с теми же настройками."""
+    uid = update.effective_user.id
+    await end_roulette_session(context, uid, requeue_ender=True)
+    context.user_data["state"] = None
     await _requeue_and_search(context, uid)
+
+
+async def rchat_stop(update, context):
+    """Кнопка «Стоп»: завершить чат и вернуться к выбору, кого искать."""
+    uid = update.effective_user.id
+    await end_roulette_session(context, uid, requeue_ender=False)
+    context.user_data["state"] = "roulette_pref"
+    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
+
+
+async def rleft_research(update, context):
+    """Кнопка «Новый поиск» у того, кого покинули."""
+    uid = update.effective_user.id
+    context.user_data["state"] = None
+    context.user_data.pop("last_session", None)
+    if get_active_session(uid):
+        return
+    if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
+        await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
+        return
+    await _requeue_and_search(context, uid)
+
+
+async def rleft_report(update, context):
+    """Кнопка «Пожаловаться» у того, кого покинули."""
+    uid = update.effective_user.id
+    sid = context.user_data.get("last_session")
+    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (sid,)).fetchone() if sid else None
+    if not session:
+        context.user_data["state"] = None
+        await update.message.reply_text(t("session_not_found"), reply_markup=main_menu_kb(uid))
+        return
+    reported_id = session["user2_id"] if uid == session["user1_id"] else session["user1_id"]
+    context.user_data["state"] = "awaiting_report_reason"
+    context.user_data["report_context"] = "roulette"
+    context.user_data["report_ref_id"] = sid
+    context.user_data["reported_id"] = reported_id
+    context.user_data.pop("last_session", None)
+    await update.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
 
 
 
@@ -4259,6 +4247,33 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         await update.message.reply_text(t("banned"))
         return
+    # Чат-рулетка: кнопки управления — reply-клавиатура снизу (перехват до релея)
+    if state == "rchat":
+        if text == "➡️ Далее":
+            await rchat_next(update, context)
+            return
+        if text == "⏹️ Стоп":
+            await rchat_stop(update, context)
+            return
+        if await relay_roulette_message(update, context):
+            return
+        # сессия пропала — сброс в меню
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    if state == "rleft":
+        if text == "🔍 Новый поиск":
+            await rleft_research(update, context)
+            return
+        if text == "🚩 Пожаловаться":
+            await rleft_report(update, context)
+            return
+        if text == "⬅️ Назад":
+            context.user_data["state"] = None
+            await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+            return
+        await update.message.reply_text(t("roulette_left"), reply_markup=left_chat_kb())
+        return
     if state in ("set_gender_first", "set_gender_profile"):
         await set_gender_from_text(update, context)
         return
@@ -4547,10 +4562,6 @@ _CALLBACKS = [
     ("reveal_cancel", on_reveal_cancel, True),
     ("repadm:", on_report_admin_decision, False),
     ("roulette_cancel", on_roulette_cancel, True),
-    ("roulette_next", on_roulette_next, True),
-    ("roulette_stop", on_roulette_stop, True),
-    ("roulette_research", on_roulette_research, True),
-    ("rrep:", on_roulette_report, False),
     ("modapp:", on_moder_app_decision, False),
 ]
 
