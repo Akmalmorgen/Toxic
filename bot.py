@@ -4336,21 +4336,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state in ("shop_edit_pick", "shop_edit_menu"):
         await shop_edit_router(update, context)
         return
-    if state == "shop_confirm":
-        await shop_confirm_router(update, context)
-        return
-    if state == "shop":
-        await shop_router(update, context)
-        return
-    if state == "star_shop":
-        await star_shop_router(update, context)
-        return
-    if state == "star_confirm":
-        await star_confirm_router(update, context)
-        return
-    if state == "star_admin":
-        await star_admin_router(update, context)
-        return
     if state in ("star_add_title", "star_add_coins", "star_add_price", "star_del"):
         await process_star_wizard(update, context)
         return
@@ -4472,6 +4457,21 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "roulette_pref":
         await roulette_pref_router(update, context)
+        return
+    if state == "shop":
+        await shop_router(update, context)
+        return
+    if state == "shop_confirm":
+        await shop_confirm_router(update, context)
+        return
+    if state == "star_shop":
+        await star_shop_router(update, context)
+        return
+    if state == "star_confirm":
+        await star_confirm_router(update, context)
+        return
+    if state == "star_admin":
+        await star_admin_router(update, context)
         return
     if text == "⬅️ Назад":
         context.user_data["state"] = None
