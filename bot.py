@@ -2057,6 +2057,14 @@ def in_chat_kb():
     ]])
 
 
+def left_chat_kb(session_id):
+    """Панель после того, как собеседник покинул чат: новый поиск + жалоба."""
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton("🔍 Новый поиск", callback_data="roulette_research"),
+        InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"rrep:{session_id}"),
+    ]])
+
+
 def get_active_session(user_id):
     return conn.execute(
         "SELECT * FROM roulette_sessions WHERE active=1 AND (user1_id=? OR user2_id=?)",
@@ -2070,7 +2078,8 @@ async def show_roulette_entry(update, context):
     active = get_active_session(user["tg_id"])
     await clean_screen(update, context)
     if active:
-        await context.bot.send_message(update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb())
+        sent = await context.bot.send_message(update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb())
+        UD[user["tg_id"]]["roulette_msg_id"] = sent.message_id
         return
     in_queue = conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (user["tg_id"],)).fetchone()
     if in_queue:
@@ -2148,7 +2157,9 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
                 matched_ids.add(b["user_id"])
                 for uid in (a["user_id"], b["user_id"]):
                     try:
-                        await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                        sent = await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                        # Запоминаем id «панели чата», чтобы потом отредактировать её
+                        UD[uid]["roulette_msg_id"] = sent.message_id
                     except TelegramError:
                         pass
                 break
@@ -2157,19 +2168,35 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
 async def end_roulette_session(context, ender_id, requeue_ender=False):
     session = get_active_session(ender_id)
     if not session:
-        return
+        return None
     other_id = session["user2_id"] if session["user1_id"] == ender_id else session["user1_id"]
     conn.execute(
         "UPDATE roulette_sessions SET active=0, ended_by=?, ended_at=? WHERE id=?",
         (ender_id, now_iso(), session["id"]),
     )
     conn.commit()
-    kb = InlineKeyboardMarkup([[InlineKeyboardButton("🚩 Жалоба на собеседника", callback_data=f"rrep:{session['id']}")]])
-    try:
-        await context.bot.send_message(other_id, t("roulette_left"), reply_markup=kb)
-        await context.bot.send_message(other_id, t("main_menu"), reply_markup=main_menu_kb(other_id))
-    except TelegramError:
-        pass
+    # Второму участнику: меняем его «панель чата» на сообщение «собеседник ушёл»
+    # с кнопками «Новый поиск» и «Пожаловаться» — без спама новыми сообщениями.
+    kb = left_chat_kb(session["id"])
+    other_msg_id = UD[other_id].get("roulette_msg_id")
+    edited = False
+    if other_msg_id:
+        try:
+            await context.bot.edit_message_text(
+                text=t("roulette_left"),
+                chat_id=other_id,
+                message_id=other_msg_id,
+                reply_markup=kb,
+            )
+            edited = True
+        except TelegramError:
+            pass
+    if not edited:
+        try:
+            sent = await context.bot.send_message(other_id, t("roulette_left"), reply_markup=kb)
+            UD[other_id]["roulette_msg_id"] = sent.message_id
+        except TelegramError:
+            pass
     if requeue_ender:
         user = get_user(ender_id)
         conn.execute(
@@ -2178,20 +2205,68 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
             (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
         )
         conn.commit()
+    return session
+
+
+async def _requeue_and_search(context, uid):
+    """Ставит пользователя в очередь с его прежними настройками и показывает экран поиска."""
+    user = get_user(uid)
+    conn.execute(
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
+        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
+    )
+    conn.commit()
+    await context.bot.send_message(uid, "Идёт поиск собеседника… ⏳", reply_markup=searching_kb())
 
 
 async def on_roulette_next(update, context):
     query = update.callback_query
     await query.answer("Ищем нового собеседника...")
+    # Убираем кнопки с нажатой панели, чтобы по ней нельзя было кликать повторно
+    try:
+        await query.edit_message_text("Чат завершён ✅")
+    except TelegramError:
+        pass
     await end_roulette_session(context, query.from_user.id, requeue_ender=True)
-    await context.bot.send_message(query.from_user.id, "Ищем нового собеседника… ⏳", reply_markup=searching_kb())
+    # Новая панель чата появится при следующем матче; пока показываем reply-клаву отмены
+    await _requeue_and_search(context, query.from_user.id)
 
 
 async def on_roulette_stop(update, context):
     query = update.callback_query
     await query.answer("Чат завершён")
+    # Убираем кнопки с панели завершённого чата
+    try:
+        await query.edit_message_text("Чат завершён.")
+    except TelegramError:
+        pass
     await end_roulette_session(context, query.from_user.id, requeue_ender=False)
-    await context.bot.send_message(query.from_user.id, "Чат завершён.", reply_markup=main_menu_kb(query.from_user.id))
+    # Сам нажал «Стоп» → возвращаем к выбору, кого искать
+    context.user_data["state"] = "roulette_pref"
+    await context.bot.send_message(
+        query.from_user.id,
+        "🎲 Кого вы хотите найти?",
+        reply_markup=roulette_pref_reply_kb(),
+    )
+
+
+async def on_roulette_research(update, context):
+    """Кнопка «Новый поиск» у того, кого покинули: ищем заново с прежними настройками."""
+    query = update.callback_query
+    uid = query.from_user.id
+    if get_active_session(uid):
+        await query.answer("Вы уже в чате.")
+        return
+    await query.answer("Ищем нового собеседника...")
+    # уже в очереди?
+    if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
+        return
+    try:
+        await query.edit_message_text("Ищем нового собеседника… ⏳")
+    except TelegramError:
+        pass
+    await _requeue_and_search(context, uid)
 
 
 
@@ -3873,6 +3948,7 @@ _CALLBACKS = [
     ("roulette_cancel", on_roulette_cancel, True),
     ("roulette_next", on_roulette_next, True),
     ("roulette_stop", on_roulette_stop, True),
+    ("roulette_research", on_roulette_research, True),
     ("rrep:", on_roulette_report, False),
     ("modapp:", on_moder_app_decision, False),
 ]
