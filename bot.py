@@ -1347,39 +1347,39 @@ T = {
     },
     "welcome": {
         "ru": (
-            "✨ <b>ДОБРО ПОЖАЛОВАТЬ, {name}!</b> 🔥\n"
+            "👋 <b>Привет, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "🚀 <b>ToxIcUz</b> 💙 — <i>твой личный бот для весёлого общения и тайных признаний.</i>\n\n"
-            "💎 <b>Что умеет бот:</b>\n"
-            "<blockquote>├ принимать вопросы и валентинки анонимно\n"
-            "├ искать собеседника в рулетке\n"
-            "└ держать всё в тайне</blockquote>\n"
-            "👑 Чтобы продолжить, укажите свой пол:"
+            "Добро пожаловать в <b>NextUz</b> 💙\n"
+            "<i>Место, где тебе пишут анонимно — а ты пишешь кому угодно.</i>\n\n"
+            "<blockquote>🔗 Анонимные вопросы и валентинки по твоей ссылке\n"
+            "🎲 Чат-рулетка — собеседник по выбранному полу\n"
+            "🕵️ Полная анонимность и контроль над перепиской</blockquote>\n"
+            "✨ Чтобы начать, выбери свой пол 👇"
         ),
         "uz": (
-            "✨ <b>XUSH KELIBSIZ, {name}!</b> 🔥\n"
+            "👋 <b>Salom, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "🚀 <b>ToxIcUz</b> 💙 — <i>qiziqarli muloqot va sirli e'tiroflar uchun shaxsiy botingiz.</i>\n\n"
-            "💎 <b>Bot nima qila oladi:</b>\n"
-            "<blockquote>├ savol va valentinkalarni anonim qabul qilish\n"
-            "├ ruletkada suhbatdosh topish\n"
-            "└ hammasini sir saqlash</blockquote>\n"
-            "👑 Davom etish uchun jinsingizni tanlang:"
+            "<b>NextUz</b> ga xush kelibsiz 💙\n"
+            "<i>Bu yerda sizga anonim yozishadi — siz esa istalgan kishiga.</i>\n\n"
+            "<blockquote>🔗 Havolangiz orqali anonim savol va valentinkalar\n"
+            "🎲 Chat-ruletka — tanlangan jins bo'yicha suhbatdosh\n"
+            "🕵️ To'liq anonimlik va yozishmalar ustidan nazorat</blockquote>\n"
+            "✨ Boshlash uchun jinsingizni tanlang 👇"
         ),
         "en": (
-            "✨ <b>WELCOME, {name}!</b> 🔥\n"
+            "👋 <b>Hi, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "🚀 <b>ToxIcUz</b> 💙 — <i>your personal bot for fun chatting and secret confessions.</i>\n\n"
-            "💎 <b>What the bot can do:</b>\n"
-            "<blockquote>├ receive questions and valentines anonymously\n"
-            "├ find a partner in roulette\n"
-            "└ keep everything secret</blockquote>\n"
-            "👑 To continue, choose your gender:"
+            "Welcome to <b>NextUz</b> 💙\n"
+            "<i>A place where people message you anonymously — and you message anyone.</i>\n\n"
+            "<blockquote>🔗 Anonymous questions and valentines via your link\n"
+            "🎲 Chat roulette — a partner by the chosen gender\n"
+            "🕵️ Full anonymity and control over your chats</blockquote>\n"
+            "✨ To get started, choose your gender 👇"
         ),
     },
     "help": {
         "ru": (
-            "ℹ️ <b>О боте ToxIcUz</b> 💙\n"
+            "ℹ️ <b>О боте NextUz</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Анонимные сообщения, тайные признания и живое общение — в одном месте.</i>\n\n"
             "✨ <b>Основные разделы:</b>\n"
@@ -1404,7 +1404,7 @@ T = {
             "💬 <i>Выбери раздел в меню ниже 👇</i>"
         ),
         "uz": (
-            "ℹ️ <b>ToxIcUz boti haqida</b> 💙\n"
+            "ℹ️ <b>NextUz boti haqida</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonim xabarlar, sirli e'tiroflar va jonli muloqot — bir joyda.</i>\n\n"
             "✨ <b>Asosiy bo'limlar:</b>\n"
@@ -1429,7 +1429,7 @@ T = {
             "💬 <i>Quyidagi menyudan bo'limni tanlang 👇</i>"
         ),
         "en": (
-            "ℹ️ <b>About ToxIcUz bot</b> 💙\n"
+            "ℹ️ <b>About NextUz bot</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Anonymous messages, secret confessions and live chatting — all in one place.</i>\n\n"
             "✨ <b>Main sections:</b>\n"
