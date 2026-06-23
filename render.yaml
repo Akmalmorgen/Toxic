@@ -5,10 +5,16 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
+    # Render помечает сервис «healthy» когда GET / возвращает 200.
+    # Бот поднимает keep-alive HTTP-сервер на PORT — этого достаточно.
+    healthCheckPath: /
     envVars:
-      - key: DATABASE_URL
-        sync: false
       - key: BOT_TOKEN
         sync: false
       - key: ADMIN_IDS
+        sync: false
+      # ОБЯЗАТЕЛЬНО: строка подключения к PostgreSQL (например Neon).
+      # Без неё бот упадёт на SQLite и будет терять все данные при рестарте.
+      # Формат: postgresql://user:password@host/dbname?sslmode=require
+      - key: DATABASE_URL
         sync: false

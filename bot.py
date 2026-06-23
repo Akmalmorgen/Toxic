@@ -254,18 +254,33 @@ if USE_PG:
         def __init__(self, raw):
             self._raw = raw
             self._cols = [d[0] for d in raw.description] if raw.description else []
+            # Кэшируем все строки сразу, чтобы lastrowid и fetchone/fetchall не конкурировали
+            try:
+                self._rows = raw.fetchall() if raw.description else []
+            except Exception:
+                self._rows = []
+            self._pos = 0
+            # Вычисляем lastrowid из первой строки (RETURNING * возвращает вставленную запись)
+            self._lastrowid = None
+            if self._rows and "id" in self._cols:
+                idx = self._cols.index("id")
+                self._lastrowid = self._rows[0][idx]
+
         def fetchone(self):
-            r = self._raw.fetchone()
-            return _Row(self._cols, r) if r is not None else None
+            if self._pos >= len(self._rows):
+                return None
+            r = self._rows[self._pos]
+            self._pos += 1
+            return _Row(self._cols, r)
+
         def fetchall(self):
-            return [_Row(self._cols, r) for r in self._raw.fetchall()]
+            rows = [_Row(self._cols, r) for r in self._rows[self._pos:]]
+            self._pos = len(self._rows)
+            return rows
+
         @property
         def lastrowid(self):
-            if "id" not in self._cols:
-                return None
-            idx = self._cols.index("id")
-            r = self._raw.fetchone()
-            return r[idx] if r else None
+            return self._lastrowid
 
     # Перевод схемы sqlite -> Postgres (типы)
     def _translate_schema(script):
@@ -2039,7 +2054,6 @@ def in_chat_kb():
     return InlineKeyboardMarkup([[
         InlineKeyboardButton("› Далее", callback_data="roulette_next"),
         InlineKeyboardButton("□ Стоп", callback_data="roulette_stop"),
-        InlineKeyboardButton("› Жалоба", callback_data="roulette_report"),
     ]])
 
 
@@ -2198,10 +2212,21 @@ async def on_roulette_report(update, context):
     await query.answer()
     session_id = int(query.data.split(":")[1])
     session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (session_id,)).fetchone()
-    if not session or not session["ended_by"]:
+    if not session:
+        await query.answer("Сессия не найдена.", show_alert=True)
         return
     reporter_id = query.from_user.id
-    reported_id = session["ended_by"]
+    # reporter — тот, кому ушёл собеседник (он получил кнопку «Жалоба»)
+    # reported — тот, кто ушёл (ended_by)
+    ended_by = session["ended_by"]
+    # Определяем reported_id: тот участник сессии, который НЕ является репортером
+    if reporter_id == session["user1_id"]:
+        reported_id = session["user2_id"]
+    elif reporter_id == session["user2_id"]:
+        reported_id = session["user1_id"]
+    else:
+        # Кнопку нажал посторонний — игнорируем
+        return
     if reporter_id == reported_id:
         return
     context.user_data["state"] = "awaiting_report_reason"
