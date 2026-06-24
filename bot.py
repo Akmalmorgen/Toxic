@@ -992,9 +992,12 @@ T = {
             "🎲 В чат-рулетке: <b>{roulette_time}</b>\n"
             "📤 Отправлено по ссылке: <b>{sent}</b>\n"
             "📥 Получено по ссылке: <b>{received}</b>\n"
+            "👥 Приглашено друзей: <b>{invited}</b>\n"
+            "🏆 Место в топе: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
             "💎 Коины: <b>{coins}</b>\n"
-            "⭐ Потрачено звёзд (покупка коинов): <b>{stars}</b>"
+            "⭐ Потрачено звёзд (покупка коинов): <b>{stars}</b>\n"
+            "📅 Регистрация: <b>{reg_date}</b>"
             "</blockquote>"
         ),
         "uz": (
@@ -1007,9 +1010,12 @@ T = {
             "🎲 Chat-ruletkada: <b>{roulette_time}</b>\n"
             "📤 Havola orqali yuborilgan: <b>{sent}</b>\n"
             "📥 Havola orqali kelgan: <b>{received}</b>\n"
+            "👥 Taklif qilingan do'stlar: <b>{invited}</b>\n"
+            "🏆 Topdagi o'rin: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
             "💎 Coinlar: <b>{coins}</b>\n"
-            "⭐ Sarflangan yulduzlar (coin xaridi): <b>{stars}</b>"
+            "⭐ Sarflangan yulduzlar (coin xaridi): <b>{stars}</b>\n"
+            "📅 Ro'yxatdan o'tgan: <b>{reg_date}</b>"
             "</blockquote>"
         ),
         "en": (
@@ -1022,9 +1028,12 @@ T = {
             "🎲 In chat roulette: <b>{roulette_time}</b>\n"
             "📤 Sent via link: <b>{sent}</b>\n"
             "📥 Received via link: <b>{received}</b>\n"
+            "👥 Friends invited: <b>{invited}</b>\n"
+            "🏆 Leaderboard place: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
             "💎 Coins: <b>{coins}</b>\n"
-            "⭐ Stars spent (buying coins): <b>{stars}</b>"
+            "⭐ Stars spent (buying coins): <b>{stars}</b>\n"
+            "📅 Registered: <b>{reg_date}</b>"
             "</blockquote>"
         ),
     },
@@ -3050,6 +3059,24 @@ async def show_profile(update, context):
         "SELECT COALESCE(SUM(stars),0) s FROM star_purchases WHERE user_id=?",
         (uid,),
     ).fetchone()["s"]
+    # Приглашено друзей и место в топе пригласивших
+    invited = conn.execute(
+        "SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)
+    ).fetchone()["c"]
+    if invited > 0:
+        higher = conn.execute(
+            "SELECT COUNT(*) c FROM (SELECT referrer_id, COUNT(*) c FROM referrals "
+            "WHERE active=1 GROUP BY referrer_id) WHERE c > ?",
+            (invited,),
+        ).fetchone()["c"]
+        rank = f"#{higher + 1}"
+    else:
+        rank = "—"
+    # Дата регистрации
+    try:
+        reg_date = datetime.fromisoformat(user["created_at"]).strftime("%d.%m.%Y")
+    except (ValueError, TypeError):
+        reg_date = "—"
     name = user["first_name"] or "—"
     if user["username"]:
         name += f" (@{user['username']})"
@@ -3061,9 +3088,12 @@ async def show_profile(update, context):
         roulette_time=fmt_duration(secs),
         sent=sent,
         received=received,
+        invited=invited,
+        rank=rank,
         coins=coins_display,
         vip=vip_status,
         stars=stars_spent,
+        reg_date=reg_date,
     )
     await clean_screen(update, context)
     context.user_data["state"] = "profile"
