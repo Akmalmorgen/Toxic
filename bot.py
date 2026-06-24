@@ -813,6 +813,7 @@ BTN = {
     "🔨 Бан / Разбан": ("🔨 Ban / Unban", "🔨 Ban / Unban"),
     "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
     "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
+    "🏠 Меню": ("🏠 Menyu", "🏠 Menu"),
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
     "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
@@ -2202,7 +2203,7 @@ def star_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("➕ Добавить пакет коинов")],
         [KeyboardButton("🗑 Удалить пакет коинов")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -2295,6 +2296,12 @@ async def nav(update, context, text, reply_markup=None, parse_mode=None):
     """Единый «экран»: удаляет нажатие пользователя и прошлое меню, показывает одно новое сообщение."""
     await clean_screen(update, context)
     return await send_menu(update, context, text, reply_markup, parse_mode)
+
+
+async def go_home(update, context):
+    """Кнопка «🏠 Меню» — мгновенный возврат в главное меню из любой глубины + очистка."""
+    context.user_data["state"] = None
+    await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
 
 
 def profile_kb():
@@ -4105,7 +4112,7 @@ def shop_edit_item_kb(item):
     elif item["reward_type"] == "vip" or item["is_vip"]:
         rows.append([KeyboardButton("⏳ Срок VIP")])
     rows.append([KeyboardButton("🗑 Удалить товар")])
-    rows.append([KeyboardButton("⬅️ Назад")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
@@ -4223,7 +4230,7 @@ async def show_moder_menu(update, context):
 def admin_moder_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("➕ Выдать модера"), KeyboardButton("➖ Забрать модера")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -5145,7 +5152,7 @@ def ref_settings_kb():
         [KeyboardButton("⏳ VIP: дней"), KeyboardButton("👥 VIP: друзей")],
         [KeyboardButton("🛡 Модер: дней"), KeyboardButton("👥 Модер: друзей")],
         [KeyboardButton("📷 Фото"), KeyboardButton("🗑 Убрать фото")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True)
 
 
@@ -5318,6 +5325,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👤 Профиль": show_profile, "🛒 Магазин": show_shop,
         "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
         "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
+        "🏠 Меню": go_home,
     }
     if text in _NAV and state not in _NO_NAV and not (state and state.startswith("moder_q_")):
         if text == "🛒 Магазин":
