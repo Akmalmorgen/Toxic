@@ -238,6 +238,11 @@ REF_MODER_DAYS = 7          # на сколько дней бесплатная 
 LINK_REWARD_EVERY = 10      # каждые N действий по ссылке
 LINK_REWARD_COINS = 20      # коинов за каждые LINK_REWARD_EVERY действий
 
+# === Авто-обслуживание (джанитор) ===
+INACTIVE_DAYS = 14          # порог неактивности
+JANITOR_WAKE_HOURS = 6      # как часто просыпается фоновый джанитор
+JANITOR_PERIOD_DAYS = 14    # раз в сколько дней выполнять удаление/уведомления
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
 
@@ -376,6 +381,8 @@ def init_db():
         link_answered_rewarded INTEGER NOT NULL DEFAULT 0,
         ref_vip_claims INTEGER NOT NULL DEFAULT 0,
         ref_moder_claims INTEGER NOT NULL DEFAULT 0,
+        last_active TEXT,
+        nudged_at TEXT,
         created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS anon_messages (
@@ -537,6 +544,8 @@ def migrate():
         "ALTER TABLE users ADD COLUMN link_answered_rewarded INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN ref_vip_claims INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN ref_moder_claims INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN last_active TEXT",
+        "ALTER TABLE users ADD COLUMN nudged_at TEXT",
     ]
     for sql in alters:
         try:
@@ -582,6 +591,25 @@ def cfg_vip_days():        return get_setting_int("ref_vip_days", REF_VIP_DAYS)
 def cfg_vip_threshold():   return max(1, get_setting_int("ref_vip_threshold", REF_VIP_THRESHOLD))
 def cfg_moder_days():      return get_setting_int("ref_moder_days", REF_MODER_DAYS)
 def cfg_moder_threshold(): return max(1, get_setting_int("ref_moder_threshold", REF_MODER_THRESHOLD))
+
+
+def touch_user(uid):
+    """Отмечает активность пользователя (для джанитора). Пишем не чаще раза в час."""
+    try:
+        u = get_user(uid)
+        if not u:
+            return
+        la = u["last_active"]
+        if la:
+            try:
+                if now_dt() - datetime.fromisoformat(la) < timedelta(hours=1):
+                    return
+            except (ValueError, TypeError):
+                pass
+        conn.execute("UPDATE users SET last_active=? WHERE tg_id=?", (now_iso(), uid))
+        conn.commit()
+    except Exception:
+        pass
 
 
 
@@ -1406,6 +1434,23 @@ T = {
         "ru": "Меню «Пригласить» 👇",
         "uz": "«Taklif qilish» menyusi 👇",
         "en": "Invite menu 👇",
+    },
+    "inactive_nudge": {
+        "ru": (
+            "👋 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
+            "⚠️ Чтобы не потерять свои данные (💎 коины, 👑 VIP, 🔗 ссылку) — "
+            "просто нажми /start и загляни 🙂"
+        ),
+        "uz": (
+            "👋 <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
+            "⚠️ Ma'lumotlaringizni (💎 coin, 👑 VIP, 🔗 havola) yo'qotmaslik uchun — "
+            "/start ni bosing va kiring 🙂"
+        ),
+        "en": (
+            "👋 <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
+            "⚠️ So you don't lose your data (💎 coins, 👑 VIP, 🔗 link) — "
+            "just tap /start and drop by 🙂"
+        ),
     },
     "top_empty": {
         "ru": "Пока никто никого не пригласил. Будь первым! 🚀",
@@ -5206,7 +5251,11 @@ def _cu(cq):
 async def _lang_middleware(handler, event, data):
     """Перед каждым апдейтом кладём язык пользователя в ContextVar (task-safe)."""
     user = data.get("event_from_user")
-    set_cur_lang(get_lang(user.id) if user else "ru")
+    if user:
+        set_cur_lang(get_lang(user.id))
+        touch_user(user.id)
+    else:
+        set_cur_lang("ru")
     return await handler(event, data)
 
 
@@ -5285,6 +5334,118 @@ def register_handlers():
     dp.message.register(_h_text, F.text & ~F.text.startswith("/"))
 
 
+def run_safe_cleanup():
+    """Безопасная очистка мусора. Пользователей и их данные НЕ трогает."""
+    try:
+        six_h = (now_dt() - timedelta(hours=6)).isoformat()
+        ten_min = (now_dt() - timedelta(minutes=10)).isoformat()
+        old_sessions = (now_dt() - timedelta(days=90)).isoformat()
+        conn.execute("DELETE FROM link_flow WHERE updated_at < ?", (six_h,))
+        conn.execute("DELETE FROM roulette_queue WHERE joined_at < ?", (ten_min,))
+        # истёкшие баны (вечные баны хранятся как 9999-... и сюда не попадают)
+        conn.execute("DELETE FROM bans WHERE until < ?", (now_iso(),))
+        conn.execute(
+            "DELETE FROM roulette_sessions WHERE active=0 AND ended_at IS NOT NULL AND ended_at < ?",
+            (old_sessions,),
+        )
+        conn.commit()
+        log.info("janitor: безопасная очистка выполнена")
+    except Exception as e:  # noqa
+        log.warning("safe_cleanup: %s", e)
+
+
+async def _nudge_user(u):
+    """Намёк неактивному ценному пользователю. Данные НЕ удаляются — только напоминание."""
+    uid = u["tg_id"]
+    try:
+        na = u["nudged_at"]
+        if na:
+            try:
+                if now_dt() - datetime.fromisoformat(na) < timedelta(days=JANITOR_PERIOD_DAYS - 1):
+                    return False
+            except (ValueError, TypeError):
+                pass
+        _sl = cur_lang(); set_cur_lang(get_lang(uid))
+        await BOTP.send_message(uid, t("inactive_nudge"), parse_mode="HTML")
+        set_cur_lang(_sl)
+        conn.execute("UPDATE users SET nudged_at=? WHERE tg_id=?", (now_iso(), uid))
+        conn.commit()
+        await asyncio.sleep(0.05)  # мягкий троттлинг рассылки
+        return True
+    except TelegramError:
+        return False
+    except Exception as e:  # noqa
+        log.warning("nudge %s: %s", uid, e)
+        return False
+
+
+async def janitor_heavy():
+    """Раз в 2 недели: удаляет ПУСТЫЕ неактивные аккаунты, ценным шлёт намёк (без удаления)."""
+    cutoff = (now_dt() - timedelta(days=INACTIVE_DAYS)).isoformat()
+    rows = conn.execute(
+        "SELECT * FROM users WHERE "
+        "(last_active IS NOT NULL AND last_active < ?) OR "
+        "(last_active IS NULL AND created_at < ?)",
+        (cutoff, cutoff),
+    ).fetchall()
+    deleted = nudged = 0
+    for u in rows:
+        uid = u["tg_id"]
+        if is_admin(uid) or is_staff(uid):       # персонал не трогаем
+            continue
+        has_stars = conn.execute("SELECT 1 FROM star_purchases WHERE user_id=? LIMIT 1", (uid,)).fetchone()
+        has_ref = conn.execute("SELECT 1 FROM referrals WHERE referrer_id=? AND active=1 LIMIT 1", (uid,)).fetchone()
+        invested = (u["coins"] or 0) > 0 or is_vip(u) or bool(has_stars)
+        # Ценный (вложился) или часть графа (рефералы/ссылка) — НЕ удаляем
+        if invested:
+            if await _nudge_user(u):
+                nudged += 1
+        elif has_ref or u["custom_link"]:
+            continue  # сохраняем для целостности ссылок/рефералов
+        else:
+            # Полностью пустой неактивный аккаунт — удаляем
+            try:
+                conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
+                conn.execute("DELETE FROM referrals WHERE referred_id=?", (uid,))
+                conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
+                conn.commit()
+                deleted += 1
+            except Exception as e:  # noqa
+                log.warning("janitor delete %s: %s", uid, e)
+    log.info("janitor (раз в 2 недели): удалено пустых=%d, уведомлено=%d", deleted, nudged)
+    if ADMIN_IDS and (deleted or nudged):
+        for aid in ADMIN_IDS:
+            try:
+                await BOTP.send_message(
+                    aid,
+                    f"🧹 Авто-обслуживание:\n🗑 Удалено пустых аккаунтов: {deleted}\n"
+                    f"📨 Напоминаний неактивным: {nudged}",
+                )
+            except TelegramError:
+                pass
+
+
+async def _janitor_loop():
+    """Фоновый джанитор: безопасная очистка часто, тяжёлая часть — раз в 2 недели."""
+    await asyncio.sleep(120)   # дать боту подняться
+    while True:
+        try:
+            run_safe_cleanup()
+            last = get_setting("janitor_last")
+            do_heavy = True
+            if last:
+                try:
+                    do_heavy = (now_dt() - datetime.fromisoformat(last)) >= timedelta(days=JANITOR_PERIOD_DAYS)
+                except ValueError:
+                    pass
+            if do_heavy:
+                await janitor_heavy()
+                set_setting("janitor_last", now_iso())
+        except Exception as e:  # noqa
+            log.error("janitor_loop: %s", e)
+        await asyncio.sleep(JANITOR_WAKE_HOURS * 3600)
+
+
 async def _matchmaker_loop():
     """Аналог job_queue.run_repeating: периодически сводит пары в рулетке."""
     ctx = Ctx(0)
@@ -5309,6 +5470,7 @@ async def _run():
     except Exception as e:  # noqa
         log.warning("delete_webhook: %s", e)
     asyncio.create_task(_matchmaker_loop())
+    asyncio.create_task(_janitor_loop())
     log.info("Бот запущен, поллинг...")
     await dp.start_polling(bot)
 
