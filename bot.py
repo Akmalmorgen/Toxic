@@ -25,7 +25,7 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatMemberStatus
 from aiogram.exceptions import TelegramAPIError, TelegramConflictError
-from aiogram.filters import CommandStart, CommandObject
+from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.types import (
     Message, CallbackQuery, ChatMemberUpdated, PreCheckoutQuery, ErrorEvent,
     ReplyKeyboardRemove, ReplyParameters, BufferedInputFile, BotCommand,
@@ -799,6 +799,7 @@ BTN = {
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
     "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
+    "🔍 Инфо юзера": ("🔍 Foydalanuvchi", "🔍 User info"),
     "👨 Мужской": ("👨 Erkak", "👨 Male"),
     "👩 Женский": ("👩 Ayol", "👩 Female"),
     "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
@@ -2123,8 +2124,7 @@ def star_admin_kb():
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("📤 Выгрузить пользователей"), KeyboardButton("📊 Статистика")],
-        [KeyboardButton("📢 Рассылка")],
+        [KeyboardButton("🔍 Инфо юзера"), KeyboardButton("📊 Статистика")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -4043,17 +4043,69 @@ async def moder_panel_router(update, context):
     if text == "🔨 Бан / Разбан":
         await start_ban(update, context, "moder")
         return
-    if text == "📤 Выгрузить пользователей":
-        await adm_export_msg(update, context)
+    if text == "🔍 Инфо юзера":
+        context.user_data["state"] = "user_info_id"
+        await update.message.reply_text(
+            "🔍 Введите ID пользователя, чтобы посмотреть его данные:",
+            reply_markup=cancel_reply_kb(),
+        )
         return
     if text == "📊 Статистика":
         await adm_stats_msg(update, context)
         return
-    if text == "📢 Рассылка":
-        context.user_data["state"] = "adm_bcast_audience"
-        await update.message.reply_text("Кому отправить рассылку?", reply_markup=bcast_audience_kb())
-        return
     await update.message.reply_text("Выберите действие 👇", reply_markup=moder_menu_kb())
+
+
+async def process_user_info(update, context):
+    """Карточка пользователя для модерации (по ID). Доступно админам и модерам."""
+    text = canon(update.message.text.strip())
+    uid = update.effective_user.id
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    back_state = "admin" if is_admin(uid) else "moder"
+    if text == "❌ Отмена":
+        context.user_data["state"] = back_state
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+    if not text.isdigit():
+        await update.message.reply_text("ID должен быть числом:", reply_markup=cancel_reply_kb())
+        return
+    target = int(text)
+    u = get_user(target)
+    if not u:
+        await update.message.reply_text("Пользователь не найден.", reply_markup=back_kb)
+        context.user_data["state"] = back_state
+        return
+    sent = conn.execute("SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND msg_type IN ('question','valentine')", (target,)).fetchone()["c"]
+    received = conn.execute("SELECT COUNT(*) c FROM anon_messages WHERE to_id=? AND msg_type IN ('question','valentine')", (target,)).fetchone()["c"]
+    reports_on = conn.execute("SELECT COUNT(*) c FROM reports WHERE reported_id=?", (target,)).fetchone()["c"]
+    invited = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (target,)).fetchone()["c"]
+    stars = conn.execute("SELECT COALESCE(SUM(stars),0) s FROM star_purchases WHERE user_id=?", (target,)).fetchone()["s"]
+    role = "👑 Админ" if is_admin(target) else ("🛡 Модер" if is_moder(u) else ("⭐ VIP" if is_vip(u) else "обычный"))
+    banned = "🚫 ДА" if is_banned(u) else "нет"
+    try:
+        reg = datetime.fromisoformat(u["created_at"]).strftime("%d.%m.%Y")
+    except (ValueError, TypeError):
+        reg = "—"
+    last_act = (u["last_active"] or "")[:16].replace("T", " ") or "—"
+    name = u["first_name"] or "—"
+    if u["username"]:
+        name += f" (@{u['username']})"
+    card = (
+        f"🔍 <b>Пользователь</b> <code>{target}</code>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Имя: <b>{html.escape(name)}</b>\n"
+        f"🏷 Роль: <b>{role}</b>\n"
+        f"🚫 Бан: <b>{banned}</b>\n"
+        f"💎 Коины: <b>{u['coins']}</b>\n"
+        f"⭐ Потрачено звёзд: <b>{stars}</b>\n"
+        f"📤 Отправлено / 📥 получено по ссылке: <b>{sent}</b> / <b>{received}</b>\n"
+        f"👥 Приглашено: <b>{invited}</b>\n"
+        f"🚩 Жалоб на него: <b>{reports_on}</b>\n"
+        f"📅 Регистрация: <b>{reg}</b>\n"
+        f"🕒 Последняя активность: <b>{last_act}</b>"
+    )
+    context.user_data["state"] = back_state
+    await update.message.reply_text(card, parse_mode="HTML", reply_markup=back_kb)
 
 
 async def show_pending_reports(update, context):
@@ -5021,6 +5073,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "ban_id":
         await process_ban(update, context)
         return
+    if state == "user_info_id":
+        await process_user_info(update, context)
+        return
     if state == "admin_moder":
         await admin_moder_router(update, context)
         return
@@ -5288,6 +5343,38 @@ async def _h_text(message: Message):
     await text_router(_mu(message), Ctx(message.from_user.id))
 
 
+# ── Скрытые команды (не показываются в меню, работают по вводу) ──
+async def _h_cmd_id(message: Message):
+    await message.answer(
+        f"🆔 Ваш ID: <code>{message.from_user.id}</code>", parse_mode="HTML"
+    )
+
+
+async def _h_cmd_me(message: Message):
+    ensure_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    await show_profile(_mu(message), Ctx(message.from_user.id))
+
+
+async def _h_cmd_admin(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+    await show_admin_menu(_mu(message), Ctx(message.from_user.id))
+
+
+async def _h_cmd_moder(message: Message):
+    if not is_staff(message.from_user.id):
+        return
+    await show_moder_menu(_mu(message), Ctx(message.from_user.id))
+
+
+async def _h_cmd_userinfo(message: Message):
+    if not is_staff(message.from_user.id):
+        return
+    ctx = Ctx(message.from_user.id)
+    ctx.user_data["state"] = "user_info_id"
+    await message.answer("🔍 Введите ID пользователя:", reply_markup=cancel_reply_kb())
+
+
 # Карта callback-хендлеров: (ключ, функция, точное_совпадение)
 _CALLBACKS = [
     ("back_main", on_back_main, True),
@@ -5318,6 +5405,12 @@ def register_handlers():
     dp.errors.register(on_error)
 
     dp.message.register(_h_start, CommandStart())
+    # Скрытые команды (в меню не показываются — set_my_commands содержит только /start)
+    dp.message.register(_h_cmd_id, Command("id"))
+    dp.message.register(_h_cmd_me, Command("me"))
+    dp.message.register(_h_cmd_admin, Command("admin"))
+    dp.message.register(_h_cmd_moder, Command("moder"))
+    dp.message.register(_h_cmd_userinfo, Command("userinfo"))
     dp.pre_checkout_query.register(_h_precheckout)
     dp.message.register(_h_payment, F.successful_payment)
     dp.my_chat_member.register(_h_my_chat_member)
