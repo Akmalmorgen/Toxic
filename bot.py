@@ -10,6 +10,8 @@ import random
 import re
 import string
 import urllib.parse
+import urllib.request
+import json
 import html
 import asyncio
 import threading
@@ -526,6 +528,8 @@ def migrate():
         "ALTER TABLE anon_messages ADD COLUMN parent_id INTEGER",
         "ALTER TABLE shop_items ADD COLUMN reward_type TEXT NOT NULL DEFAULT 'manual'",
         "ALTER TABLE shop_items ADD COLUMN reward_amount INTEGER",
+        "ALTER TABLE shop_items ADD COLUMN title_uz TEXT",
+        "ALTER TABLE shop_items ADD COLUMN title_en TEXT",
         "ALTER TABLE users ADD COLUMN moder_until TEXT",
         "ALTER TABLE users ADD COLUMN link_sent_total INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN link_answered_total INTEGER NOT NULL DEFAULT 0",
@@ -1582,6 +1586,35 @@ T = {
             "✨ Let's go — choose your gender 👇"
         ),
     },
+    "welcome_back": {
+        "ru": (
+            "✨ <b>С возвращением, {name}!</b> ✨\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💙\n"
+            "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
+            "🎲 Заходи в чат-рулетку\n"
+            "👥 Зови друзей — забирай награды</blockquote>\n"
+            "Главное меню 👇"
+        ),
+        "uz": (
+            "✨ <b>Qaytganingiz bilan, {name}!</b> ✨\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💙\n"
+            "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
+            "🎲 Chat-ruletkaga kiring\n"
+            "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
+            "Asosiy menyu 👇"
+        ),
+        "en": (
+            "✨ <b>Welcome back, {name}!</b> ✨\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💙\n"
+            "<blockquote>🔗 Share your link — get anonymous messages\n"
+            "🎲 Jump into chat roulette\n"
+            "👥 Invite friends — claim rewards</blockquote>\n"
+            "Main menu 👇"
+        ),
+    },
     "help": {
         "ru": (
             "ℹ️ <b>𐌽ꤕ𐌗ተ</b> 💙\n"
@@ -1932,7 +1965,7 @@ def language_menu_kb():
         [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
         [KeyboardButton("🇬🇧 English")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True, one_time_keyboard=True)
+    ], resize_keyboard=True)
 
 
 async def show_language_menu(update, context):
@@ -1988,7 +2021,7 @@ def main_menu_kb(tg_id):
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("✅ Да"), KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 def reward_type_kb():
@@ -1996,7 +2029,7 @@ def reward_type_kb():
         [KeyboardButton("💎 Коины"), KeyboardButton("⏳ VIP")],
         [KeyboardButton("🛡 Модер"), KeyboardButton("📦 Вручную")],
         [KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 def admin_menu_kb():
@@ -2038,7 +2071,7 @@ def gender_kb(with_back=False):
     rows = [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")]]
     if with_back:
         rows.append([KeyboardButton("⬅️ Назад")])
-    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True, one_time_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def link_menu_kb():
@@ -2052,14 +2085,14 @@ def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 def anon_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("❓ Вопрос"), KeyboardButton("💌 Валентинка")],
         [KeyboardButton("❌ Отмена")]
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 def report_reason_kb():
@@ -2068,7 +2101,7 @@ def report_reason_kb():
         [KeyboardButton("😡 Оскорбление"), KeyboardButton("🔞 18+ стикеры")],
         [KeyboardButton("👎 Не нравится")],
         [KeyboardButton("❌ Отмена")]
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 async def clean_screen(update, context):
@@ -2154,8 +2187,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    name = tg_user.first_name or "друг"
     await update.message.reply_text(
-        t("main_menu"), reply_markup=main_menu_kb(tg_user.id)
+        t("welcome_back", name=html.escape(name)),
+        parse_mode="HTML",
+        reply_markup=main_menu_kb(tg_user.id),
     )
 
 
@@ -2266,6 +2302,46 @@ async def get_bot_username(context):
 async def build_start_link(context, code):
     """Единый билдер deep-link на бота в формате t.me/<bot>?start=<code>."""
     return f"t.me/{await get_bot_username(context)}?start={code}"
+
+
+# === Авто-перевод (для названий товаров магазина) ===
+def _translate_sync(text, target):
+    """Перевод через бесплатный публичный эндпоинт Google. При ошибке вернёт исходный текст."""
+    if not text or not text.strip():
+        return text
+    try:
+        url = ("https://translate.googleapis.com/translate_a/single?client=gtx"
+               "&sl=auto&tl=" + urllib.parse.quote(target)
+               + "&dt=t&q=" + urllib.parse.quote(text))
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=6) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        out = "".join(seg[0] for seg in data[0] if seg and seg[0])
+        return out.strip() or text
+    except Exception as e:  # noqa
+        log.warning("translate(%s): %s", target, e)
+        return text
+
+
+async def translate_to_all(text):
+    """Возвращает (ru, uz, en) для текста на любом языке. Не блокирует event loop."""
+    ru = await asyncio.to_thread(_translate_sync, text, "ru")
+    uz = await asyncio.to_thread(_translate_sync, text, "uz")
+    en = await asyncio.to_thread(_translate_sync, text, "en")
+    return ru or text, uz or text, en or text
+
+
+def item_title(item):
+    """Название товара на текущем языке (с откатом к русскому)."""
+    lang = cur_lang()
+    try:
+        if lang == "uz" and item["title_uz"]:
+            return item["title_uz"]
+        if lang == "en" and item["title_en"]:
+            return item["title_en"]
+    except (KeyError, IndexError, TypeError):
+        pass
+    return item["title"]
 
 
 def can_change_link(user_row):
@@ -2950,7 +3026,7 @@ def searching_kb():
 
 
 def cancel_reply_kb():
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True, one_time_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True))
 
 
 def link_code_kb():
@@ -2963,7 +3039,7 @@ def bcast_audience_kb():
         [KeyboardButton("👥 Всем")],
         [KeyboardButton("👨 Мужчинам"), KeyboardButton("👩 Женщинам")],
         [KeyboardButton("❌ Отмена")],
-    ], resize_keyboard=True, one_time_keyboard=True))
+    ], resize_keyboard=True))
 
 
 def in_chat_kb():
@@ -3229,7 +3305,7 @@ async def show_shop(update, context):
     shop_map = {}
     rows = []
     for it in items:
-        label = f"{it['title']} — {it['price']} 💎"
+        label = f"{item_title(it)} — {it['price']} 💎"
         shop_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
@@ -3272,7 +3348,7 @@ async def shop_router(update, context):
         price_txt = t("price_plain", price=price)
     await nav(
         update, context,
-        t("shop_buy_confirm", title=html.escape(item['title']), price=price_txt),
+        t("shop_buy_confirm", title=html.escape(item_title(item)), price=price_txt),
         yes_no_kb(), parse_mode="HTML",
     )
 
@@ -3347,7 +3423,7 @@ async def do_purchase(update, context, item):
             t("moder_form_gender"),
             tr_kb(ReplyKeyboardMarkup(
                 [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")], [KeyboardButton("❌ Отмена")]],
-                resize_keyboard=True, one_time_keyboard=True,
+                resize_keyboard=True,
             )),
             parse_mode="HTML",
         )
@@ -3488,9 +3564,16 @@ async def process_shop_add(update, context):
         await show_shop(update, context)
         return
     if state == "shop_add_title":
-        item["title"] = text
+        await update.message.reply_text("⏳ Перевожу название на 3 языка…")
+        ru, uz, en = await translate_to_all(text)
+        item["title"] = ru
+        item["title_uz"] = uz
+        item["title_en"] = en
         context.user_data["state"] = "shop_add_price"
-        await update.message.reply_text("💰 Цена в коинах:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text(
+            f"📝 Название сохранено:\n🇷🇺 {ru}\n🇺🇿 {uz}\n🇬🇧 {en}\n\n💰 Цена в коинах:",
+            reply_markup=cancel_reply_kb(),
+        )
     elif state == "shop_add_price":
         if not text.isdigit():
             await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
@@ -3539,10 +3622,10 @@ async def process_shop_add(update, context):
 def save_new_item(item):
     rt = item.get("reward_type", "manual")
     conn.execute(
-        "INSERT INTO shop_items (title, price, is_vip, duration_days, reward_type, reward_amount, active) "
-        "VALUES (?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO shop_items (title, title_uz, title_en, price, is_vip, duration_days, reward_type, reward_amount, active) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
         (
-            item["title"], item["price"],
+            item["title"], item.get("title_uz"), item.get("title_en"), item["price"],
             1 if rt == "vip" else 0,
             item.get("reward_amount") if rt == "vip" else None,
             rt,
@@ -3645,9 +3728,10 @@ async def process_shop_edit_value(update, context):
         await update.message.reply_text("Отменено.", reply_markup=shop_edit_item_kb(item))
         return
     if state == "shop_edit_name":
-        conn.execute("UPDATE shop_items SET title=? WHERE id=?", (text, item_id))
+        ru, uz, en = await translate_to_all(text)
+        conn.execute("UPDATE shop_items SET title=?, title_uz=?, title_en=? WHERE id=?", (ru, uz, en, item_id))
         conn.commit()
-        msg = "✅ Название изменено."
+        msg = f"✅ Название изменено:\n🇷🇺 {ru}\n🇺🇿 {uz}\n🇬🇧 {en}"
     elif state == "shop_edit_price":
         if not text.isdigit():
             await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
@@ -4013,7 +4097,7 @@ async def ad_preview_and_offer(update, context):
         "Разослать рекламу всем пользователям?",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
             [[KeyboardButton("📤 Отправить всем")], [KeyboardButton("❌ Отмена")]],
-            resize_keyboard=True, one_time_keyboard=True,
+            resize_keyboard=True,
         )),
     )
 
