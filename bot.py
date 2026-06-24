@@ -875,14 +875,14 @@ T = {
         "en": "🔗 <b>«My link» section</b>\n\nChoose an action 👇",
     },
     "link_show": {
-        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<blockquote>{link}</blockquote>📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
-        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<blockquote>{link}</blockquote>📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
-        "en": "🔗 <b>Your personal link:</b>\n<blockquote>{link}</blockquote>📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
+        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<code>{link}</code>\n\n📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
+        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<code>{link}</code>\n\n📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
+        "en": "🔗 <b>Your personal link:</b>\n<code>{link}</code>\n\n📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
     },
     "link_done": {
-        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<blockquote>{link}</blockquote>📤 Нажми «Поделиться», чтобы отправить её 💌",
-        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<blockquote>{link}</blockquote>📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
-        "en": "✅ <b>Done! Your link:</b>\n<blockquote>{link}</blockquote>📤 Tap «Share» to send it 💌",
+        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<code>{link}</code>\n\n📤 Нажми «Поделиться», чтобы отправить её 💌",
+        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<code>{link}</code>\n\n📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
+        "en": "✅ <b>Done! Your link:</b>\n<code>{link}</code>\n\n📤 Tap «Share» to send it 💌",
     },
     "btn_share": {
         "ru": "📤 Поделиться",
