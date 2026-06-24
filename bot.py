@@ -875,14 +875,14 @@ T = {
         "en": "🔗 <b>«My link» section</b>\n\nChoose an action 👇",
     },
     "link_show": {
-        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<blockquote>{link}</blockquote>\n📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
-        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<blockquote>{link}</blockquote>\n📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
-        "en": "🔗 <b>Your personal link:</b>\n<blockquote>{link}</blockquote>\n📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
+        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<code>{link}</code>\n📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
+        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<code>{link}</code>\n📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
+        "en": "🔗 <b>Your personal link:</b>\n<code>{link}</code>\n📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
     },
     "link_done": {
-        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<blockquote>{link}</blockquote>\n📤 Нажми «Поделиться», чтобы отправить её 💌",
-        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<blockquote>{link}</blockquote>\n📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
-        "en": "✅ <b>Done! Your link:</b>\n<blockquote>{link}</blockquote>\n📤 Tap «Share» to send it 💌",
+        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<code>{link}</code>\n📤 Нажми «Поделиться», чтобы отправить её 💌",
+        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<code>{link}</code>\n📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
+        "en": "✅ <b>Done! Your link:</b>\n<code>{link}</code>\n📤 Tap «Share» to send it 💌",
     },
     "btn_share": {
         "ru": "📤 Поделиться",
@@ -1207,7 +1207,7 @@ T = {
             "Приглашено: <b>{total}</b>\n"
             "Заработано: <b>{earned}</b> 💎\n\n"
             "🔗 Твоя ссылка:\n"
-            "<blockquote>{link}</blockquote>"
+            "<code>{link}</code>\n"
             "⚠️ Если друг заблокирует бота — коины за него спишутся обратно."
         ),
         "uz": (
@@ -1217,7 +1217,7 @@ T = {
             "Taklif qilindi: <b>{total}</b>\n"
             "Ishlab topildi: <b>{earned}</b> 💎\n\n"
             "🔗 Havolangiz:\n"
-            "<blockquote>{link}</blockquote>"
+            "<code>{link}</code>\n"
             "⚠️ Agar do'st botni bloklasa — uning coinlari qaytarib olinadi."
         ),
         "en": (
@@ -1227,7 +1227,7 @@ T = {
             "Invited: <b>{total}</b>\n"
             "Earned: <b>{earned}</b> 💎\n\n"
             "🔗 Your link:\n"
-            "<blockquote>{link}</blockquote>"
+            "<code>{link}</code>\n"
             "⚠️ If a friend blocks the bot — their coins will be deducted back."
         ),
     },
@@ -1934,14 +1934,21 @@ def report_reason_kb():
 
 
 async def clean_screen(update, context):
-    """Удаляет нажатую пользователем кнопку и предыдущее меню бота, чтобы не мусорить в чате."""
+    """Удаляет нажатую пользователем кнопку, доп. сообщения (карточки) и предыдущее меню бота."""
     try:
         await update.message.delete()
     except TelegramError:
         pass
+    for mid in context.user_data.pop("extra_msg_ids", []):
+        await try_delete_message(context, update.effective_chat.id, mid)
     mid = context.user_data.pop("last_menu_msg_id", None)
     if mid:
         await try_delete_message(context, update.effective_chat.id, mid)
+
+
+def track_extra(context, msg):
+    """Запоминает доп. сообщение (например карточку ссылки) для удаления при следующей навигации."""
+    context.user_data.setdefault("extra_msg_ids", []).append(msg.message_id)
 
 
 async def send_menu(update, context, text, reply_markup, parse_mode=None):
@@ -2107,6 +2114,22 @@ def share_kb(link, text):
     return InlineKeyboardMarkup([[InlineKeyboardButton(t("btn_share"), url=share_url)]])
 
 
+_BOT_USERNAME = None
+
+
+async def get_bot_username(context):
+    """Кэшируем @username бота — чтобы не дёргать get_me() на каждое сообщение."""
+    global _BOT_USERNAME
+    if _BOT_USERNAME is None:
+        _BOT_USERNAME = (await context.bot.get_me()).username
+    return _BOT_USERNAME
+
+
+async def build_start_link(context, code):
+    """Единый билдер deep-link на бота в формате t.me/<bot>?start=<code>."""
+    return f"t.me/{await get_bot_username(context)}?start={code}"
+
+
 def can_change_link(user_row):
     if is_vip(user_row):
         return True, None
@@ -2150,38 +2173,35 @@ async def show_my_link(update, context):
     user = get_user(update.effective_user.id)
     if not user["custom_link"]:
         context.user_data["state"] = "awaiting_link_code"
-        await update.message.reply_text(
-            t("link_no_link"),
-            reply_markup=cancel_reply_kb(),
-        )
+        await nav(update, context, t("link_no_link"), cancel_reply_kb())
         return
-    bot_username = (await context.bot.get_me()).username
-    link = f"t.me/{bot_username}?start={user['custom_link']}"
-    await update.message.reply_text(
+    # Стираем нажатие «Показать ссылку» и прошлый экран, показываем карточку.
+    await clean_screen(update, context)
+    link = await build_start_link(context, user["custom_link"])
+    msg = await context.bot.send_message(
+        update.effective_chat.id,
         t("link_show", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=share_kb(f"https://{link}", t("share_text")),
+        reply_markup=share_kb(link, t("share_text")),
     )
+    track_extra(context, msg)
 
 
 async def start_change_link(update, context):
     user = get_user(update.effective_user.id)
     can_change, error_msg = can_change_link(user)
     if not can_change:
-        await update.message.reply_text(error_msg, reply_markup=link_menu_kb())
+        await nav(update, context, error_msg, link_menu_kb())
         return
     context.user_data["state"] = "awaiting_link_code"
-    await update.message.reply_text(
-        t("link_change"),
-        reply_markup=cancel_reply_kb(),
-    )
+    await nav(update, context, t("link_change"), cancel_reply_kb())
 
 
 async def process_link_code(update, context, code):
     code = (code or "").strip()
     if canon(code) == "❌ Отмена":
         context.user_data["state"] = "link_menu"
-        await update.message.reply_text(t("cancelled"), reply_markup=link_menu_kb())
+        await nav(update, context, t("cancelled"), link_menu_kb())
         return
     if not valid_link_code(code):
         await update.message.reply_text(
@@ -2199,14 +2219,17 @@ async def process_link_code(update, context, code):
     )
     conn.commit()
     context.user_data["state"] = "link_menu"
-    bot_username = (await context.bot.get_me()).username
-    link = f"t.me/{bot_username}?start={code}"
-    await update.message.reply_text(
+    # Стираем введённый код и прошлый экран; показываем карточку + меню ссылки.
+    await clean_screen(update, context)
+    link = await build_start_link(context, code)
+    card = await context.bot.send_message(
+        update.effective_chat.id,
         t("link_done", link=html.escape(link)),
         parse_mode="HTML",
-        reply_markup=share_kb(f"https://{link}", t("share_text")),
+        reply_markup=share_kb(link, t("share_text")),
     )
-    await update.message.reply_text(t("link_menu"), reply_markup=link_menu_kb())
+    track_extra(context, card)
+    await send_menu(update, context, t("link_menu"), link_menu_kb())
 
 
 async def handle_incoming_link(update, context, code):
@@ -4227,8 +4250,7 @@ async def handle_referral(update, context, code, existed):
 
 async def show_referral(update, context):
     uid = update.effective_user.id
-    bot_username = (await context.bot.get_me()).username
-    link = f"t.me/{bot_username}?start=ref_{uid}"
+    link = await build_start_link(context, f"ref_{uid}")
     total = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["c"]
     earned = conn.execute("SELECT COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["s"]
     vip = is_vip(get_user(uid))
