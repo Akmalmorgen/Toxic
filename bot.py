@@ -226,6 +226,16 @@ LINK_CHANGE_COOLDOWN_DAYS = 7
 VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
 VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
 
+# === Реферальные награды и бонусы за активность по ссылке ===
+REF_REWARD_NORMAL = 20      # коинов за приглашённого друга (обычный)
+REF_REWARD_VIP = 50         # коинов за приглашённого друга (VIP)
+REF_VIP_THRESHOLD = 5       # друзей для бесплатного VIP
+REF_VIP_DAYS = 7            # на сколько дней бесплатный VIP
+REF_MODER_THRESHOLD = 10    # друзей для бесплатной модерки
+REF_MODER_DAYS = 7          # на сколько дней бесплатная модерка
+LINK_REWARD_EVERY = 10      # каждые N действий по ссылке
+LINK_REWARD_COINS = 20      # коинов за каждые LINK_REWARD_EVERY действий
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
 
@@ -357,6 +367,13 @@ def init_db():
         is_banned INTEGER NOT NULL DEFAULT 0,
         last_bonus TEXT,
         lang TEXT NOT NULL DEFAULT 'ru',
+        moder_until TEXT,
+        link_sent_total INTEGER NOT NULL DEFAULT 0,
+        link_answered_total INTEGER NOT NULL DEFAULT 0,
+        link_sent_rewarded INTEGER NOT NULL DEFAULT 0,
+        link_answered_rewarded INTEGER NOT NULL DEFAULT 0,
+        ref_vip_claims INTEGER NOT NULL DEFAULT 0,
+        ref_moder_claims INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS anon_messages (
@@ -503,6 +520,13 @@ def migrate():
         "ALTER TABLE anon_messages ADD COLUMN parent_id INTEGER",
         "ALTER TABLE shop_items ADD COLUMN reward_type TEXT NOT NULL DEFAULT 'manual'",
         "ALTER TABLE shop_items ADD COLUMN reward_amount INTEGER",
+        "ALTER TABLE users ADD COLUMN moder_until TEXT",
+        "ALTER TABLE users ADD COLUMN link_sent_total INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN link_answered_total INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN link_sent_rewarded INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN link_answered_rewarded INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN ref_vip_claims INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN ref_moder_claims INTEGER NOT NULL DEFAULT 0",
     ]
     for sql in alters:
         try:
@@ -546,7 +570,18 @@ def ensure_user(tg_id, username, first_name=None):
 
 
 def is_moder(user_row):
-    return bool(user_row) and bool(user_row["is_moder"])
+    if not user_row:
+        return False
+    if user_row["is_moder"]:
+        return True
+    # Временная модерка (например, награда за рефералов) — действует до moder_until
+    try:
+        mu = user_row["moder_until"]
+        if mu and datetime.fromisoformat(mu) > now_dt():
+            return True
+    except (KeyError, IndexError, ValueError, TypeError):
+        pass
+    return False
 
 
 def is_staff(tg_id):
@@ -1240,6 +1275,69 @@ T = {
         "ru": " (у VIP — 50 💎)",
         "uz": " (VIP uchun — 50 💎)",
         "en": " (VIP gets 50 💎)",
+    },
+    "ref_rewards_title": {
+        "ru": (
+            "𓆩❤𓆪 <b>Награды за друзей</b> 👻\n"
+            "Приведи друзей по ссылке (чтобы они создали свою ссылку) и забери:\n"
+            "🎁 <b>VIP бесплатно</b> — за {vip_n} друзей ({vip_d} дн.)\n"
+            "🛡 <b>Модерка на неделю</b> — за {mod_n} друзей ({mod_d} дн.)\n"
+            "Жми кнопку, когда наберёшь 💕"
+        ),
+        "uz": (
+            "𓆩❤𓆪 <b>Do'stlar uchun mukofotlar</b> 👻\n"
+            "Havola orqali do'st taklif qiling (ular ham havola yaratsin) va oling:\n"
+            "🎁 <b>Bepul VIP</b> — {vip_n} do'st uchun ({vip_d} kun)\n"
+            "🛡 <b>Bir haftalik moder</b> — {mod_n} do'st uchun ({mod_d} kun)\n"
+            "Yetkazganda tugmani bosing 💕"
+        ),
+        "en": (
+            "𓆩❤𓆪 <b>Rewards for friends</b> 👻\n"
+            "Invite friends via your link (they must create their own link) and claim:\n"
+            "🎁 <b>Free VIP</b> — for {vip_n} friends ({vip_d} days)\n"
+            "🛡 <b>Moderator for a week</b> — for {mod_n} friends ({mod_d} days)\n"
+            "Tap a button once you reach it 💕"
+        ),
+    },
+    "ref_claim_coins_btn": {
+        "ru": "💎 {n} за друга · VIP {v} 💎",
+        "uz": "💎 do'st uchun {n} · VIP {v} 💎",
+        "en": "💎 {n} per friend · VIP {v} 💎",
+    },
+    "ref_claim_vip_btn": {
+        "ru": "🎁 VIP бесплатно ({have}/{need})",
+        "uz": "🎁 Bepul VIP ({have}/{need})",
+        "en": "🎁 Free VIP ({have}/{need})",
+    },
+    "ref_claim_moder_btn": {
+        "ru": "🛡 Модерка на неделю ({have}/{need})",
+        "uz": "🛡 Bir haftalik moder ({have}/{need})",
+        "en": "🛡 Moderator for a week ({have}/{need})",
+    },
+    "ref_need_more": {
+        "ru": "Нужно ещё {n} друзей (которые создали свою ссылку). Приглашено подходящих: {have}.",
+        "uz": "Yana {n} ta do'st kerak (ular havola yaratgan bo'lishi kerak). Mos: {have}.",
+        "en": "Need {n} more friends (who created their own link). Qualified: {have}.",
+    },
+    "ref_vip_granted": {
+        "ru": "🎉 <b>VIP активирован на {days} дней</b> за приглашённых друзей! 👑",
+        "uz": "🎉 <b>VIP {days} kunga faollashtirildi</b> — do'stlar uchun! 👑",
+        "en": "🎉 <b>VIP activated for {days} days</b> for your invited friends! 👑",
+    },
+    "ref_moder_granted": {
+        "ru": "🛡 <b>Модерка выдана на {days} дней</b> за {need} приглашённых друзей!\nПрочувствуй власть модератора 😎",
+        "uz": "🛡 <b>Moderlik {days} kunga berildi</b> — {need} ta do'st uchun!\nModer kuchini his qiling 😎",
+        "en": "🛡 <b>Moderator granted for {days} days</b> for {need} invited friends!\nFeel the power 😎",
+    },
+    "ref_info_alert": {
+        "ru": "За каждого приглашённого друга: {n} 💎 (а если ты VIP — {v} 💎). Коины приходят автоматически, когда друг запускает бота.",
+        "uz": "Har bir taklif qilingan do'st uchun: {n} 💎 (VIP bo'lsangiz — {v} 💎). Coinlar do'st botni ishga tushirganda avtomatik keladi.",
+        "en": "For each invited friend: {n} 💎 (VIP gets {v} 💎). Coins arrive automatically when the friend starts the bot.",
+    },
+    "link_reward": {
+        "ru": "🎁 <b>Бонус за активность по ссылке:</b> +{coins} 💎\nВсего действий: {n}. Так держать! 💕",
+        "uz": "🎁 <b>Havola faolligi uchun bonus:</b> +{coins} 💎\nJami: {n}. Davom eting! 💕",
+        "en": "🎁 <b>Activity bonus for your link:</b> +{coins} 💎\nTotal actions: {n}. Keep it up! 💕",
     },
     "top_empty": {
         "ru": "Пока никто никого не пригласил. Будь первым! 🚀",
@@ -2456,6 +2554,7 @@ async def process_anon_content(update, context):
             sender.id, t("anon_failed"), reply_markup=main_menu_kb(sender.id)
         )
         return
+    await reward_link_activity(context, sender.id, "sent")
     await context.bot.send_message(sender.id, t("main_menu"), reply_markup=main_menu_kb(sender.id))
 
 
@@ -2519,6 +2618,7 @@ async def process_reply_content(update, context):
     if mid is None:
         await update.message.reply_text(t("anon_reply_failed"), reply_markup=main_menu_kb(replier.id))
         return
+    await reward_link_activity(context, replier.id, "answered")
     await update.message.reply_text(t("anon_reply_sent"), reply_markup=main_menu_kb(replier.id))
 
 
@@ -3712,9 +3812,12 @@ async def show_pending_reports(update, context):
 
 
 async def notify_staff(context, text, reply_markup=None, parse_mode=None):
-    """Уведомление всем админам и модерам."""
+    """Уведомление всем админам и модерам (включая временных)."""
     targets = set(ADMIN_IDS)
-    for r in conn.execute("SELECT tg_id FROM users WHERE is_moder=1").fetchall():
+    for r in conn.execute(
+        "SELECT tg_id FROM users WHERE is_moder=1 OR (moder_until IS NOT NULL AND moder_until>?)",
+        (now_iso(),),
+    ).fetchall():
         targets.add(r["tg_id"])
     for tid in targets:
         try:
@@ -4228,7 +4331,7 @@ async def handle_referral(update, context, code, existed):
         return
     if conn.execute("SELECT 1 FROM referrals WHERE referred_id=?", (uid,)).fetchone():
         return
-    reward = 50 if is_vip(inviter) else 20
+    reward = REF_REWARD_VIP if is_vip(inviter) else REF_REWARD_NORMAL
     conn.execute(
         "INSERT INTO referrals (referrer_id, referred_id, coins_awarded, active, created_at) VALUES (?, ?, ?, 1, ?)",
         (inviter_id, uid, reward, now_iso()),
@@ -4248,13 +4351,133 @@ async def handle_referral(update, context, code, existed):
         pass
 
 
+def qualified_referrals(uid):
+    """Кол-во приглашённых, которые СОЗДАЛИ свою ссылку (нажали /start и создали ссылку)."""
+    return conn.execute(
+        "SELECT COUNT(*) c FROM referrals r JOIN users u ON u.tg_id=r.referred_id "
+        "WHERE r.referrer_id=? AND r.active=1 AND u.custom_link IS NOT NULL",
+        (uid,),
+    ).fetchone()["c"]
+
+
+async def reward_link_activity(context, uid, kind):
+    """Бонус за активность по ссылке: +LINK_REWARD_COINS за каждые LINK_REWARD_EVERY действий.
+    kind: 'sent' (отправил по ссылке) или 'answered' (ответил). VIP и персонал — без бонуса."""
+    u = get_user(uid)
+    if not u or is_vip(u):   # is_vip True и для админа/модера → бонус им не идёт
+        return
+    if kind == "sent":
+        col_total, col_paid = "link_sent_total", "link_sent_rewarded"
+    else:
+        col_total, col_paid = "link_answered_total", "link_answered_rewarded"
+    total = (u[col_total] or 0) + 1
+    paid = u[col_paid] or 0
+    milestones = total // LINK_REWARD_EVERY
+    if milestones > paid:
+        reward = (milestones - paid) * LINK_REWARD_COINS
+        conn.execute(
+            f"UPDATE users SET {col_total}=?, {col_paid}=?, coins = coins + ? WHERE tg_id=?",
+            (total, milestones, reward, uid),
+        )
+        conn.commit()
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(uid))
+            await context.bot.send_message(uid, t("link_reward", coins=reward, n=total), parse_mode="HTML")
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+    else:
+        conn.execute(f"UPDATE users SET {col_total}=? WHERE tg_id=?", (total, uid))
+        conn.commit()
+
+
+def ref_rewards_kb(uid):
+    """Инлайн-кнопки наград за рефералов с прогрессом."""
+    qual = qualified_referrals(uid)
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(t("ref_claim_coins_btn", n=REF_REWARD_NORMAL, v=REF_REWARD_VIP), callback_data="ref_info")],
+        [InlineKeyboardButton(t("ref_claim_vip_btn", have=qual, need=REF_VIP_THRESHOLD), callback_data="claim_vip")],
+        [InlineKeyboardButton(t("ref_claim_moder_btn", have=qual, need=REF_MODER_THRESHOLD), callback_data="claim_moder")],
+    ])
+
+
+async def refresh_ref_rewards(update, context):
+    """Перерисовывает инлайн-кнопки наград (после клейма прогресс меняется)."""
+    query = update.callback_query
+    try:
+        await query.edit_message_reply_markup(reply_markup=ref_rewards_kb(query.from_user.id))
+    except TelegramError:
+        pass
+
+
+async def on_claim_vip(update, context):
+    """Забрать бесплатный VIP за приглашённых друзей (1 раз на каждые REF_VIP_THRESHOLD)."""
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    u = get_user(uid)
+    qual = qualified_referrals(uid)
+    allowed = qual // REF_VIP_THRESHOLD
+    claimed = u["ref_vip_claims"] or 0
+    if allowed <= claimed:
+        need = (claimed + 1) * REF_VIP_THRESHOLD - qual
+        await query.answer(t("ref_need_more", n=need, have=qual, need=REF_VIP_THRESHOLD), show_alert=True)
+        return
+    base = max(now_dt(), datetime.fromisoformat(u["vip_until"])) if u["vip_until"] else now_dt()
+    new_until = base + timedelta(days=REF_VIP_DAYS)
+    conn.execute(
+        "UPDATE users SET vip_until=?, ref_vip_claims=? WHERE tg_id=?",
+        (new_until.isoformat(), claimed + 1, uid),
+    )
+    conn.commit()
+    await context.bot.send_message(uid, t("ref_vip_granted", days=REF_VIP_DAYS), parse_mode="HTML")
+    await refresh_ref_rewards(update, context)
+
+
+async def on_claim_moder(update, context):
+    """Забрать бесплатную модерку на неделю за REF_MODER_THRESHOLD приглашённых друзей."""
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    u = get_user(uid)
+    qual = qualified_referrals(uid)
+    allowed = qual // REF_MODER_THRESHOLD
+    claimed = u["ref_moder_claims"] or 0
+    if allowed <= claimed:
+        need = (claimed + 1) * REF_MODER_THRESHOLD - qual
+        await query.answer(t("ref_need_more", n=need, have=qual, need=REF_MODER_THRESHOLD), show_alert=True)
+        return
+    base = now_dt()
+    try:
+        if u["moder_until"] and datetime.fromisoformat(u["moder_until"]) > base:
+            base = datetime.fromisoformat(u["moder_until"])
+    except (ValueError, TypeError):
+        pass
+    new_until = base + timedelta(days=REF_MODER_DAYS)
+    conn.execute(
+        "UPDATE users SET moder_until=?, ref_moder_claims=? WHERE tg_id=?",
+        (new_until.isoformat(), claimed + 1, uid),
+    )
+    conn.commit()
+    await context.bot.send_message(
+        uid, t("ref_moder_granted", days=REF_MODER_DAYS, need=REF_MODER_THRESHOLD),
+        parse_mode="HTML", reply_markup=main_menu_kb(uid),
+    )
+    await refresh_ref_rewards(update, context)
+
+
+async def on_ref_info(update, context):
+    query = update.callback_query
+    await query.answer(t("ref_info_alert", n=REF_REWARD_NORMAL, v=REF_REWARD_VIP), show_alert=True)
+
+
 async def show_referral(update, context):
     uid = update.effective_user.id
     link = await build_start_link(context, f"ref_{uid}")
     total = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["c"]
     earned = conn.execute("SELECT COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["s"]
     vip = is_vip(get_user(uid))
-    reward = 50 if vip else 20
+    reward = REF_REWARD_VIP if vip else REF_REWARD_NORMAL
     bonus = t("referral_bonus_vip") if vip else t("referral_bonus_normal")
     text = t(
         "referral_screen",
@@ -4263,6 +4486,15 @@ async def show_referral(update, context):
     )
     context.user_data["state"] = "referral"
     await nav(update, context, text, referral_kb(), parse_mode="HTML")
+    # Отдельным сообщением — инлайн-награды (забрать VIP / модерку за рефералов)
+    msg = await context.bot.send_message(
+        update.effective_chat.id,
+        t("ref_rewards_title", vip_n=REF_VIP_THRESHOLD, mod_n=REF_MODER_THRESHOLD,
+          vip_d=REF_VIP_DAYS, mod_d=REF_MODER_DAYS),
+        parse_mode="HTML",
+        reply_markup=ref_rewards_kb(uid),
+    )
+    track_extra(context, msg)
 
 
 def referral_kb():
@@ -4681,6 +4913,9 @@ _CALLBACKS = [
     ("repadm:", on_report_admin_decision, False),
     ("roulette_cancel", on_roulette_cancel, True),
     ("modapp:", on_moder_app_decision, False),
+    ("claim_vip", on_claim_vip, True),
+    ("claim_moder", on_claim_moder, True),
+    ("ref_info", on_ref_info, True),
 ]
 
 
