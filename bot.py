@@ -5306,7 +5306,24 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if _fl["msg_type"]:
                 context.user_data["anon_type"] = _fl["msg_type"]
             state = _fl["state"]
-    # Чат-рулетка: кнопки управления — reply-клавиатура снизу (перехват до релея)
+    # Навигация по главному меню доступна из ЛЮБОГО раздела и чистит прошлый экран.
+    # Не перехватываем там, где пользователь вводит свободный текст/контент или сидит в чате.
+    _NO_NAV = {
+        "awaiting_anon_content", "awaiting_reply", "modmsg_text", "rchat", "tg_watch",
+        "shop_add_title", "shop_edit_name", "adm_ad_text", "adm_ad_button_text",
+        "adm_ad_button_url", "adm_bcast_content", "adm_channel_add",
+    }
+    _NAV = {
+        "🔗 Моя ссылка": show_link_menu, "🎲 Чат-рулетка": show_roulette_entry,
+        "👤 Профиль": show_profile, "🛒 Магазин": show_shop,
+        "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
+        "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
+    }
+    if text in _NAV and state not in _NO_NAV and not (state and state.startswith("moder_q_")):
+        if text == "🛒 Магазин":
+            context.user_data["state"] = None
+        await _NAV[text](update, context)
+        return
     if state == "rchat":
         if text == "➡️ Далее":
             await rchat_next(update, context)
