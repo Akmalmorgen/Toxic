@@ -799,7 +799,6 @@ BTN = {
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
     "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
-    "🔍 Инфо юзера": ("🔍 Foydalanuvchi", "🔍 User info"),
     "👨 Мужской": ("👨 Erkak", "👨 Male"),
     "👩 Женский": ("👩 Ayol", "👩 Female"),
     "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
@@ -1435,6 +1434,11 @@ T = {
         "ru": "Меню «Пригласить» 👇",
         "uz": "«Taklif qilish» menyusi 👇",
         "en": "Invite menu 👇",
+    },
+    "mod_message": {
+        "ru": "✉️ <b>Сообщение от модератора {name}</b>:\n{text}",
+        "uz": "✉️ <b>{name} moderatordan xabar</b>:\n{text}",
+        "en": "✉️ <b>Message from moderator {name}</b>:\n{text}",
     },
     "inactive_nudge": {
         "ru": (
@@ -2124,7 +2128,7 @@ def star_admin_kb():
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("🔍 Инфо юзера"), KeyboardButton("📊 Статистика")],
+        [KeyboardButton("📊 Статистика")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -3304,6 +3308,8 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
         (ender_id, now_iso(), session["id"]),
     )
     conn.commit()
+    # Уведомить модераторов-наблюдателей и перекинуть их на другую сессию
+    await handle_spectators_on_end(context, session["id"])
     # Второму участнику: сообщение «собеседник ушёл» + reply-клавиатура снизу (на его языке)
     UD[other_id]["state"] = "rleft"
     UD[other_id]["last_session"] = session["id"]
@@ -3405,6 +3411,9 @@ async def relay_roulette_message(update, context):
         await context.bot.copy_message(other_id, update.effective_chat.id, update.message.message_id)
     except TelegramError:
         pass
+    # Трансляция модераторам-наблюдателям (/tg), если они есть
+    await relay_to_spectators(context, session, update.effective_user.id,
+                              update.effective_chat.id, update.message.message_id)
     return True
 
 
@@ -3435,6 +3444,213 @@ async def on_roulette_report(update, context):
     context.user_data["report_ref_id"] = session_id
     context.user_data["reported_id"] = reported_id
     await query.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
+
+
+# === Модераторский мониторинг рулетки (/tg) ===
+SPECTATORS = {}                          # mod_id -> session_id
+SESSION_SPECTATORS = defaultdict(set)    # session_id -> {mod_id}
+
+
+def tg_watch_kb():
+    return ReplyKeyboardMarkup([[KeyboardButton("🚪 Выйти")]], resize_keyboard=True)
+
+
+def tg_ban_kb(session):
+    u1 = get_user(session["user1_id"]); u2 = get_user(session["user2_id"])
+    n1 = (u1["first_name"] if u1 else None) or str(session["user1_id"])
+    n2 = (u2["first_name"] if u2 else None) or str(session["user2_id"])
+    return InlineKeyboardMarkup([[
+        InlineKeyboardButton(f"🚫 Бан 1️⃣ {n1[:12]}", callback_data=f"tgban:{session['id']}:1"),
+        InlineKeyboardButton(f"🚫 Бан 2️⃣ {n2[:12]}", callback_data=f"tgban:{session['id']}:2"),
+    ]])
+
+
+def detach_spectator(mod_id):
+    sid = SPECTATORS.pop(mod_id, None)
+    if sid is not None:
+        SESSION_SPECTATORS[sid].discard(mod_id)
+        if not SESSION_SPECTATORS[sid]:
+            SESSION_SPECTATORS.pop(sid, None)
+
+
+async def attach_spectator(context, mod_id, session, auto=False):
+    detach_spectator(mod_id)
+    SPECTATORS[mod_id] = session["id"]
+    SESSION_SPECTATORS[session["id"]].add(mod_id)
+    UD[mod_id]["state"] = "tg_watch"
+    u1 = get_user(session["user1_id"]); u2 = get_user(session["user2_id"])
+    head = "🔄 <b>Новая сессия для наблюдения</b>" if auto else "👁 <b>Вы наблюдаете за сессией</b>"
+    info = (f"{head}\n1️⃣ {user_mention(u1)}\n2️⃣ {user_mention(u2)}\n\n"
+            "Сообщения участников приходят сюда. Кнопки ниже — забанить.")
+    try:
+        await context.bot.send_message(mod_id, info, parse_mode="HTML", reply_markup=tg_watch_kb())
+        await context.bot.send_message(mod_id, "Действия 👇", reply_markup=tg_ban_kb(session))
+    except TelegramError:
+        pass
+
+
+async def relay_to_spectators(context, session, sender_id, from_chat_id, message_id):
+    specs = SESSION_SPECTATORS.get(session["id"])
+    if not specs:
+        return
+    tag = "1️⃣" if sender_id == session["user1_id"] else "2️⃣"
+    for mod_id in list(specs):
+        try:
+            await context.bot.send_message(mod_id, f"{tag} пишет:")
+            await context.bot.copy_message(mod_id, from_chat_id, message_id)
+        except TelegramError:
+            pass
+
+
+async def handle_spectators_on_end(context, session_id):
+    specs = SESSION_SPECTATORS.pop(session_id, None)
+    if not specs:
+        return
+    for mod_id in list(specs):
+        SPECTATORS.pop(mod_id, None)
+        nxt = conn.execute(
+            "SELECT * FROM roulette_sessions WHERE active=1 AND id<>? ORDER BY id DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        try:
+            await context.bot.send_message(mod_id, "⏹ Наблюдаемая сессия завершена.")
+            if nxt:
+                await attach_spectator(context, mod_id, nxt, auto=True)
+            else:
+                UD[mod_id]["state"] = "tg_watch"
+                await context.bot.send_message(
+                    mod_id, "Других активных сессий нет. Нажмите 🚪 Выйти.", reply_markup=tg_watch_kb())
+        except TelegramError:
+            pass
+
+
+def active_sessions_list_text():
+    rows = conn.execute(
+        "SELECT * FROM roulette_sessions WHERE active=1 ORDER BY id DESC LIMIT 30"
+    ).fetchall()
+    if not rows:
+        return None
+    lines = ["🎲 <b>Активные сессии рулетки</b>", "━━━━━━━━━━━━━━━━━━━━"]
+    for s in rows:
+        u1 = get_user(s["user1_id"]); u2 = get_user(s["user2_id"])
+        g1 = gender_label(u1["gender"]) if u1 and u1["gender"] else "—"
+        g2 = gender_label(u2["gender"]) if u2 and u2["gender"] else "—"
+        lines.append(
+            f"#{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) ↔ 2️⃣ <code>{s['user2_id']}</code> ({g2})"
+        )
+    lines.append("\n👁 Введите ID одного из участников, чтобы наблюдать:")
+    return "\n".join(lines)
+
+
+async def tg_start(update, context):
+    text = active_sessions_list_text()
+    uid = update.effective_user.id
+    if not text:
+        await update.message.reply_text(
+            "Сейчас нет активных сессий рулетки.", reply_markup=main_menu_kb(uid))
+        return
+    context.user_data["state"] = "tg_pick"
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=cancel_reply_kb())
+
+
+async def process_tg_pick(update, context):
+    text = canon(update.message.text.strip())
+    uid = update.effective_user.id
+    if text == "❌ Отмена":
+        context.user_data["state"] = None
+        await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
+        return
+    if not text.isdigit():
+        await update.message.reply_text("Введите ID числом (или «❌ Отмена»):", reply_markup=cancel_reply_kb())
+        return
+    session = get_active_session(int(text))
+    if not session:
+        await update.message.reply_text(
+            "Активная сессия с таким участником не найдена. Попробуйте другой ID:",
+            reply_markup=cancel_reply_kb())
+        return
+    await attach_spectator(context, uid, session)
+
+
+async def on_tg_ban(update, context):
+    query = update.callback_query
+    await query.answer()
+    if not is_staff(query.from_user.id):
+        return
+    _, sid, which = query.data.split(":")
+    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (int(sid),)).fetchone()
+    if not session:
+        await query.answer("Сессия не найдена", show_alert=True)
+        return
+    target = session["user1_id"] if which == "1" else session["user2_id"]
+    if is_admin(target) or is_moder(get_user(target)):
+        await query.answer("Нельзя забанить персонал", show_alert=True)
+        return
+    conn.execute("UPDATE users SET is_banned=1 WHERE tg_id=?", (target,))
+    conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
+    conn.commit()
+    try:
+        await context.bot.send_message(target, "🚫 Вы заблокированы в боте.")
+    except TelegramError:
+        pass
+    await query.answer(f"Пользователь {target} забанен ✅", show_alert=True)
+    try:
+        await context.bot.send_message(query.from_user.id, f"🚫 Забанен {which}️⃣ (ID <code>{target}</code>).", parse_mode="HTML")
+    except TelegramError:
+        pass
+
+
+# === Сообщение пользователю от модератора (/next) ===
+async def modmsg_start(update, context):
+    context.user_data["state"] = "modmsg_id"
+    await update.message.reply_text(
+        "✉️ Введите ID пользователя, которому написать:", reply_markup=cancel_reply_kb())
+
+
+async def process_modmsg_id(update, context):
+    text = canon(update.message.text.strip())
+    uid = update.effective_user.id
+    if text == "❌ Отмена":
+        context.user_data["state"] = None
+        await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
+        return
+    if not text.isdigit():
+        await update.message.reply_text("ID должен быть числом:", reply_markup=cancel_reply_kb())
+        return
+    if not get_user(int(text)):
+        await update.message.reply_text("Пользователь не найден.", reply_markup=cancel_reply_kb())
+        return
+    context.user_data["modmsg_target"] = int(text)
+    context.user_data["state"] = "modmsg_text"
+    await update.message.reply_text("Введите сообщение для пользователя:", reply_markup=cancel_reply_kb())
+
+
+async def process_modmsg_text(update, context):
+    raw = update.message.text or ""
+    uid = update.effective_user.id
+    if canon(raw.strip()) == "❌ Отмена":
+        context.user_data["state"] = None
+        context.user_data.pop("modmsg_target", None)
+        await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
+        return
+    target = context.user_data.get("modmsg_target")
+    moder = get_user(uid)
+    moder_name = (moder["first_name"] if moder else None) or "Модератор"
+    ok = False
+    try:
+        _sl = cur_lang(); set_cur_lang(get_lang(target))
+        await context.bot.send_message(
+            target, t("mod_message", name=html.escape(moder_name), text=html.escape(raw)),
+            parse_mode="HTML")
+        set_cur_lang(_sl)
+        ok = True
+    except TelegramError:
+        pass
+    context.user_data["state"] = None
+    context.user_data.pop("modmsg_target", None)
+    await update.message.reply_text(
+        "✅ Отправлено." if ok else "❌ Не удалось отправить (возможно, юзер заблокировал бота).",
+        reply_markup=main_menu_kb(uid))
 
 
 async def show_shop(update, context):
@@ -4043,69 +4259,10 @@ async def moder_panel_router(update, context):
     if text == "🔨 Бан / Разбан":
         await start_ban(update, context, "moder")
         return
-    if text == "🔍 Инфо юзера":
-        context.user_data["state"] = "user_info_id"
-        await update.message.reply_text(
-            "🔍 Введите ID пользователя, чтобы посмотреть его данные:",
-            reply_markup=cancel_reply_kb(),
-        )
-        return
     if text == "📊 Статистика":
         await adm_stats_msg(update, context)
         return
     await update.message.reply_text("Выберите действие 👇", reply_markup=moder_menu_kb())
-
-
-async def process_user_info(update, context):
-    """Карточка пользователя для модерации (по ID). Доступно админам и модерам."""
-    text = canon(update.message.text.strip())
-    uid = update.effective_user.id
-    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
-    back_state = "admin" if is_admin(uid) else "moder"
-    if text == "❌ Отмена":
-        context.user_data["state"] = back_state
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
-        return
-    if not text.isdigit():
-        await update.message.reply_text("ID должен быть числом:", reply_markup=cancel_reply_kb())
-        return
-    target = int(text)
-    u = get_user(target)
-    if not u:
-        await update.message.reply_text("Пользователь не найден.", reply_markup=back_kb)
-        context.user_data["state"] = back_state
-        return
-    sent = conn.execute("SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND msg_type IN ('question','valentine')", (target,)).fetchone()["c"]
-    received = conn.execute("SELECT COUNT(*) c FROM anon_messages WHERE to_id=? AND msg_type IN ('question','valentine')", (target,)).fetchone()["c"]
-    reports_on = conn.execute("SELECT COUNT(*) c FROM reports WHERE reported_id=?", (target,)).fetchone()["c"]
-    invited = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (target,)).fetchone()["c"]
-    stars = conn.execute("SELECT COALESCE(SUM(stars),0) s FROM star_purchases WHERE user_id=?", (target,)).fetchone()["s"]
-    role = "👑 Админ" if is_admin(target) else ("🛡 Модер" if is_moder(u) else ("⭐ VIP" if is_vip(u) else "обычный"))
-    banned = "🚫 ДА" if is_banned(u) else "нет"
-    try:
-        reg = datetime.fromisoformat(u["created_at"]).strftime("%d.%m.%Y")
-    except (ValueError, TypeError):
-        reg = "—"
-    last_act = (u["last_active"] or "")[:16].replace("T", " ") or "—"
-    name = u["first_name"] or "—"
-    if u["username"]:
-        name += f" (@{u['username']})"
-    card = (
-        f"🔍 <b>Пользователь</b> <code>{target}</code>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"👤 Имя: <b>{html.escape(name)}</b>\n"
-        f"🏷 Роль: <b>{role}</b>\n"
-        f"🚫 Бан: <b>{banned}</b>\n"
-        f"💎 Коины: <b>{u['coins']}</b>\n"
-        f"⭐ Потрачено звёзд: <b>{stars}</b>\n"
-        f"📤 Отправлено / 📥 получено по ссылке: <b>{sent}</b> / <b>{received}</b>\n"
-        f"👥 Приглашено: <b>{invited}</b>\n"
-        f"🚩 Жалоб на него: <b>{reports_on}</b>\n"
-        f"📅 Регистрация: <b>{reg}</b>\n"
-        f"🕒 Последняя активность: <b>{last_act}</b>"
-    )
-    context.user_data["state"] = back_state
-    await update.message.reply_text(card, parse_mode="HTML", reply_markup=back_kb)
 
 
 async def show_pending_reports(update, context):
@@ -5073,8 +5230,20 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "ban_id":
         await process_ban(update, context)
         return
-    if state == "user_info_id":
-        await process_user_info(update, context)
+    if state == "tg_pick":
+        await process_tg_pick(update, context)
+        return
+    if state == "tg_watch":
+        if canon(update.message.text) == "🚪 Выйти":
+            detach_spectator(update.effective_user.id)
+            context.user_data["state"] = None
+            await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(update.effective_user.id))
+        return
+    if state == "modmsg_id":
+        await process_modmsg_id(update, context)
+        return
+    if state == "modmsg_text":
+        await process_modmsg_text(update, context)
         return
     if state == "admin_moder":
         await admin_moder_router(update, context)
@@ -5343,36 +5512,17 @@ async def _h_text(message: Message):
     await text_router(_mu(message), Ctx(message.from_user.id))
 
 
-# ── Скрытые команды (не показываются в меню, работают по вводу) ──
-async def _h_cmd_id(message: Message):
-    await message.answer(
-        f"🆔 Ваш ID: <code>{message.from_user.id}</code>", parse_mode="HTML"
-    )
-
-
-async def _h_cmd_me(message: Message):
-    ensure_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
-    await show_profile(_mu(message), Ctx(message.from_user.id))
-
-
-async def _h_cmd_admin(message: Message):
-    if not is_admin(message.from_user.id):
-        return
-    await show_admin_menu(_mu(message), Ctx(message.from_user.id))
-
-
-async def _h_cmd_moder(message: Message):
+# ── Скрытые команды модерации (в меню не показываются, только для персонала) ──
+async def _h_cmd_tg(message: Message):
     if not is_staff(message.from_user.id):
         return
-    await show_moder_menu(_mu(message), Ctx(message.from_user.id))
+    await tg_start(_mu(message), Ctx(message.from_user.id))
 
 
-async def _h_cmd_userinfo(message: Message):
+async def _h_cmd_next(message: Message):
     if not is_staff(message.from_user.id):
         return
-    ctx = Ctx(message.from_user.id)
-    ctx.user_data["state"] = "user_info_id"
-    await message.answer("🔍 Введите ID пользователя:", reply_markup=cancel_reply_kb())
+    await modmsg_start(_mu(message), Ctx(message.from_user.id))
 
 
 # Карта callback-хендлеров: (ключ, функция, точное_совпадение)
@@ -5391,6 +5541,7 @@ _CALLBACKS = [
     ("claim_vip", on_claim_vip, True),
     ("claim_moder", on_claim_moder, True),
     ("ref_info", on_ref_info, True),
+    ("tgban:", on_tg_ban, False),
 ]
 
 
@@ -5405,12 +5556,9 @@ def register_handlers():
     dp.errors.register(on_error)
 
     dp.message.register(_h_start, CommandStart())
-    # Скрытые команды (в меню не показываются — set_my_commands содержит только /start)
-    dp.message.register(_h_cmd_id, Command("id"))
-    dp.message.register(_h_cmd_me, Command("me"))
-    dp.message.register(_h_cmd_admin, Command("admin"))
-    dp.message.register(_h_cmd_moder, Command("moder"))
-    dp.message.register(_h_cmd_userinfo, Command("userinfo"))
+    # Скрытые команды модерации (в меню не показываются — set_my_commands содержит только /start)
+    dp.message.register(_h_cmd_tg, Command("tg"))
+    dp.message.register(_h_cmd_next, Command("next"))
     dp.pre_checkout_query.register(_h_precheckout)
     dp.message.register(_h_payment, F.successful_payment)
     dp.my_chat_member.register(_h_my_chat_member)
