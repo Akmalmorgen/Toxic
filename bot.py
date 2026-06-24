@@ -4236,7 +4236,34 @@ def admin_moder_kb():
 
 async def show_admin_moder(update, context):
     context.user_data["state"] = "admin_moder"
-    await update.message.reply_text("🛡 Управление модерами:", reply_markup=admin_moder_kb())
+    rows = conn.execute(
+        "SELECT * FROM users WHERE is_moder=1 OR (moder_until IS NOT NULL AND moder_until>?) "
+        "ORDER BY tg_id",
+        (now_iso(),),
+    ).fetchall()
+    if not rows:
+        text = ("🛡 <b>Модераторы</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+                "Пока нет ни одного модератора.")
+    else:
+        lines = [f"🛡 <b>Модераторы</b> — всего: <b>{len(rows)}</b>",
+                 "━━━━━━━━━━━━━━━━━━━━"]
+        for i, u in enumerate(rows, 1):
+            name = u["first_name"] or "—"
+            uname = f"@{u['username']}" if u["username"] else "без юзернейма"
+            if u["is_moder"]:
+                kind = "♾ постоянный"
+            else:
+                try:
+                    kind = "⏳ до " + datetime.fromisoformat(u["moder_until"]).strftime("%d.%m.%Y")
+                except (ValueError, TypeError):
+                    kind = "⏳ временный"
+            key = " · 🔓 админ-доступ" if u["admin_unlocked"] else ""
+            lines.append(
+                f"{i}. {html.escape(name)} ({uname})\n"
+                f"   🆔 <code>{u['tg_id']}</code> · {kind}{key}"
+            )
+        text = "\n".join(lines)
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=admin_moder_kb())
 
 
 async def admin_moder_router(update, context):
