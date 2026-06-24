@@ -2561,6 +2561,8 @@ async def show_my_link(update, context):
         reply_markup=share_kb(link, t("share_text")),
     )
     track_extra(context, msg)
+    # Гарантируем нижние кнопки [Показать/Сменить][Назад] под карточкой
+    await send_menu(update, context, t("link_section"), link_menu_kb(), parse_mode="HTML")
 
 
 async def start_change_link(update, context):
