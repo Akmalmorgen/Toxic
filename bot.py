@@ -945,14 +945,14 @@ T = {
         "en": "🔗 <b>«My link» section</b>\n\nChoose an action 👇",
     },
     "link_show": {
-        "ru": "🔗 <b>Ваша персональная ссылка:</b>\n<code>{link}</code>\n📤 Нажми «Поделиться» — выбери кому отправить, и тебе будут писать анонимно 💌",
-        "uz": "🔗 <b>Shaxsiy havolangiz:</b>\n<code>{link}</code>\n📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
-        "en": "🔗 <b>Your personal link:</b>\n<code>{link}</code>\n📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
+        "ru": "✦ <b>Ваша персональная ссылка</b> ✦\n<blockquote>{link}</blockquote>\n📤 Нажми «Поделиться» — выбери, кому отправить, и тебе будут писать анонимно 💌",
+        "uz": "✦ <b>Shaxsiy havolangiz</b> ✦\n<blockquote>{link}</blockquote>\n📤 «Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi 💌",
+        "en": "✦ <b>Your personal link</b> ✦\n<blockquote>{link}</blockquote>\n📤 Tap «Share» — pick who to send it to, and people will message you anonymously 💌",
     },
     "link_done": {
-        "ru": "✅ <b>Готово! Ваша ссылка:</b>\n<code>{link}</code>\n📤 Нажми «Поделиться», чтобы отправить её 💌",
-        "uz": "✅ <b>Tayyor! Havolangiz:</b>\n<code>{link}</code>\n📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
-        "en": "✅ <b>Done! Your link:</b>\n<code>{link}</code>\n📤 Tap «Share» to send it 💌",
+        "ru": "✅ <b>Готово! Ваша ссылка</b> ✦\n<blockquote>{link}</blockquote>\n📤 Нажми «Поделиться», чтобы отправить её 💌",
+        "uz": "✅ <b>Tayyor! Havolangiz</b> ✦\n<blockquote>{link}</blockquote>\n📤 Uni yuborish uchun «Ulashish» tugmasini bosing 💌",
+        "en": "✅ <b>Done! Your link</b> ✦\n<blockquote>{link}</blockquote>\n📤 Tap «Share» to send it 💌",
     },
     "btn_share": {
         "ru": "✦ Поделиться",
@@ -2311,7 +2311,7 @@ async def show_my_link(update, context):
     user = get_user(update.effective_user.id)
     if not user["custom_link"]:
         context.user_data["state"] = "awaiting_link_code"
-        await nav(update, context, t("link_no_link"), cancel_reply_kb())
+        await nav(update, context, t("link_no_link"), link_code_kb())
         return
     # Стираем нажатие «Показать ссылку» и прошлый экран, показываем карточку.
     await clean_screen(update, context)
@@ -2332,24 +2332,24 @@ async def start_change_link(update, context):
         await nav(update, context, error_msg, link_menu_kb())
         return
     context.user_data["state"] = "awaiting_link_code"
-    await nav(update, context, t("link_change"), cancel_reply_kb())
+    await nav(update, context, t("link_change"), link_code_kb())
 
 
 async def process_link_code(update, context, code):
     code = (code or "").strip()
-    if canon(code) == "❌ Отмена":
+    if canon(code) in ("❌ Отмена", "⬅️ Назад"):
         context.user_data["state"] = "link_menu"
-        await nav(update, context, t("cancelled"), link_menu_kb())
+        await show_link_menu(update, context)
         return
     if not valid_link_code(code):
         await update.message.reply_text(
             t("link_invalid"),
-            reply_markup=cancel_reply_kb(),
+            reply_markup=link_code_kb(),
         )
         return
     exists = conn.execute("SELECT tg_id FROM users WHERE custom_link=?", (code,)).fetchone()
     if exists and exists["tg_id"] != update.effective_user.id:
-        await update.message.reply_text(t("link_taken"), reply_markup=cancel_reply_kb())
+        await update.message.reply_text(t("link_taken"), reply_markup=link_code_kb())
         return
     conn.execute(
         "UPDATE users SET custom_link=?, link_changed_at=? WHERE tg_id=?",
@@ -2951,6 +2951,11 @@ def searching_kb():
 
 def cancel_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True, one_time_keyboard=True))
+
+
+def link_code_kb():
+    """Клавиатура ввода кода ссылки — с постоянной кнопкой «Назад»."""
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True))
 
 
 def bcast_audience_kb():
