@@ -1,0 +1,32 @@
+# Запуск бота на любом сервере: docker compose up -d --build
+#
+# По умолчанию поднимается ТОЛЬКО бот (данные — в SQLite внутри тома bot_data).
+# Чтобы включить встроенный PostgreSQL — раскомментируйте сервис `db`,
+# задайте DATABASE_URL у бота и зависимость depends_on.
+
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"          # keep-alive HTTP (можно убрать на VPS)
+    volumes:
+      - bot_data:/app/data   # для SQLite (DB_PATH=/app/data/bot.db)
+    # depends_on:
+    #   - db
+
+  # db:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: bot
+  #     POSTGRES_PASSWORD: change_me
+  #     POSTGRES_DB: anonbot
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+
+volumes:
+  bot_data:
+  # pg_data:
