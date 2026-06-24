@@ -809,6 +809,7 @@ BTN = {
     "✉️ Рассылка": ("✉️ Xabar tarqatish", "✉️ Broadcast"),
     "📢 Рассылка": ("📢 Xabar tarqatish", "📢 Broadcast"),
     "🛡 Модеры": ("🛡 Moderatorlar", "🛡 Moderators"),
+    "🔒 Отозвать доступ": ("🔒 Kirishni bekor qilish", "🔒 Revoke access"),
     "🔨 Бан / Разбан": ("🔨 Ban / Unban", "🔨 Ban / Unban"),
     "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
     "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
@@ -1731,6 +1732,7 @@ T = {
             "• корона и медиа (фото/видео/гиф) в анонимках\n"
             "• безлимитная смена ссылки"
             "</blockquote>\n"
+            "🛡 <i>Для безопасности сообщения и чаты могут проверяться модераторами.</i>\n"
             "💬 <i>Выбери раздел в меню ниже 👇</i>"
         ),
         "uz": (
@@ -1756,6 +1758,7 @@ T = {
             "• anonimlarda toj va media (foto/video/gif)\n"
             "• havolani cheksiz o'zgartirish"
             "</blockquote>\n"
+            "🛡 <i>Xavfsizlik uchun xabarlar va chatlar moderatorlar tomonidan tekshirilishi mumkin.</i>\n"
             "💬 <i>Quyidagi menyudan bo'limni tanlang 👇</i>"
         ),
         "en": (
@@ -1781,6 +1784,7 @@ T = {
             "• crown and media (photo/video/gif) in anon messages\n"
             "• unlimited link change"
             "</blockquote>\n"
+            "🛡 <i>For safety, messages and chats may be reviewed by moderators.</i>\n"
             "💬 <i>Pick a section in the menu below 👇</i>"
         ),
     },
@@ -2130,7 +2134,7 @@ def admin_menu_kb():
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton("🔒 Отозвать доступ")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -2146,7 +2150,8 @@ def star_admin_kb():
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("📊 Статистика"), KeyboardButton("🛠 Админ панель")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("🛠 Админ панель")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -4287,6 +4292,9 @@ async def moder_panel_router(update, context):
     if text == "📊 Статистика":
         await adm_stats_msg(update, context)
         return
+    if text == "📤 Выгрузить пользователей":
+        await adm_export_msg(update, context)
+        return
     if text == "🛠 Админ панель":
         if has_admin_access(uid):
             await show_admin_menu(update, context)
@@ -5369,6 +5377,35 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "🛡 Модеры":
             await show_admin_moder(update, context)
+            return
+        if text == "🔒 Отозвать доступ":
+            if not is_admin(update.effective_user.id):
+                await update.message.reply_text(
+                    "🔒 Отзывать доступ может только создатель.", reply_markup=admin_menu_kb())
+                return
+            rows = conn.execute("SELECT tg_id FROM users WHERE admin_unlocked=1").fetchall()
+            conn.execute("UPDATE users SET admin_unlocked=0 WHERE admin_unlocked=1")
+            conn.commit()
+            cnt = 0
+            for r in rows:
+                if is_admin(r["tg_id"]):
+                    continue
+                cnt += 1
+                try:
+                    _sl = cur_lang(); set_cur_lang(get_lang(r["tg_id"]))
+                    await context.bot.send_message(
+                        r["tg_id"],
+                        "🔒 Ваш доступ к админ-панели отозван создателем. Роль модератора сохранена.",
+                        reply_markup=main_menu_kb(r["tg_id"]),
+                    )
+                    set_cur_lang(_sl)
+                except TelegramError:
+                    pass
+            await update.message.reply_text(
+                f"🔒 Доступ к админ-панели отозван у <b>{cnt}</b> модер(ов).\n"
+                "Сама модерка у них сохранена. Чтобы вернуть доступ — снова введут ключ.",
+                parse_mode="HTML", reply_markup=admin_menu_kb(),
+            )
             return
         if text == "🔨 Бан / Разбан":
             await start_ban(update, context, "admin")
