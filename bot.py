@@ -986,30 +986,45 @@ T = {
             "👤 <b>Ваш профиль</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "Пол: <b>{gender}</b>\n"
-            "Поиск в рулетке: <b>{pref}</b>\n"
-            "Коины: <b>{coins}</b> 💎\n"
-            "VIP: <b>{vip}</b>"
+            "🆔 ID: <code>{id}</code>\n"
+            "👤 Имя: <b>{name}</b>\n"
+            "🚻 Пол: <b>{gender}</b>\n"
+            "🎲 В чат-рулетке: <b>{roulette_time}</b>\n"
+            "📤 Отправлено по ссылке: <b>{sent}</b>\n"
+            "📥 Получено по ссылке: <b>{received}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
+            "💎 Коины: <b>{coins}</b>\n"
+            "⭐ Потрачено звёзд (покупка коинов): <b>{stars}</b>"
             "</blockquote>"
         ),
         "uz": (
             "👤 <b>Profilingiz</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "Jins: <b>{gender}</b>\n"
-            "Ruletkada qidiruv: <b>{pref}</b>\n"
-            "Coinlar: <b>{coins}</b> 💎\n"
-            "VIP: <b>{vip}</b>"
+            "🆔 ID: <code>{id}</code>\n"
+            "👤 Ism: <b>{name}</b>\n"
+            "🚻 Jins: <b>{gender}</b>\n"
+            "🎲 Chat-ruletkada: <b>{roulette_time}</b>\n"
+            "📤 Havola orqali yuborilgan: <b>{sent}</b>\n"
+            "📥 Havola orqali kelgan: <b>{received}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
+            "💎 Coinlar: <b>{coins}</b>\n"
+            "⭐ Sarflangan yulduzlar (coin xaridi): <b>{stars}</b>"
             "</blockquote>"
         ),
         "en": (
             "👤 <b>Your profile</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "Gender: <b>{gender}</b>\n"
-            "Roulette search: <b>{pref}</b>\n"
-            "Coins: <b>{coins}</b> 💎\n"
-            "VIP: <b>{vip}</b>"
+            "🆔 ID: <code>{id}</code>\n"
+            "👤 Name: <b>{name}</b>\n"
+            "🚻 Gender: <b>{gender}</b>\n"
+            "🎲 In chat roulette: <b>{roulette_time}</b>\n"
+            "📤 Sent via link: <b>{sent}</b>\n"
+            "📥 Received via link: <b>{received}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
+            "💎 Coins: <b>{coins}</b>\n"
+            "⭐ Stars spent (buying coins): <b>{stars}</b>"
             "</blockquote>"
         ),
     },
@@ -2984,8 +2999,22 @@ async def on_report_admin_decision(update, context):
 
 
 
+def fmt_duration(seconds):
+    """Человекочитаемая длительность на текущем языке."""
+    seconds = int(seconds or 0)
+    h = seconds // 3600
+    m = (seconds % 3600) // 60
+    lang = cur_lang()
+    hu = {"ru": "ч", "uz": "soat", "en": "h"}.get(lang, "h")
+    mu = {"ru": "мин", "uz": "daq", "en": "min"}.get(lang, "min")
+    if h > 0:
+        return f"{h} {hu} {m} {mu}"
+    return f"{m} {mu}"
+
+
 async def show_profile(update, context):
-    user = get_user(update.effective_user.id)
+    uid = update.effective_user.id
+    user = get_user(uid)
     if is_unlimited(user):
         vip_status = t("vip_forever")
         coins_display = "∞"
@@ -2995,12 +3024,46 @@ async def show_profile(update, context):
     else:
         vip_status = t("vip_none")
         coins_display = user['coins']
+    # Время в чат-рулетке (сумма длительностей всех сессий)
+    secs = 0
+    for s in conn.execute(
+        "SELECT started_at, ended_at FROM roulette_sessions WHERE user1_id=? OR user2_id=?",
+        (uid, uid),
+    ).fetchall():
+        try:
+            start = datetime.fromisoformat(s["started_at"])
+            end = datetime.fromisoformat(s["ended_at"]) if s["ended_at"] else now_dt()
+            secs += max(0, (end - start).total_seconds())
+        except (ValueError, TypeError):
+            pass
+    # Сообщения по ссылке (анонимки question/valentine)
+    sent = conn.execute(
+        "SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND msg_type IN ('question','valentine')",
+        (uid,),
+    ).fetchone()["c"]
+    received = conn.execute(
+        "SELECT COUNT(*) c FROM anon_messages WHERE to_id=? AND msg_type IN ('question','valentine')",
+        (uid,),
+    ).fetchone()["c"]
+    # Потрачено звёзд на покупку коинов
+    stars_spent = conn.execute(
+        "SELECT COALESCE(SUM(stars),0) s FROM star_purchases WHERE user_id=?",
+        (uid,),
+    ).fetchone()["s"]
+    name = user["first_name"] or "—"
+    if user["username"]:
+        name += f" (@{user['username']})"
     text = t(
         "profile_full",
+        id=uid,
+        name=html.escape(name),
         gender=gender_label(user['gender']),
-        pref=pref_label(user['search_pref']) if user['search_pref'] else t("vip_none"),
+        roulette_time=fmt_duration(secs),
+        sent=sent,
+        received=received,
         coins=coins_display,
         vip=vip_status,
+        stars=stars_spent,
     )
     await clean_screen(update, context)
     context.user_data["state"] = "profile"
