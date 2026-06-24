@@ -504,6 +504,12 @@ def init_db():
         state TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
+
+    -- Произвольные настройки (редактируемые админом): ключ -> значение.
+    CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    );
     """)
     conn.commit()
     migrate()
@@ -543,6 +549,35 @@ def now_iso():
 
 def now_dt():
     return datetime.utcnow()
+
+
+# === Настройки (редактируемые админом) ===
+def get_setting(key, default=None):
+    try:
+        row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    except Exception:
+        return default
+    return row["value"] if row and row["value"] is not None else default
+
+
+def get_setting_int(key, default):
+    try:
+        return int(get_setting(key, default))
+    except (TypeError, ValueError):
+        return default
+
+
+def set_setting(key, value):
+    conn.execute("DELETE FROM settings WHERE key=?", (key,))
+    conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+    conn.commit()
+
+
+# Динамические значения реферальных наград (с откатом к константам по умолчанию)
+def cfg_vip_days():        return get_setting_int("ref_vip_days", REF_VIP_DAYS)
+def cfg_vip_threshold():   return max(1, get_setting_int("ref_vip_threshold", REF_VIP_THRESHOLD))
+def cfg_moder_days():      return get_setting_int("ref_moder_days", REF_MODER_DAYS)
+def cfg_moder_threshold(): return max(1, get_setting_int("ref_moder_threshold", REF_MODER_THRESHOLD))
 
 
 
@@ -920,9 +955,9 @@ T = {
         "en": "✅ <b>Done! Your link:</b>\n<code>{link}</code>\n📤 Tap «Share» to send it 💌",
     },
     "btn_share": {
-        "ru": "˚｡⋆ 📤 Поделиться 💕",
-        "uz": "˚｡⋆ 📤 Ulashish 💕",
-        "en": "˚｡⋆ 📤 Share 💕",
+        "ru": "✦ Поделиться",
+        "uz": "✦ Ulashish",
+        "en": "✦ Share",
     },
     "share_text": {
         "ru": "Напиши мне что-нибудь анонимно 👀",
@@ -1278,21 +1313,21 @@ T = {
     },
     "ref_rewards_title": {
         "ru": (
-            "𓆩❤𓆪 <b>Награды за друзей</b> 👻\n"
+            "✦ <b>Награды за друзей</b> ✦\n"
             "Приведи друзей по ссылке (чтобы они создали свою ссылку) и забери:\n"
             "🎁 <b>VIP бесплатно</b> — за {vip_n} друзей ({vip_d} дн.)\n"
             "🛡 <b>Модерка на неделю</b> — за {mod_n} друзей ({mod_d} дн.)\n"
             "Жми кнопку, когда наберёшь 💕"
         ),
         "uz": (
-            "𓆩❤𓆪 <b>Do'stlar uchun mukofotlar</b> 👻\n"
+            "✦ <b>Do'stlar uchun mukofotlar</b> ✦\n"
             "Havola orqali do'st taklif qiling (ular ham havola yaratsin) va oling:\n"
             "🎁 <b>Bepul VIP</b> — {vip_n} do'st uchun ({vip_d} kun)\n"
             "🛡 <b>Bir haftalik moder</b> — {mod_n} do'st uchun ({mod_d} kun)\n"
             "Yetkazganda tugmani bosing 💕"
         ),
         "en": (
-            "𓆩❤𓆪 <b>Rewards for friends</b> 👻\n"
+            "✦ <b>Rewards for friends</b> ✦\n"
             "Invite friends via your link (they must create their own link) and claim:\n"
             "🎁 <b>Free VIP</b> — for {vip_n} friends ({vip_d} days)\n"
             "🛡 <b>Moderator for a week</b> — for {mod_n} friends ({mod_d} days)\n"
@@ -1338,6 +1373,11 @@ T = {
         "ru": "🎁 <b>Бонус за активность по ссылке:</b> +{coins} 💎\nВсего действий: {n}. Так держать! 💕",
         "uz": "🎁 <b>Havola faolligi uchun bonus:</b> +{coins} 💎\nJami: {n}. Davom eting! 💕",
         "en": "🎁 <b>Activity bonus for your link:</b> +{coins} 💎\nTotal actions: {n}. Keep it up! 💕",
+    },
+    "ref_menu_hint": {
+        "ru": "Меню «Пригласить» 👇",
+        "uz": "«Taklif qilish» menyusi 👇",
+        "en": "Invite menu 👇",
     },
     "top_empty": {
         "ru": "Пока никто никого не пригласил. Будь первым! 🚀",
@@ -1400,14 +1440,14 @@ T = {
         "en": "profile",
     },
     "btn_reveal_yes": {
-        "ru": "𓆩 👁 Да, раскрыть 𓆪 · 1⭐",
-        "uz": "𓆩 👁 Ha, aniqlash 𓆪 · 1⭐",
-        "en": "𓆩 👁 Yes, reveal 𓆪 · 1⭐",
+        "ru": "✦ Да, раскрыть · 1⭐",
+        "uz": "✦ Ha, aniqlash · 1⭐",
+        "en": "✦ Yes, reveal · 1⭐",
     },
     "btn_cancel_accent": {
-        "ru": "⋆｡˚ ✖ Отмена ˚｡⋆",
-        "uz": "⋆｡˚ ✖ Bekor ˚｡⋆",
-        "en": "⋆｡˚ ✖ Cancel ˚｡⋆",
+        "ru": "✦ Отмена",
+        "uz": "✦ Bekor",
+        "en": "✦ Cancel",
     },
 
 
@@ -1461,24 +1501,24 @@ T = {
         "en": "📎 media",
     },
     "btn_reply": {
-        "ru": "𓆩 💬 Ответить 𓆪",
-        "uz": "𓆩 💬 Javob 𓆪",
-        "en": "𓆩 💬 Reply 𓆪",
+        "ru": "✦ Ответить",
+        "uz": "✦ Javob",
+        "en": "✦ Reply",
     },
     "btn_report": {
-        "ru": "⋆｡˚ 🚩 Жалоба ˚｡⋆",
-        "uz": "⋆｡˚ 🚩 Shikoyat ˚｡⋆",
-        "en": "⋆｡˚ 🚩 Report ˚｡⋆",
+        "ru": "✦ Жалоба",
+        "uz": "✦ Shikoyat",
+        "en": "✦ Report",
     },
     "btn_reveal": {
-        "ru": "𓆩 👁 Узнать кто 𓆪 · 1⭐",
-        "uz": "𓆩 👁 Kim ekan 𓆪 · 1⭐",
-        "en": "𓆩 👁 Reveal who 𓆪 · 1⭐",
+        "ru": "✦ Узнать кто · 1⭐",
+        "uz": "✦ Kim ekan · 1⭐",
+        "en": "✦ Reveal who · 1⭐",
     },
     "btn_delete": {
-        "ru": "⋆｡˚ 🗑 Удалить ˚｡⋆",
-        "uz": "⋆｡˚ 🗑 O'chirish ˚｡⋆",
-        "en": "⋆｡˚ 🗑 Delete ˚｡⋆",
+        "ru": "✦ Удалить",
+        "uz": "✦ O'chirish",
+        "en": "✦ Delete",
     },
     "btn_subscribed": {
         "ru": "✅ Я подписался",
@@ -4396,8 +4436,8 @@ def ref_rewards_kb(uid):
     qual = qualified_referrals(uid)
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(t("ref_claim_coins_btn", n=REF_REWARD_NORMAL, v=REF_REWARD_VIP), callback_data="ref_info")],
-        [InlineKeyboardButton(t("ref_claim_vip_btn", have=qual, need=REF_VIP_THRESHOLD), callback_data="claim_vip")],
-        [InlineKeyboardButton(t("ref_claim_moder_btn", have=qual, need=REF_MODER_THRESHOLD), callback_data="claim_moder")],
+        [InlineKeyboardButton(t("ref_claim_vip_btn", have=qual, need=cfg_vip_threshold()), callback_data="claim_vip")],
+        [InlineKeyboardButton(t("ref_claim_moder_btn", have=qual, need=cfg_moder_threshold()), callback_data="claim_moder")],
     ])
 
 
@@ -4411,26 +4451,28 @@ async def refresh_ref_rewards(update, context):
 
 
 async def on_claim_vip(update, context):
-    """Забрать бесплатный VIP за приглашённых друзей (1 раз на каждые REF_VIP_THRESHOLD)."""
+    """Забрать бесплатный VIP за приглашённых друзей (1 раз на каждые cfg_vip_threshold)."""
     query = update.callback_query
     await query.answer()
     uid = query.from_user.id
     u = get_user(uid)
     qual = qualified_referrals(uid)
-    allowed = qual // REF_VIP_THRESHOLD
+    threshold = cfg_vip_threshold()
+    allowed = qual // threshold
     claimed = u["ref_vip_claims"] or 0
     if allowed <= claimed:
-        need = (claimed + 1) * REF_VIP_THRESHOLD - qual
-        await query.answer(t("ref_need_more", n=need, have=qual, need=REF_VIP_THRESHOLD), show_alert=True)
+        need = (claimed + 1) * threshold - qual
+        await query.answer(t("ref_need_more", n=need, have=qual, need=threshold), show_alert=True)
         return
+    days = cfg_vip_days()
     base = max(now_dt(), datetime.fromisoformat(u["vip_until"])) if u["vip_until"] else now_dt()
-    new_until = base + timedelta(days=REF_VIP_DAYS)
+    new_until = base + timedelta(days=days)
     conn.execute(
         "UPDATE users SET vip_until=?, ref_vip_claims=? WHERE tg_id=?",
         (new_until.isoformat(), claimed + 1, uid),
     )
     conn.commit()
-    await context.bot.send_message(uid, t("ref_vip_granted", days=REF_VIP_DAYS), parse_mode="HTML")
+    await context.bot.send_message(uid, t("ref_vip_granted", days=days), parse_mode="HTML")
     await refresh_ref_rewards(update, context)
 
 
@@ -4441,26 +4483,28 @@ async def on_claim_moder(update, context):
     uid = query.from_user.id
     u = get_user(uid)
     qual = qualified_referrals(uid)
-    allowed = qual // REF_MODER_THRESHOLD
+    threshold = cfg_moder_threshold()
+    allowed = qual // threshold
     claimed = u["ref_moder_claims"] or 0
     if allowed <= claimed:
-        need = (claimed + 1) * REF_MODER_THRESHOLD - qual
-        await query.answer(t("ref_need_more", n=need, have=qual, need=REF_MODER_THRESHOLD), show_alert=True)
+        need = (claimed + 1) * threshold - qual
+        await query.answer(t("ref_need_more", n=need, have=qual, need=threshold), show_alert=True)
         return
+    days = cfg_moder_days()
     base = now_dt()
     try:
         if u["moder_until"] and datetime.fromisoformat(u["moder_until"]) > base:
             base = datetime.fromisoformat(u["moder_until"])
     except (ValueError, TypeError):
         pass
-    new_until = base + timedelta(days=REF_MODER_DAYS)
+    new_until = base + timedelta(days=days)
     conn.execute(
         "UPDATE users SET moder_until=?, ref_moder_claims=? WHERE tg_id=?",
         (new_until.isoformat(), claimed + 1, uid),
     )
     conn.commit()
     await context.bot.send_message(
-        uid, t("ref_moder_granted", days=REF_MODER_DAYS, need=REF_MODER_THRESHOLD),
+        uid, t("ref_moder_granted", days=days, need=threshold),
         parse_mode="HTML", reply_markup=main_menu_kb(uid),
     )
     await refresh_ref_rewards(update, context)
@@ -4473,35 +4517,124 @@ async def on_ref_info(update, context):
 
 async def show_referral(update, context):
     uid = update.effective_user.id
+    await clean_screen(update, context)
     link = await build_start_link(context, f"ref_{uid}")
     total = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["c"]
     earned = conn.execute("SELECT COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["s"]
     vip = is_vip(get_user(uid))
     reward = REF_REWARD_VIP if vip else REF_REWARD_NORMAL
     bonus = t("referral_bonus_vip") if vip else t("referral_bonus_normal")
-    text = t(
-        "referral_screen",
-        reward=reward, bonus=bonus, total=total, earned=earned,
-        link=html.escape(link),
+    caption = (
+        t("referral_screen", reward=reward, bonus=bonus, total=total, earned=earned, link=html.escape(link))
+        + "\n\n"
+        + t("ref_rewards_title", vip_n=cfg_vip_threshold(), mod_n=cfg_moder_threshold(),
+            vip_d=cfg_vip_days(), mod_d=cfg_moder_days())
     )
     context.user_data["state"] = "referral"
-    await nav(update, context, text, referral_kb(), parse_mode="HTML")
-    # Отдельным сообщением — инлайн-награды (забрать VIP / модерку за рефералов)
-    msg = await context.bot.send_message(
-        update.effective_chat.id,
-        t("ref_rewards_title", vip_n=REF_VIP_THRESHOLD, mod_n=REF_MODER_THRESHOLD,
-          vip_d=REF_VIP_DAYS, mod_d=REF_MODER_DAYS),
-        parse_mode="HTML",
-        reply_markup=ref_rewards_kb(uid),
-    )
+    photo = get_setting("ref_photo")
+    kb = ref_rewards_kb(uid)
+    if photo:
+        try:
+            msg = await context.bot.send_photo(
+                update.effective_chat.id, photo, caption=caption,
+                parse_mode="HTML", reply_markup=kb,
+            )
+        except TelegramError:
+            msg = await context.bot.send_message(
+                update.effective_chat.id, caption, parse_mode="HTML", reply_markup=kb)
+    else:
+        msg = await context.bot.send_message(
+            update.effective_chat.id, caption, parse_mode="HTML", reply_markup=kb)
     track_extra(context, msg)
+    # Нижняя reply-клавиатура (Топ / Изменить для админа / Назад)
+    await send_menu(update, context, t("ref_menu_hint"), referral_kb(uid))
 
 
-def referral_kb():
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🏆 Топ пригласивших")],
+def referral_kb(uid=None):
+    rows = [[KeyboardButton("🏆 Топ пригласивших")]]
+    if uid is not None and is_admin(uid):
+        rows.append([KeyboardButton("✏️ Изменить")])
+    rows.append([KeyboardButton("⬅️ Назад")])
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
+
+
+# ── Админ: настройки реферальных наград ──
+def ref_settings_kb():
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("⏳ VIP: дней"), KeyboardButton("👥 VIP: друзей")],
+        [KeyboardButton("🛡 Модер: дней"), KeyboardButton("👥 Модер: друзей")],
+        [KeyboardButton("📷 Фото"), KeyboardButton("🗑 Убрать фото")],
         [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True))
+    ], resize_keyboard=True)
+
+
+async def show_ref_settings(update, context):
+    context.user_data["state"] = "ref_settings"
+    photo_state = "есть ✅" if get_setting("ref_photo") else "нет"
+    text = (
+        "⚙️ <b>Настройки реферальных наград</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🎁 VIP: <b>{cfg_vip_days()}</b> дн. за <b>{cfg_vip_threshold()}</b> друзей\n"
+        f"🛡 Модер: <b>{cfg_moder_days()}</b> дн. за <b>{cfg_moder_threshold()}</b> друзей\n"
+        f"📷 Фото на экране «Пригласить»: {photo_state}\n\n"
+        "Выбери что изменить 👇"
+    )
+    await nav(update, context, text, ref_settings_kb(), parse_mode="HTML")
+
+
+async def ref_settings_router(update, context):
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+    if not is_admin(uid):
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(uid))
+        return
+    mp = {
+        "⏳ VIP: дней": ("ref_set_vip_days", "Введите, на сколько ДНЕЙ давать VIP:"),
+        "👥 VIP: друзей": ("ref_set_vip_threshold", "Введите, сколько ДРУЗЕЙ нужно для VIP:"),
+        "🛡 Модер: дней": ("ref_set_moder_days", "Введите, на сколько ДНЕЙ давать модерку:"),
+        "👥 Модер: друзей": ("ref_set_moder_threshold", "Введите, сколько ДРУЗЕЙ нужно для модерки:"),
+    }
+    if text == "⬅️ Назад":
+        await show_referral(update, context)
+        return
+    if text == "📷 Фото":
+        context.user_data["state"] = "ref_set_photo"
+        await nav(update, context, "Отправьте фото для экрана «Пригласить» (или «❌ Отмена»):", cancel_reply_kb())
+        return
+    if text == "🗑 Убрать фото":
+        set_setting("ref_photo", "")
+        await update.message.reply_text("🗑 Фото убрано.")
+        await show_ref_settings(update, context)
+        return
+    if text in mp:
+        st, prompt = mp[text]
+        context.user_data["state"] = st
+        await nav(update, context, prompt, cancel_reply_kb())
+        return
+    await update.message.reply_text("Выбери пункт на клавиатуре 👇", reply_markup=ref_settings_kb())
+
+
+async def process_ref_setting_value(update, context):
+    state = context.user_data.get("state")
+    text = canon(update.message.text.strip())
+    if text == "❌ Отмена":
+        await show_ref_settings(update, context)
+        return
+    if not text.isdigit() or int(text) <= 0:
+        await update.message.reply_text("Введите положительное число:", reply_markup=cancel_reply_kb())
+        return
+    val = int(text)
+    keymap = {
+        "ref_set_vip_days": ("ref_vip_days", "VIP дней"),
+        "ref_set_vip_threshold": ("ref_vip_threshold", "VIP друзей"),
+        "ref_set_moder_days": ("ref_moder_days", "Модер дней"),
+        "ref_set_moder_threshold": ("ref_moder_threshold", "Модер друзей"),
+    }
+    skey, label = keymap[state]
+    set_setting(skey, val)
+    await update.message.reply_text(f"✅ {label}: {val}")
+    await show_ref_settings(update, context)
 
 
 async def referral_router(update, context):
@@ -4514,7 +4647,10 @@ async def referral_router(update, context):
     if text == "🏆 Топ пригласивших":
         await show_top(update, context)
         return
-    await update.message.reply_text(t("choose_action"), reply_markup=referral_kb())
+    if text == "✏️ Изменить" and is_admin(uid):
+        await show_ref_settings(update, context)
+        return
+    await update.message.reply_text(t("choose_action"), reply_markup=referral_kb(uid))
 
 
 async def show_top(update, context):
@@ -4523,7 +4659,7 @@ async def show_top(update, context):
         "GROUP BY referrer_id ORDER BY c DESC, s DESC LIMIT 10"
     ).fetchall()
     if not rows:
-        await nav(update, context, t("top_empty"), referral_kb())
+        await nav(update, context, t("top_empty"), referral_kb(update.effective_user.id))
         return
     medals = ["🥇", "🥈", "🥉"]
     lines = [t("top_title"), "━━━━━━━━━━━━━━━━━━━━"]
@@ -4759,6 +4895,18 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "referral":
         await referral_router(update, context)
         return
+    if state == "ref_settings":
+        await ref_settings_router(update, context)
+        return
+    if state in ("ref_set_vip_days", "ref_set_vip_threshold", "ref_set_moder_days", "ref_set_moder_threshold"):
+        await process_ref_setting_value(update, context)
+        return
+    if state == "ref_set_photo":
+        if canon(update.message.text) == "❌ Отмена":
+            await show_ref_settings(update, context)
+        else:
+            await update.message.reply_text("Отправьте именно фото (или «❌ Отмена»).", reply_markup=cancel_reply_kb())
+        return
     if state == "link_menu":
         await link_menu_router(update, context)
         return
@@ -4804,6 +4952,15 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if _fl["msg_type"]:
                 context.user_data["anon_type"] = _fl["msg_type"]
             state = _fl["state"]
+    # Админ выставляет фото для экрана «Пригласить»
+    if state == "ref_set_photo" and is_admin(update.effective_user.id):
+        if update.message and update.message.photo:
+            set_setting("ref_photo", update.message.photo[-1].file_id)
+            await update.message.reply_text("✅ Фото сохранено.")
+            await show_ref_settings(update, context)
+        else:
+            await update.message.reply_text("Отправьте именно фото (или «❌ Отмена»).", reply_markup=cancel_reply_kb())
+        return
     if state == "awaiting_anon_content":
         await process_anon_content(update, context)
         return
