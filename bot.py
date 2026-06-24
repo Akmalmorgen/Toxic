@@ -920,9 +920,9 @@ T = {
         "en": "✅ <b>Done! Your link:</b>\n<code>{link}</code>\n📤 Tap «Share» to send it 💌",
     },
     "btn_share": {
-        "ru": "📤 Поделиться",
-        "uz": "📤 Ulashish",
-        "en": "📤 Share",
+        "ru": "˚｡⋆ 📤 Поделиться 💕",
+        "uz": "˚｡⋆ 📤 Ulashish 💕",
+        "en": "˚｡⋆ 📤 Share 💕",
     },
     "share_text": {
         "ru": "Напиши мне что-нибудь анонимно 👀",
@@ -1400,14 +1400,14 @@ T = {
         "en": "profile",
     },
     "btn_reveal_yes": {
-        "ru": "👁️ Да, раскрыть · 1 ⭐",
-        "uz": "👁️ Ha, aniqlash · 1 ⭐",
-        "en": "👁️ Yes, reveal · 1 ⭐",
+        "ru": "𓆩 👁 Да, раскрыть 𓆪 · 1⭐",
+        "uz": "𓆩 👁 Ha, aniqlash 𓆪 · 1⭐",
+        "en": "𓆩 👁 Yes, reveal 𓆪 · 1⭐",
     },
     "btn_cancel_accent": {
-        "ru": "✖️ Отмена",
-        "uz": "✖️ Bekor qilish",
-        "en": "✖️ Cancel",
+        "ru": "⋆｡˚ ✖ Отмена ˚｡⋆",
+        "uz": "⋆｡˚ ✖ Bekor ˚｡⋆",
+        "en": "⋆｡˚ ✖ Cancel ˚｡⋆",
     },
 
 
@@ -1461,24 +1461,24 @@ T = {
         "en": "📎 media",
     },
     "btn_reply": {
-        "ru": "💬 Ответить",
-        "uz": "💬 Javob berish",
-        "en": "💬 Reply",
+        "ru": "𓆩 💬 Ответить 𓆪",
+        "uz": "𓆩 💬 Javob 𓆪",
+        "en": "𓆩 💬 Reply 𓆪",
     },
     "btn_report": {
-        "ru": "🚩 Пожаловаться",
-        "uz": "🚩 Shikoyat",
-        "en": "🚩 Report",
+        "ru": "⋆｡˚ 🚩 Жалоба ˚｡⋆",
+        "uz": "⋆｡˚ 🚩 Shikoyat ˚｡⋆",
+        "en": "⋆｡˚ 🚩 Report ˚｡⋆",
     },
     "btn_reveal": {
-        "ru": "👁️ Узнать кто · 1 ⭐",
-        "uz": "👁️ Kim ekan? · 1 ⭐",
-        "en": "👁️ Reveal who · 1 ⭐",
+        "ru": "𓆩 👁 Узнать кто 𓆪 · 1⭐",
+        "uz": "𓆩 👁 Kim ekan 𓆪 · 1⭐",
+        "en": "𓆩 👁 Reveal who 𓆪 · 1⭐",
     },
     "btn_delete": {
-        "ru": "🗑️ Удалить",
-        "uz": "🗑️ O'chirish",
-        "en": "🗑️ Delete",
+        "ru": "⋆｡˚ 🗑 Удалить ˚｡⋆",
+        "uz": "⋆｡˚ 🗑 O'chirish ˚｡⋆",
+        "en": "⋆｡˚ 🗑 Delete ˚｡⋆",
     },
     "btn_subscribed": {
         "ru": "✅ Я подписался",
