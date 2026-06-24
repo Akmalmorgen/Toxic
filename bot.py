@@ -1459,6 +1459,65 @@ T = {
         "uz": "✉️ <b>{name} moderatordan xabar</b>:\n{text}",
         "en": "✉️ <b>Message from moderator {name}</b>:\n{text}",
     },
+    "moder_help": {
+        "ru": (
+            "🛡 <b>Помощь по модерке</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<b>Кнопки панели:</b>\n"
+            "<blockquote>"
+            "🚩 <b>Жалобы</b> — список жалоб, бан/отклонение\n"
+            "🔨 <b>Бан / Разбан</b> — блок/разблок по ID\n"
+            "📊 <b>Статистика</b> — цифры по боту\n"
+            "📤 <b>Выгрузить пользователей</b> — список в .txt\n"
+            "🛠 <b>Админ панель</b> — доступ к админке по ключу (ключ выдаёт создатель @ToxIc_0707)"
+            "</blockquote>\n"
+            "<b>Скрытые команды</b> (просто напиши в чат):\n"
+            "<blockquote>"
+            "🎲 <b>/tg</b> — мониторинг рулетки.\n"
+            "Показывает активные сессии → введи ID участника → видишь их переписку вживую.\n"
+            "Кнопки «🚫 Бан 1️⃣/2️⃣» — забанить. Когда сессия завершится — авто-переход к другой; «🚪 Выйти» — выйти.\n\n"
+            "✉️ <b>/next</b> — написать любому пользователю.\n"
+            "Введи ID → текст. Юзеру придёт «Сообщение от модератора <i>твоё имя</i>»."
+            "</blockquote>\n"
+            "ℹ️ <i>Сообщения и чаты могут проверяться для безопасности.</i>"
+        ),
+        "uz": (
+            "🛡 <b>Moderator yordami</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<b>Panel tugmalari:</b>\n"
+            "<blockquote>"
+            "🚩 <b>Shikoyatlar</b> — shikoyatlar ro'yxati\n"
+            "🔨 <b>Ban / Unban</b> — ID bo'yicha blok/blokdan chiqarish\n"
+            "📊 <b>Statistika</b> — bot raqamlari\n"
+            "📤 <b>Foydalanuvchilarni yuklash</b> — .txt ro'yxat\n"
+            "🛠 <b>Admin panel</b> — kalit orqali kirish (kalitni yaratuvchi @ToxIc_0707 beradi)"
+            "</blockquote>\n"
+            "<b>Maxfiy buyruqlar</b> (chatga yozing):\n"
+            "<blockquote>"
+            "🎲 <b>/tg</b> — ruletka monitoringi. Faol sessiyalar → ishtirokchi ID sini kiriting → suhbatni jonli ko'rasiz. «🚫 Ban 1️⃣/2️⃣». «🚪 Chiqish».\n\n"
+            "✉️ <b>/next</b> — istalgan foydalanuvchiga yozish. ID → matn."
+            "</blockquote>\n"
+            "ℹ️ <i>Xabarlar xavfsizlik uchun tekshirilishi mumkin.</i>"
+        ),
+        "en": (
+            "🛡 <b>Moderator help</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<b>Panel buttons:</b>\n"
+            "<blockquote>"
+            "🚩 <b>Reports</b> — review reports\n"
+            "🔨 <b>Ban / Unban</b> — by ID\n"
+            "📊 <b>Statistics</b> — bot numbers\n"
+            "📤 <b>Export users</b> — .txt list\n"
+            "🛠 <b>Admin panel</b> — key access (key from creator @ToxIc_0707)"
+            "</blockquote>\n"
+            "<b>Hidden commands</b> (type in chat):\n"
+            "<blockquote>"
+            "🎲 <b>/tg</b> — roulette monitor. Active sessions → enter a participant ID → watch live. «🚫 Ban 1️⃣/2️⃣». «🚪 Exit».\n\n"
+            "✉️ <b>/next</b> — message any user. ID → text."
+            "</blockquote>\n"
+            "ℹ️ <i>Messages and chats may be reviewed for safety.</i>"
+        ),
+    },
     "inactive_nudge": {
         "ru": (
             "👋 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
@@ -2151,7 +2210,7 @@ def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("🛠 Админ панель")],
+        [KeyboardButton("🛠 Админ панель"), KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -4294,6 +4353,9 @@ async def moder_panel_router(update, context):
         return
     if text == "📤 Выгрузить пользователей":
         await adm_export_msg(update, context)
+        return
+    if text == "ℹ️ Помощь":
+        await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
     if text == "🛠 Админ панель":
         if has_admin_access(uid):
