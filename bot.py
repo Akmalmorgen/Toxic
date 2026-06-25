@@ -871,6 +871,11 @@ BTN = {
     "🛡 Модер": ("🛡 Moder", "🛡 Moder"),
     "📦 Вручную": ("📦 Qo'lda", "📦 Manual"),
     "📊 Статистика": ("📊 Statistika", "📊 Statistics"),
+    "👑 VIP по ID": ("👑 ID bo'yicha VIP", "👑 VIP by ID"),
+    "➕ Выдать VIP": ("➕ VIP berish", "➕ Grant VIP"),
+    "➖ Забрать VIP": ("➖ VIP olish", "➖ Revoke VIP"),
+    "🔞 18+ доступ: ВКЛ": ("🔞 18+ kirish: YONIQ", "🔞 18+ access: ON"),
+    "🔞 18+ доступ: ВЫКЛ": ("🔞 18+ kirish: O'CHIQ", "🔞 18+ access: OFF"),
     "📤 Выгрузить пользователей": ("📤 Foydalanuvchilarni yuklash", "📤 Export users"),
     "💰 Начислить коины": ("💰 Coin qo'shish", "💰 Add coins"),
     "📢 Обязательные каналы": ("📢 Majburiy kanallar", "📢 Required channels"),
@@ -1414,6 +1419,71 @@ T = {
         "ru": "Только для админа.",
         "uz": "Faqat admin uchun.",
         "en": "Admin only.",
+    },
+    "admin_vip_menu": {
+        "ru": "👑 <b>Управление VIP по ID</b>\n\nВыдать или забрать VIP у пользователя 👇",
+        "uz": "👑 <b>ID bo'yicha VIP boshqaruvi</b>\n\nFoydalanuvchiga VIP berish yoki olish 👇",
+        "en": "👑 <b>VIP management by ID</b>\n\nGrant or revoke VIP for a user 👇",
+    },
+    "vip_ask_id": {
+        "ru": "Введите tg_id пользователя:",
+        "uz": "Foydalanuvchining tg_id sini kiriting:",
+        "en": "Enter the user's tg_id:",
+    },
+    "vip_ask_days": {
+        "ru": "На сколько дней выдать VIP? (число)",
+        "uz": "VIP necha kunga berilsin? (raqam)",
+        "en": "For how many days to grant VIP? (number)",
+    },
+    "vip_id_number": {
+        "ru": "ID должен быть числом. Попробуйте снова:",
+        "uz": "ID raqam bo'lishi kerak. Qaytadan urinib ko'ring:",
+        "en": "ID must be a number. Try again:",
+    },
+    "vip_days_number": {
+        "ru": "Введите положительное число дней:",
+        "uz": "Musbat kunlar sonini kiriting:",
+        "en": "Enter a positive number of days:",
+    },
+    "vip_user_not_found": {
+        "ru": "Пользователь не найден. Введите другой ID:",
+        "uz": "Foydalanuvchi topilmadi. Boshqa ID kiriting:",
+        "en": "User not found. Enter another ID:",
+    },
+    "vip_granted_admin": {
+        "ru": "✅ VIP выдан пользователю <code>{id}</code> на <b>{days}</b> дн.",
+        "uz": "✅ <code>{id}</code> foydalanuvchiga VIP <b>{days}</b> kunga berildi.",
+        "en": "✅ VIP granted to user <code>{id}</code> for <b>{days}</b> days.",
+    },
+    "vip_taken_admin": {
+        "ru": "✅ VIP снят у пользователя <code>{id}</code>.",
+        "uz": "✅ <code>{id}</code> foydalanuvchidan VIP olib tashlandi.",
+        "en": "✅ VIP revoked from user <code>{id}</code>.",
+    },
+    "vip_granted_user": {
+        "ru": "🎉 <b>Вам выдан VIP на {days} дней!</b> 👑\nНаслаждайтесь привилегиями.",
+        "uz": "🎉 <b>Sizga {days} kunga VIP berildi!</b> 👑\nImtiyozlardan bahramand bo'ling.",
+        "en": "🎉 <b>You've been granted VIP for {days} days!</b> 👑\nEnjoy the perks.",
+    },
+    "vip_taken_user": {
+        "ru": "Ваш VIP-статус был снят администратором.",
+        "uz": "VIP holatingiz administrator tomonidan olib tashlandi.",
+        "en": "Your VIP status was revoked by the administrator.",
+    },
+    "adm_18plus_on": {
+        "ru": "✅ <b>18+ доступ включён.</b> Раздел снова работает для всех совершеннолетних.",
+        "uz": "✅ <b>18+ kirish yoqildi.</b> Bo'lim barcha kattalar uchun yana ishlaydi.",
+        "en": "✅ <b>18+ access enabled.</b> The section works again for all adults.",
+    },
+    "adm_18plus_off": {
+        "ru": "🚫 <b>18+ доступ выключен.</b> Кнопка остаётся видимой, но при входе пользователи увидят уведомление о недоступности.",
+        "uz": "🚫 <b>18+ kirish o'chirildi.</b> Tugma ko'rinadi, lekin kirishda foydalanuvchilar mavjud emasligi haqida xabar ko'radi.",
+        "en": "🚫 <b>18+ access disabled.</b> The button stays visible, but on entry users will see an unavailability notice.",
+    },
+    "18plus_disabled_notice": {
+        "ru": "🔞 <b>Раздел 18+ временно недоступен</b>\n\nАдминистратор приостановил работу 18+ чата. Загляни позже 🙏",
+        "uz": "🔞 <b>18+ bo'limi vaqtincha mavjud emas</b>\n\nAdministrator 18+ chatni to'xtatib qo'ydi. Keyinroq kiring 🙏",
+        "en": "🔞 <b>The 18+ section is temporarily unavailable</b>\n\nThe administrator paused the 18+ chat. Check back later 🙏",
     },
     "moder_app_already": {
         "ru": "Заявка уже обработана.",
@@ -2330,19 +2400,37 @@ T = {
     },
     "roulette_found_18plus": {
         "ru": (
-            "🔞 <b>Собеседник 18+ найден!</b>\n"
-            "Это чат для взрослых — здесь можно отправлять всё, кроме запрещённого правилами.\n"
-            "Приятного общения 💋"
+            "🔞✨ <b>СОБЕСЕДНИК 18+ НАЙДЕН</b> ✨🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💋 <i>Это закрытый чат для взрослых.</i>\n"
+            "<blockquote>"
+            "✅ Можно: общаться свободно, слать фото, видео, голосовые\n"
+            "🚫 Нельзя: то, что запрещено правилами"
+            "</blockquote>\n"
+            "🔥 <b>Приятного общения!</b>\n"
+            "<i>«➡️ Далее» — сменить собеседника · «⏹️ Стоп» — выйти</i>"
         ),
         "uz": (
-            "🔞 <b>18+ suhbatdosh topildi!</b>\n"
-            "Bu kattalar chati — qoidalar bilan taqiqlanganidan tashqari hammasini yuborish mumkin.\n"
-            "Yoqimli muloqot 💋"
+            "🔞✨ <b>18+ SUHBATDOSH TOPILDI</b> ✨🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💋 <i>Bu kattalar uchun yopiq chat.</i>\n"
+            "<blockquote>"
+            "✅ Mumkin: erkin muloqot, foto, video, ovozli xabar\n"
+            "🚫 Mumkin emas: qoidalar bilan taqiqlangan narsalar"
+            "</blockquote>\n"
+            "🔥 <b>Yoqimli muloqot!</b>\n"
+            "<i>«➡️ Keyingi» — suhbatdoshni almashtirish · «⏹️ To'xtatish» — chiqish</i>"
         ),
         "en": (
-            "🔞 <b>An 18+ partner is found!</b>\n"
-            "This is an adult chat — you can send everything except what the rules forbid.\n"
-            "Enjoy 💋"
+            "🔞✨ <b>AN 18+ PARTNER IS FOUND</b> ✨🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💋 <i>This is a private adult chat.</i>\n"
+            "<blockquote>"
+            "✅ Allowed: chat freely, send photos, videos, voice\n"
+            "🚫 Forbidden: anything against the rules"
+            "</blockquote>\n"
+            "🔥 <b>Enjoy!</b>\n"
+            "<i>«➡️ Next» — change partner · «⏹️ Stop» — exit</i>"
         ),
     },
     "age_select_title": {
@@ -2639,13 +2727,23 @@ def reward_type_kb():
 
 
 def admin_menu_kb():
+    enabled = get_setting("18plus_enabled", "1") == "1"
+    toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
-        [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
-        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
+        [KeyboardButton("✉️ Рассылка"), KeyboardButton("🛡 Модеры")],
+        [KeyboardButton("🔨 Бан / Разбан"), KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
+def admin_vip_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("➖ Забрать VIP")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -2850,6 +2948,12 @@ async def eighteen_plus_menu(update, context):
     """Показывает меню 18+ контента (с возрастным барьером и согласием)."""
     user = get_user(update.effective_user.id)
     await clean_screen(update, context)
+    # Глобальный запрет 18+ админом — кнопка видна, но раздел не работает
+    if get_setting("18plus_enabled", "1") != "1" and not is_admin(update.effective_user.id):
+        context.user_data["state"] = None
+        await send_menu(update, context, t("18plus_disabled_notice"),
+                        main_menu_kb(update.effective_user.id), parse_mode="HTML")
+        return
     if not is_adult(user):
         # Доступ закрыт (кнопка не должна показываться, но на всякий случай)
         context.user_data["state"] = None
@@ -5418,14 +5522,120 @@ async def adm_stats_msg(update, context):
     users_count = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
     msgs_count = conn.execute("SELECT COUNT(*) c FROM anon_messages").fetchone()["c"]
     sessions_count = conn.execute("SELECT COUNT(*) c FROM roulette_sessions").fetchone()["c"]
+    sessions_18 = conn.execute("SELECT COUNT(*) c FROM roulette_sessions WHERE mode='18plus'").fetchone()["c"]
     vip_count = conn.execute("SELECT COUNT(*) c FROM users WHERE vip_until>?", (now_iso(),)).fetchone()["c"]
     moders_count = conn.execute("SELECT COUNT(*) c FROM users WHERE is_moder=1").fetchone()["c"]
+    # Ссылки: анонимные (созданные пользователями) и реферальные (по факту переходов)
+    anon_links = conn.execute("SELECT COUNT(*) c FROM users WHERE custom_link IS NOT NULL AND custom_link<>''").fetchone()["c"]
+    ref_links = conn.execute("SELECT COUNT(*) c FROM referrals").fetchone()["c"]
+    # Совершеннолетние — считаем в Python (age хранится текстом; портативно для sqlite/Postgres)
+    adults = 0
+    for r in conn.execute("SELECT age FROM users WHERE age IS NOT NULL").fetchall():
+        a = str(r["age"]).strip()
+        if a.isdigit() and int(a) >= 18:
+            adults += 1
     kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
     await update.message.reply_text(
-        f"📊 Статистика:\nПользователей: {users_count}\nАнон-сообщений: {msgs_count}\n"
-        f"Сессий рулетки: {sessions_count}\nVIP сейчас: {vip_count}\nМодеров: {moders_count}",
+        "📊 <b>Статистика бота</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "<blockquote>"
+        f"👥 Пользователей: <b>{users_count}</b>\n"
+        f"🔞 Совершеннолетних (18+): <b>{adults}</b>\n"
+        f"👑 VIP сейчас: <b>{vip_count}</b>\n"
+        f"🛡 Модераторов: <b>{moders_count}</b>\n"
+        "─────────────\n"
+        f"🔗 Анон-ссылок создано: <b>{anon_links}</b>\n"
+        f"👥 Реф-ссылок (приглашений): <b>{ref_links}</b>\n"
+        "─────────────\n"
+        f"✉️ Анон-сообщений: <b>{msgs_count}</b>\n"
+        f"🎲 Сессий рулетки: <b>{sessions_count}</b>\n"
+        f"🔞 Из них 18+: <b>{sessions_18}</b>"
+        "</blockquote>",
+        parse_mode="HTML",
         reply_markup=kb,
     )
+
+
+async def admin_vip_router(update, context):
+    """Админ: выдать/забрать VIP по ID пользователя."""
+    text = canon(update.message.text.strip())
+    state = context.user_data.get("state")
+    uid = update.effective_user.id
+    if not is_admin(uid):
+        return
+    if text in ("⬅️ Назад", "🏠 Меню"):
+        context.user_data["state"] = None
+        if text == "🏠 Меню":
+            await go_home(update, context)
+        else:
+            await show_admin_menu(update, context)
+        return
+    if state == "admin_vip":
+        if text == "➕ Выдать VIP":
+            context.user_data["state"] = "vip_give_id"
+            await update.message.reply_text(t("vip_ask_id"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+            return
+        if text == "➖ Забрать VIP":
+            context.user_data["state"] = "vip_take_id"
+            await update.message.reply_text(t("vip_ask_id"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+            return
+        await update.message.reply_text(t("choose_on_kb"), reply_markup=admin_vip_kb())
+        return
+    if text == "❌ Отмена":
+        context.user_data["state"] = "admin_vip"
+        await update.message.reply_text(t("done"), reply_markup=admin_vip_kb())
+        return
+    if state in ("vip_give_id", "vip_take_id"):
+        if not text.isdigit():
+            await update.message.reply_text(t("vip_id_number"), reply_markup=cancel_reply_kb())
+            return
+        target = int(text)
+        if not get_user(target):
+            await update.message.reply_text(t("vip_user_not_found"), reply_markup=cancel_reply_kb())
+            return
+        if state == "vip_take_id":
+            conn.execute("UPDATE users SET vip_until=NULL WHERE tg_id=?", (target,))
+            conn.commit()
+            try:
+                _sl = cur_lang(); set_cur_lang(get_lang(target))
+                await context.bot.send_message(target, t("vip_taken_user"), parse_mode="HTML")
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+            context.user_data["state"] = "admin_vip"
+            await update.message.reply_text(t("vip_taken_admin", id=target), parse_mode="HTML", reply_markup=admin_vip_kb())
+            return
+        # выдать — спрашиваем дни
+        context.user_data["vip_target"] = target
+        context.user_data["state"] = "vip_give_days"
+        await update.message.reply_text(t("vip_ask_days"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+    if state == "vip_give_days":
+        if not text.isdigit() or int(text) <= 0:
+            await update.message.reply_text(t("vip_days_number"), reply_markup=cancel_reply_kb())
+            return
+        days = int(text)
+        target = context.user_data.get("vip_target")
+        tu = get_user(target)
+        base = now_dt()
+        try:
+            if tu and tu["vip_until"] and datetime.fromisoformat(tu["vip_until"]) > now_dt():
+                base = datetime.fromisoformat(tu["vip_until"])
+        except (ValueError, TypeError):
+            base = now_dt()
+        new_until = (base + timedelta(days=days)).isoformat()
+        conn.execute("UPDATE users SET vip_until=? WHERE tg_id=?", (new_until, target))
+        conn.commit()
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(target))
+            await context.bot.send_message(target, t("vip_granted_user", days=days), parse_mode="HTML")
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+        context.user_data["state"] = "admin_vip"
+        context.user_data.pop("vip_target", None)
+        await update.message.reply_text(t("vip_granted_admin", id=target, days=days), parse_mode="HTML", reply_markup=admin_vip_kb())
+        return
 
 
 async def adm_export_msg(update, context):
@@ -6405,6 +6615,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "admin_moder":
         await admin_moder_router(update, context)
         return
+    if state in ("admin_vip", "vip_give_id", "vip_give_days", "vip_take_id"):
+        await admin_vip_router(update, context)
+        return
     if state and state.startswith("adm_coins_"):
         await process_adm_coins_wizard(update, context)
         return
@@ -6459,6 +6672,18 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "⭐ Коины за Stars":
             await show_star_admin(update, context)
+            return
+        if text == "👑 VIP по ID":
+            context.user_data["state"] = "admin_vip"
+            await update.message.reply_text(t("admin_vip_menu"), parse_mode="HTML", reply_markup=admin_vip_kb())
+            return
+        if text in ("🔞 18+ доступ: ВКЛ", "🔞 18+ доступ: ВЫКЛ"):
+            cur = get_setting("18plus_enabled", "1") == "1"
+            set_setting("18plus_enabled", "0" if cur else "1")
+            await update.message.reply_text(
+                t("adm_18plus_off") if cur else t("adm_18plus_on"),
+                parse_mode="HTML", reply_markup=admin_menu_kb(),
+            )
             return
     # Главное меню — навигация доступна из любого раздела
     if text == "🔗 Моя ссылка":
