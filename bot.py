@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ChatMemberStatus
-from aiogram.exceptions import TelegramAPIError, TelegramConflictError
+from aiogram.exceptions import TelegramAPIError, TelegramConflictError, TelegramForbiddenError
 from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.types import (
     Message, CallbackQuery, ChatMemberUpdated, PreCheckoutQuery, ErrorEvent,
@@ -1419,6 +1419,16 @@ T = {
         "ru": "Только для админа.",
         "uz": "Faqat admin uchun.",
         "en": "Admin only.",
+    },
+    "cleanup_started": {
+        "ru": "🧹 Очистка…",
+        "uz": "🧹 Tozalash…",
+        "en": "🧹 Cleanup…",
+    },
+    "cleanup_done": {
+        "ru": "✅ Готово. Проверено: {checked}, удалено: {removed}",
+        "uz": "✅ Tayyor. Tekshirildi: {checked}, o'chirildi: {removed}",
+        "en": "✅ Done. Checked: {checked}, removed: {removed}",
     },
     "admin_vip_menu": {
         "ru": "👑 <b>Управление VIP по ID</b>\n\nВыдать или забрать VIP у пользователя 👇",
@@ -5645,6 +5655,34 @@ async def admin_vip_router(update, context):
         return
 
 
+async def janitor_unreachable_sweep():
+    """Фоновая автоочистка: находит тех, кто заблокировал бота или не запускал его,
+    и удаляет «пустые» аккаунты (без VIP/коинов/покупок). Проверяет через chat_action — без спама."""
+    rows = conn.execute("SELECT tg_id FROM users").fetchall()
+    checked = removed = 0
+    for r in rows:
+        tid = r["tg_id"]
+        if is_admin(tid):
+            continue
+        u = get_user(tid)
+        if not u or is_moder(u):
+            continue
+        checked += 1
+        try:
+            # «typing» не виден пользователю, но падает с Forbidden, если бот недоступен
+            await bot.send_chat_action(tid, "typing")
+        except TelegramForbiddenError:
+            # Заблокировал/не запускал бота — удаляем, только если аккаунт «пустой» (ничего не вкладывал)
+            if user_is_disposable(tid) and purge_user(tid):
+                removed += 1
+        except TelegramError:
+            pass  # флуд/сеть — пропускаем
+        await asyncio.sleep(0.05)  # мягкий троттлинг, чтобы не словить лимиты Telegram
+    if removed:
+        log.info("janitor: автоочистка недоступных — проверено=%d, удалено=%d", checked, removed)
+    return checked, removed
+
+
 async def adm_export_msg(update, context):
     rows = conn.execute("SELECT tg_id, username, gender FROM users").fetchall()
     path = os.path.join(os.path.dirname(__file__), "users_export.txt")
@@ -5813,6 +5851,45 @@ def save_ad(ad):
     conn.commit()
 
 
+def user_is_disposable(uid):
+    """True, если аккаунт «пустой» и его можно безопасно удалить:
+    не админ/модер, без VIP, без коинов и без покупок за Stars."""
+    if is_admin(uid):
+        return False
+    u = get_user(uid)
+    if not u or is_moder(u):
+        return False
+    if is_vip(u):
+        return False
+    try:
+        if (u["coins"] or 0) > 0:
+            return False
+    except (KeyError, IndexError, TypeError):
+        pass
+    has_stars = conn.execute("SELECT 1 FROM star_purchases WHERE user_id=? LIMIT 1", (uid,)).fetchone()
+    if has_stars:
+        return False
+    return True
+
+
+def purge_user(uid):
+    try:
+        if is_admin(uid):
+            return False
+        u = get_user(uid)
+        if u and is_moder(u):
+            return False
+        conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
+        conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
+        conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+        conn.commit()
+        return True
+    except Exception as e:  # noqa
+        log.warning("purge_user %s: %s", uid, e)
+        return False
+
+
 async def process_bcast_content(update, context):
     uid = update.effective_user.id
     back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
@@ -5826,6 +5903,7 @@ async def process_bcast_content(update, context):
     else:
         rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
     sent, failed = 0, 0
+    blocked_ids = []
     prefix_text = "Админ:\n\n"
     for r in rows:
         try:
@@ -5838,11 +5916,23 @@ async def process_bcast_content(update, context):
                 await context.bot.send_message(r["tg_id"], prefix_text)
                 await context.bot.send_voice(r["tg_id"], update.message.voice.file_id)
             sent += 1
+        except TelegramForbiddenError:
+            # Пользователь заблокировал бота или не запускал его — кандидат на удаление
+            failed += 1
+            blocked_ids.append(r["tg_id"])
         except TelegramError:
             failed += 1
+    # Чистим тех, кто заблокировал/удалил бота (мёртвые аккаунты из старой БД)
+    removed = 0
+    for bid in blocked_ids:
+        if purge_user(bid):
+            removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
     await update.message.reply_text(
-        f"Рассылка завершена. Отправлено: {sent}, не удалось: {failed}",
+        f"📢 Рассылка завершена.\n"
+        f"✅ Доставлено: {sent}\n"
+        f"❌ Не удалось: {failed}\n"
+        f"🧹 Удалено недоступных (заблокировали/не запускали бота): {removed}",
         reply_markup=back_kb,
     )
 
@@ -6463,6 +6553,10 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 set_cur_lang(_sl)
             except TelegramError:
                 pass
+        # Авто-очистка: если заблокировавший — «пустой» аккаунт, сразу удаляем из базы
+        if user_is_disposable(uid):
+            if purge_user(uid):
+                log.info("auto-purge: пользователь %s заблокировал бота и удалён (пустой аккаунт)", uid)
     elif new_status == "member":
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=0", (uid,)).fetchone()
         if ref:
@@ -7144,6 +7238,7 @@ async def _janitor_loop():
                     pass
             if do_heavy:
                 await janitor_heavy()
+                await janitor_unreachable_sweep()
                 set_setting("janitor_last", now_iso())
         except Exception as e:  # noqa
             log.error("janitor_loop: %s", e)
