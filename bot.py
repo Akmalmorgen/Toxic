@@ -392,6 +392,8 @@ def init_db():
         last_active TEXT,
         nudged_at TEXT,
         admin_unlocked INTEGER NOT NULL DEFAULT 0,
+        age TEXT,
+        age_consent INTEGER NOT NULL DEFAULT 0,
         created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS anon_messages (
@@ -435,6 +437,9 @@ def init_db():
         pref TEXT NOT NULL,
         is_vip INTEGER NOT NULL DEFAULT 0,
         mode TEXT NOT NULL DEFAULT 'normal',
+        actual_age INTEGER,
+        age_min INTEGER,
+        age_max INTEGER,
         joined_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS roulette_sessions (
@@ -580,7 +585,11 @@ def migrate():
         "ALTER TABLE users ADD COLUMN nudged_at TEXT",
         "ALTER TABLE users ADD COLUMN admin_unlocked INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN age TEXT",
+        "ALTER TABLE users ADD COLUMN age_consent INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
+        "ALTER TABLE roulette_queue ADD COLUMN actual_age INTEGER",
+        "ALTER TABLE roulette_queue ADD COLUMN age_min INTEGER",
+        "ALTER TABLE roulette_queue ADD COLUMN age_max INTEGER",
         "ALTER TABLE roulette_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
         "ALTER TABLE shop_items ADD COLUMN is_18plus INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE star_packages ADD COLUMN title_uz TEXT",
@@ -731,6 +740,32 @@ def is_vip(user_row):
 
 def is_admin(tg_id):
     return tg_id in ADMIN_IDS
+
+
+def user_age_int(user_row):
+    """Возраст пользователя как число (или None, если не задан/нечисловой)."""
+    try:
+        a = user_row["age"]
+    except (KeyError, IndexError, TypeError):
+        return None
+    if a is None:
+        return None
+    s = str(a).strip()
+    return int(s) if s.isdigit() else None
+
+
+def is_adult(user_row):
+    """True, если возраст задан и >= 18 (доступ к 18+)."""
+    a = user_age_int(user_row)
+    return a is not None and a >= 18
+
+
+# Диапазоны поиска по возрасту в 18+ рулетке: метка кнопки -> (мин, макс)
+AGE_SEARCH_RANGES = {
+    "18/20": (18, 20), "20/22": (20, 22), "22/24": (22, 24),
+    "24/26": (24, 26), "26/28": (26, 28), "28/30": (28, 30),
+    "30+": (30, 200),
+}
 
 
 def has_admin_access(tg_id):
@@ -890,6 +925,7 @@ BTN = {
     "🔞 18+": ("🔞 18+", "🔞 18+"),
     "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
     "🔞 Мне нет 18": ("🔞 18 yoshda emasman", "🔞 I'm under 18"),
+    "🤷 Любой возраст": ("🤷 Istalgan yosh", "🤷 Any age"),
     "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
     "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
     "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
@@ -1083,6 +1119,7 @@ T = {
             "🆔 ID: <code>{id}</code>\n"
             "👤 Имя: <b>{name}</b>\n"
             "🚻 Пол: <b>{gender}</b>\n"
+            "🎂 Возраст: <b>{age}</b>\n"
             "🎲 В чат-рулетке: <b>{roulette_time}</b>\n"
             "📤 Отправлено по ссылке: <b>{sent}</b>\n"
             "📥 Получено по ссылке: <b>{received}</b>\n"
@@ -1101,6 +1138,7 @@ T = {
             "🆔 ID: <code>{id}</code>\n"
             "👤 Ism: <b>{name}</b>\n"
             "🚻 Jins: <b>{gender}</b>\n"
+            "🎂 Yosh: <b>{age}</b>\n"
             "🎲 Chat-ruletkada: <b>{roulette_time}</b>\n"
             "📤 Havola orqali yuborilgan: <b>{sent}</b>\n"
             "📥 Havola orqali kelgan: <b>{received}</b>\n"
@@ -1119,6 +1157,7 @@ T = {
             "🆔 ID: <code>{id}</code>\n"
             "👤 Name: <b>{name}</b>\n"
             "🚻 Gender: <b>{gender}</b>\n"
+            "🎂 Age: <b>{age}</b>\n"
             "🎲 In chat roulette: <b>{roulette_time}</b>\n"
             "📤 Sent via link: <b>{sent}</b>\n"
             "📥 Received via link: <b>{received}</b>\n"
@@ -2295,10 +2334,20 @@ T = {
         "uz": "📅 <b>Sizning yoshingiz?</b>",
         "en": "📅 <b>How old are you?</b>",
     },
+    "age_search_title": {
+        "ru": "🔎 <b>Кого ищем по возрасту?</b>\nВыберите диапазон 👇",
+        "uz": "🔎 <b>Qaysi yoshdagini qidiramiz?</b>\nDiapazonni tanlang 👇",
+        "en": "🔎 <b>What age are you looking for?</b>\nChoose a range 👇",
+    },
     "age_register_ask": {
-        "ru": "📅 <b>Укажите ваш возраст</b>\n\nЭто нужно для доступа к разделу 🔞 18+. Если меньше 18 — раздел будет недоступен.",
-        "uz": "📅 <b>Yoshingizni kiriting</b>\n\nBu 🔞 18+ bo'limiga kirish uchun kerak. 18 dan kichik bo'lsa — bo'lim yopiq bo'ladi.",
-        "en": "📅 <b>Select your age</b>\n\nNeeded for access to the 🔞 18+ section. If under 18 — the section will be unavailable.",
+        "ru": "📅 <b>Сколько вам лет?</b>\n\nНапишите ваш возраст числом (например: 21).\nЭто нужно для доступа к разделу 🔞 18+. Если меньше 18 — раздел будет недоступен.",
+        "uz": "📅 <b>Yoshingiz nechada?</b>\n\nYoshingizni raqam bilan yozing (masalan: 21).\nBu 🔞 18+ bo'limiga kirish uchun kerak. 18 dan kichik bo'lsa — bo'lim yopiq bo'ladi.",
+        "en": "📅 <b>How old are you?</b>\n\nType your age as a number (e.g. 21).\nNeeded for access to the 🔞 18+ section. If under 18 — the section will be unavailable.",
+    },
+    "age_enter_number": {
+        "ru": "Введите ваш возраст числом (например: 21):",
+        "uz": "Yoshingizni raqam bilan kiriting (masalan: 21):",
+        "en": "Enter your age as a number (e.g. 21):",
     },
     "age_saved": {
         "ru": "✅ Возраст сохранён: <b>{age}</b>\n\nГлавное меню 👇",
@@ -2547,9 +2596,8 @@ def main_menu_kb(tg_id):
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
         star_label = styled(tr_btn("💎 Купить коины"), "premium")
         rows.append([KeyboardButton(star_label)])
-    # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст из набора 18+)
-    u18 = get_user(tg_id)
-    if u18 and u18["age"] in ("18-20", "20-22", "22-25", "25-30", "30+"):
+    # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
+    if is_adult(get_user(tg_id)):
         rows.append([KeyboardButton("🔞 18+")])
     if is_admin(tg_id):
         rows.append([KeyboardButton("🛠 Админка")])
@@ -2778,29 +2826,31 @@ async def eighteen_plus_menu(update, context):
     """Показывает меню 18+ контента (с возрастным барьером и согласием)."""
     user = get_user(update.effective_user.id)
     await clean_screen(update, context)
-    if not user["age"]:
-        # Возраст не выбран — сперва выбор возраста
-        context.user_data["state"] = "18plus_age_select"
-        await send_menu(update, context, t("age_select_title"), eighteen_plus_age_kb())
+    if not is_adult(user):
+        # Доступ закрыт (кнопка не должна показываться, но на всякий случай)
+        context.user_data["state"] = None
+        await send_menu(update, context, t("age_under_18_deny"), main_menu_kb(update.effective_user.id), parse_mode="HTML")
         return
-    if user["age"] == "under18":
-        # Несовершеннолетний — доступ закрыт, предлагаем верификацию
-        context.user_data["state"] = "18plus_verify_offer"
-        await send_menu(update, context, t("age_under_18_deny"), eighteen_plus_verify_kb(), parse_mode="HTML")
+    # Согласие уже дано ранее — сразу в 18+ меню, не спрашиваем повторно
+    if user["age_consent"]:
+        context.user_data["state"] = "18plus_menu"
+        await send_menu(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
         return
-    # Возраст 18+ — показываем приветствие/согласие
+    # Первый вход — показываем приветствие/согласие
     context.user_data["state"] = "18plus_consent"
     await send_menu(update, context, t("age_consent_text"), eighteen_plus_consent_kb(), parse_mode="HTML")
 
 
 async def eighteen_plus_consent_router(update, context):
-    """Обработка согласия с правилами 18+."""
+    """Обработка согласия с правилами 18+ (запоминается)."""
     text = canon(update.message.text)
     if text == "⬅️ Назад" or text == "🏠 Меню":
         context.user_data["state"] = None
         await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     if text == "✅ Согласиться":
+        conn.execute("UPDATE users SET age_consent=1 WHERE tg_id=?", (update.effective_user.id,))
+        conn.commit()
         context.user_data["state"] = "18plus_menu"
         await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
         return
@@ -2913,15 +2963,50 @@ async def eighteen_plus_pref_router(update, context):
         return
     user = get_user(update.effective_user.id)
     conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
+    # Запоминаем выбор пола и переходим к выбору диапазона возраста
+    context.user_data["18plus_pref_gender"] = pref
+    context.user_data["state"] = "18plus_age_search"
+    await clean_screen(update, context)
+    await send_menu(update, context, t("age_search_title"), eighteen_plus_age_search_kb())
+
+
+async def eighteen_plus_age_search_router(update, context):
+    """Выбор диапазона возраста для поиска в 18+ рулетке, затем постановка в очередь."""
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    if text == "🤷 Любой возраст":
+        age_min, age_max = 18, 200
+    elif text in AGE_SEARCH_RANGES:
+        age_min, age_max = AGE_SEARCH_RANGES[text]
+    else:
+        await update.message.reply_text(t("pick_on_kb"), reply_markup=eighteen_plus_age_search_kb())
+        return
+    user = get_user(update.effective_user.id)
+    pref = context.user_data.get("18plus_pref_gender", "any")
+    my_age = user_age_int(user) or 18
     conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, '18plus', ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
+        "VALUES (?, ?, ?, ?, '18plus', ?, ?, ?, ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
+        "mode=excluded.mode, actual_age=excluded.actual_age, age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
+        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, my_age, age_min, age_max, now_iso()),
     )
     conn.commit()
     context.user_data["state"] = None
     await clean_screen(update, context)
     await context.bot.send_message(update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb())
+
+
+def eighteen_plus_age_search_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/24")],
+        [KeyboardButton("24/26"), KeyboardButton("26/28"), KeyboardButton("28/30")],
+        [KeyboardButton("30+"), KeyboardButton("🤷 Любой возраст")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
 
 
 def eighteen_plus_menu_kb():
@@ -2969,7 +3054,7 @@ async def set_gender_from_text(update, context):
             t("gender_set_short", g=g), parse_mode="HTML",
         )
         await update.message.reply_text(
-            t("age_register_ask"), parse_mode="HTML", reply_markup=age_register_kb(),
+            t("age_register_ask"), parse_mode="HTML", reply_markup=ReplyKeyboardRemove(),
         )
         return
     context.user_data["state"] = None
@@ -2980,34 +3065,29 @@ async def set_gender_from_text(update, context):
     )
 
 
-def age_register_kb():
-    """Клавиатура выбора возраста при регистрации/смене (с вариантом «нет 18»)."""
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
-        [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("🔞 Мне нет 18")],
-    ], resize_keyboard=True))
-
-
-AGE_RANGES = {
-    "18/20": "18-20", "20/22": "20-22", "22/25": "22-25",
-    "25/30": "25-30", "30+": "30+",
-}
-
-
 async def set_age_from_text(update, context):
-    """Выбор возраста при регистрации (set_age_first) и смене в профиле (set_age_profile)."""
-    text = canon(update.message.text)
+    """Ввод возраста ЧИСЛОМ при регистрации (set_age_first) и смене в профиле (set_age_profile)."""
+    text = (update.message.text or "").strip()
+    ctext = canon(text)
     state = context.user_data.get("state")
     uid = update.effective_user.id
     user = get_user(uid)
     # Отмена/назад — только в профиле
-    if text in ("⬅️ Назад", "❌ Отмена") and state == "set_age_profile":
+    if ctext in ("⬅️ Назад", "❌ Отмена") and state == "set_age_profile":
         await show_profile(update, context)
         return
-    # «Мне нет 18»
-    if text == "🔞 Мне нет 18":
-        conn.execute("UPDATE users SET age='under18' WHERE tg_id=?", (uid,))
+    # Ожидаем число
+    if not text.isdigit():
+        await update.message.reply_text(t("age_enter_number"), parse_mode="HTML")
+        return
+    new_age = int(text)
+    if new_age < 5 or new_age > 99:
+        await update.message.reply_text(t("age_enter_number"), parse_mode="HTML")
+        return
+    cur_age = user_age_int(user)
+    # Меньше 18 — сохраняем, доступ к 18+ закрыт
+    if new_age < 18:
+        conn.execute("UPDATE users SET age=?, age_consent=0 WHERE tg_id=?", (str(new_age), uid))
         conn.commit()
         context.user_data["state"] = None
         await update.message.reply_text(
@@ -3015,32 +3095,27 @@ async def set_age_from_text(update, context):
             reply_markup=main_menu_kb(uid),
         )
         return
-    age = AGE_RANGES.get(text)
-    if not age:
-        kb = age_profile_kb() if state == "set_age_profile" else age_register_kb()
-        await update.message.reply_text(t("pick_on_kb"), reply_markup=kb)
-        return
-    # Если пользователь был отмечен как «нет 18» и хочет поставить 18+ — нужна верификация
-    if state == "set_age_profile" and user["age"] == "under18":
+    # Хочет 18+, но раньше был отмечен младше 18 (в профиле) — нужна верификация
+    if state == "set_age_profile" and cur_age is not None and cur_age < 18:
         pending = conn.execute(
             "SELECT 1 FROM age_verification_requests WHERE user_id=? AND status='pending' LIMIT 1",
             (uid,),
         ).fetchone()
         if pending:
+            context.user_data["state"] = None
             await update.message.reply_text(t("age_verification_pending"), parse_mode="HTML",
                                              reply_markup=main_menu_kb(uid))
-            context.user_data["state"] = None
             return
         context.user_data["state"] = "18plus_verify_upload"
-        context.user_data["pending_age"] = age
+        context.user_data["pending_age"] = new_age
         await update.message.reply_text(t("age_verify_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
         return
-    # Иначе — просто сохраняем возраст (доверяем при регистрации / смене между 18+)
-    conn.execute("UPDATE users SET age=? WHERE tg_id=?", (age, uid))
+    # Иначе — просто сохраняем (доверяем при регистрации / смене среди 18+)
+    conn.execute("UPDATE users SET age=? WHERE tg_id=?", (str(new_age), uid))
     conn.commit()
     context.user_data["state"] = None
     await update.message.reply_text(
-        t("age_saved", age=age), parse_mode="HTML",
+        t("age_saved", age=new_age), parse_mode="HTML",
         reply_markup=main_menu_kb(uid),
     )
 
@@ -3884,11 +3959,14 @@ async def show_profile(update, context):
     name = user["first_name"] or "—"
     if user["username"]:
         name += f" (@{user['username']})"
+    _age_int = user_age_int(user)
+    age_display = str(_age_int) if _age_int is not None else "—"
     text = t(
         "profile_full",
         id=uid,
         name=html.escape(name),
         gender=gender_label(user['gender']),
+        age=age_display,
         roulette_time=fmt_duration(secs),
         sent=sent,
         received=received,
@@ -3918,19 +3996,14 @@ async def profile_router(update, context):
     if text == "✏️ Изменить возраст":
         context.user_data["state"] = "set_age_profile"
         await clean_screen(update, context)
-        await send_menu(update, context, t("age_register_ask"), age_profile_kb(), parse_mode="HTML")
+        await send_menu(update, context, t("age_register_ask"), age_back_kb(), parse_mode="HTML")
         return
     await context.bot.send_message(update.effective_chat.id, t("choose_action"), reply_markup=profile_kb())
 
 
-def age_profile_kb():
-    """Возраст в профиле — с кнопкой возврата."""
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
-        [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("🔞 Мне нет 18")],
-        [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True))
+def age_back_kb():
+    """Клавиатура смены возраста в профиле — только кнопка возврата (ввод числом)."""
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True))
 
 
 def searching_kb():
@@ -4031,6 +4104,29 @@ def compatible(a, b):
     return a_ok and b_ok
 
 
+def _q_int(row, key):
+    """Безопасно достаёт целое поле из строки очереди."""
+    try:
+        v = row[key]
+        return int(v) if v is not None else None
+    except (KeyError, IndexError, TypeError, ValueError):
+        return None
+
+
+def age_match(a, b):
+    """Взаимный фильтр по возрасту для 18+: возраст каждого попадает в диапазон другого."""
+    a_age = _q_int(a, "actual_age")
+    b_age = _q_int(b, "actual_age")
+    a_min = _q_int(a, "age_min") or 18
+    a_max = _q_int(a, "age_max") or 200
+    b_min = _q_int(b, "age_min") or 18
+    b_max = _q_int(b, "age_max") or 200
+    # Если возраст неизвестен — не блокируем (совместимость по умолчанию)
+    a_ok = (b_age is None) or (a_min <= b_age <= a_max)
+    b_ok = (a_age is None) or (b_min <= a_age <= b_max)
+    return a_ok and b_ok
+
+
 def is_banned_pair(u1, u2):
     row = conn.execute(
         "SELECT 1 FROM bans WHERE until>? AND "
@@ -4054,6 +4150,9 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
             a_mode = (a["mode"] if "mode" in a.keys() else None) or "normal"
             b_mode = (b["mode"] if "mode" in b.keys() else None) or "normal"
             if a_mode != b_mode:
+                continue
+            # В 18+ — учитываем взаимный фильтр по возрасту
+            if a_mode == "18plus" and not age_match(a, b):
                 continue
             if compatible(a, b) and not is_banned_pair(a["user_id"], b["user_id"]):
                 conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
@@ -4121,11 +4220,21 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
 async def _requeue_and_search(context, uid, mode="normal"):
     """Ставит пользователя в очередь с его прежними настройками и показывает экран поиска."""
     user = get_user(uid)
-    conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, mode, now_iso()),
-    )
+    if mode == "18plus":
+        my_age = user_age_int(user) or 18
+        conn.execute(
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
+            "VALUES (?, ?, ?, ?, '18plus', ?, 18, 200, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
+            "mode=excluded.mode, actual_age=excluded.actual_age, age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
+            (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, my_age, now_iso()),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+            (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, mode, now_iso()),
+        )
     conn.commit()
     UD[uid]["state"] = None
     await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
@@ -4759,8 +4868,8 @@ async def on_age_verify_decision(update, context):
             pass
         return
     if decision == "ok":
-        # Возраст подтверждён — ставим 18+ (диапазон 18-20 по умолчанию)
-        conn.execute("UPDATE users SET age='18-20' WHERE tg_id=?", (uid,))
+        # Возраст подтверждён — ставим 18 (числовой, чтобы открылся доступ к 18+)
+        conn.execute("UPDATE users SET age='18' WHERE tg_id=?", (uid,))
         conn.execute("UPDATE age_verification_requests SET status='approved', responded_at=? WHERE id=?",
                      (now_iso(), req["id"]))
         conn.commit()
@@ -6383,6 +6492,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "18plus_pref":
         await eighteen_plus_pref_router(update, context)
+        return
+    if state == "18plus_age_search":
+        await eighteen_plus_age_search_router(update, context)
         return
     if state == "18plus_rchat":
         if text == "➡️ Далее":
