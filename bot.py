@@ -4280,43 +4280,50 @@ def is_banned_pair(u1, u2):
 async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
     rows = conn.execute("SELECT * FROM roulette_queue ORDER BY is_vip DESC, joined_at ASC").fetchall()
     matched_ids = set()
-    for i, a in enumerate(rows):
-        if a["user_id"] in matched_ids:
-            continue
-        for b in rows[i + 1:]:
-            if b["user_id"] in matched_ids:
+
+    async def _pair(a, b, a_mode):
+        conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
+        conn.execute(
+            "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) VALUES (?, ?, 1, ?, ?)",
+            (a["user_id"], b["user_id"], a_mode, now_iso()),
+        )
+        conn.commit()
+        matched_ids.add(a["user_id"]); matched_ids.add(b["user_id"])
+        is_18 = (a_mode == "18plus")
+        for uid in (a["user_id"], b["user_id"]):
+            try:
+                _sl = cur_lang(); set_cur_lang(get_lang(uid))
+                if is_18:
+                    await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
+                    UD[uid]["state"] = "18plus_rchat"
+                else:
+                    await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                    UD[uid]["state"] = "rchat"
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+
+    # strict_age=True — учитываем взаимный фильтр по возрасту (только для 18+).
+    # Второй проход (strict_age=False) соединяет оставшихся 18+ по полу, чтобы люди находились.
+    async def run_pass(strict_age):
+        for i, a in enumerate(rows):
+            if a["user_id"] in matched_ids:
                 continue
-            # Режимы должны совпадать: обычная рулетка матчит обычную, 18+ только 18+
-            a_mode = (a["mode"] if "mode" in a.keys() else None) or "normal"
-            b_mode = (b["mode"] if "mode" in b.keys() else None) or "normal"
-            if a_mode != b_mode:
-                continue
-            # В 18+ — учитываем взаимный фильтр по возрасту
-            if a_mode == "18plus" and not age_match(a, b):
-                continue
-            if compatible(a, b) and not is_banned_pair(a["user_id"], b["user_id"]):
-                conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
-                conn.execute(
-                    "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) VALUES (?, ?, 1, ?, ?)",
-                    (a["user_id"], b["user_id"], a_mode, now_iso()),
-                )
-                conn.commit()
-                matched_ids.add(a["user_id"])
-                matched_ids.add(b["user_id"])
-                is_18 = (a_mode == "18plus")
-                for uid in (a["user_id"], b["user_id"]):
-                    try:
-                        _sl = cur_lang(); set_cur_lang(get_lang(uid))
-                        if is_18:
-                            await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
-                            UD[uid]["state"] = "18plus_rchat"
-                        else:
-                            await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
-                            UD[uid]["state"] = "rchat"   # в чате — кнопки управления внизу
-                        set_cur_lang(_sl)
-                    except TelegramError:
-                        pass
-                break
+            for b in rows[i + 1:]:
+                if b["user_id"] in matched_ids:
+                    continue
+                a_mode = (a["mode"] if "mode" in a.keys() else None) or "normal"
+                b_mode = (b["mode"] if "mode" in b.keys() else None) or "normal"
+                if a_mode != b_mode:
+                    continue
+                if a_mode == "18plus" and strict_age and not age_match(a, b):
+                    continue
+                if compatible(a, b) and not is_banned_pair(a["user_id"], b["user_id"]):
+                    await _pair(a, b, a_mode)
+                    break
+
+    await run_pass(strict_age=True)
+    await run_pass(strict_age=False)
 
 
 async def end_roulette_session(context, ender_id, requeue_ender=False):
