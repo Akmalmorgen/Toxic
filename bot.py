@@ -233,6 +233,11 @@ LINK_CHANGE_COOLDOWN_DAYS = 7
 VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
 VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
 
+# === Подарок 18+ доступа другу ===
+GIFT_18PLUS_PRICE = 567          # цена подарка 18+ (обычный пользователь), коинов
+GIFT_18PLUS_PRICE_VIP = 456      # цена подарка 18+ для VIP (со скидкой), коинов
+GIFT_18PLUS_DAYS = 30            # на сколько дней открывается 18+ доступ другу
+
 # === Реферальные награды и бонусы за активность по ссылке ===
 REF_REWARD_NORMAL = 20      # коинов за приглашённого друга (обычный)
 REF_REWARD_VIP = 50         # коинов за приглашённого друга (VIP)
@@ -792,6 +797,20 @@ AGE_SEARCH_RANGES = {
 }
 
 
+def grant_18plus_access(uid, days):
+    """Открывает пользователю доступ к 18+ чату на `days` дней (0 = навсегда). Продлевает текущий."""
+    base = now_dt()
+    u = get_user(uid)
+    try:
+        if u and u["eighteenplus_until"] and datetime.fromisoformat(u["eighteenplus_until"]) > now_dt():
+            base = datetime.fromisoformat(u["eighteenplus_until"])
+    except (KeyError, IndexError, ValueError, TypeError):
+        base = now_dt()
+    until = (base + timedelta(days=days)).isoformat() if (days and days > 0) else "9999-12-31T23:59:59"
+    conn.execute("UPDATE users SET eighteenplus_until=?, age_consent=1 WHERE tg_id=?", (until, uid))
+    conn.commit()
+
+
 def has_admin_access(tg_id):
     """Доступ к админ-панели: настоящий админ ИЛИ модер, разблокировавший ключ доступа."""
     if is_admin(tg_id):
@@ -954,6 +973,8 @@ BTN = {
     "🔞 18+": ("🔞 18+", "🔞 18+"),
     "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
     "🔞 Мне нет 18": ("🔞 18 yoshda emasman", "🔞 I'm under 18"),
+    "🎁 Подарить 18+": ("🎁 18+ sovg'a qilish", "🎁 Gift 18+"),
+    "🎁 Подарить коины": ("🎁 Coin sovg'a qilish", "🎁 Gift coins"),
     "🤷 Любой возраст": ("🤷 Istalgan yosh", "🤷 Any age"),
     "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
     "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
@@ -1382,6 +1403,107 @@ T = {
             "To chat in the 18+ roulette, buy access in the <b>🔞 18+ shop</b> 👇\n"
             "<i>Pick an item with the duration you want — access opens right after purchase.</i>"
         ),
+    },
+    # === Подарки (18+ и коины) ===
+    "gift18_ask_id": {
+        "ru": (
+            "🎁 <b>Подарить доступ 18+ другу</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Цена подарка: <b>{price}</b> 💎\n"
+            "Срок доступа другу: <b>{days} дн.</b>\n\n"
+            "Введите <b>Telegram ID</b> друга, которому хотите подарить 👇\n"
+            "<i>(друг должен быть запущен в боте)</i>"
+        ),
+        "uz": (
+            "🎁 <b>Do'stga 18+ kirish sovg'a qilish</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Sovg'a narxi: <b>{price}</b> 💎\n"
+            "Do'st uchun muddat: <b>{days} kun</b>\n\n"
+            "Sovg'a qilmoqchi bo'lgan do'stning <b>Telegram ID</b> sini kiriting 👇"
+        ),
+        "en": (
+            "🎁 <b>Gift 18+ access to a friend</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Gift price: <b>{price}</b> 💎\n"
+            "Access for friend: <b>{days} days</b>\n\n"
+            "Enter the friend's <b>Telegram ID</b> 👇"
+        ),
+    },
+    "gift18_confirm": {
+        "ru": "🎁 Подарить пользователю <code>{id}</code> доступ 18+ на <b>{days} дн.</b> за <b>{price}</b> 💎?",
+        "uz": "🎁 <code>{id}</code> foydalanuvchiga <b>{days} kun</b>lik 18+ kirishni <b>{price}</b> 💎 ga sovg'a qilasizmi?",
+        "en": "🎁 Gift user <code>{id}</code> 18+ access for <b>{days} days</b> for <b>{price}</b> 💎?",
+    },
+    "gift18_sent": {
+        "ru": "✅ <b>Подарок отправлен!</b>\nПользователю <code>{id}</code> открыт доступ 18+ на {days} дн. 🎉",
+        "uz": "✅ <b>Sovg'a yuborildi!</b>\n<code>{id}</code> ga 18+ {days} kunga ochildi 🎉",
+        "en": "✅ <b>Gift sent!</b>\nUser <code>{id}</code> got 18+ access for {days} days 🎉",
+    },
+    "gift18_received": {
+        "ru": "🎁 <b>Вам подарили доступ 18+!</b> 🔥\nОткрыт на <b>{days} дн.</b>\nЗаходи в «🔞 18+ → 18+ рулетка» 💋",
+        "uz": "🎁 <b>Sizga 18+ kirish sovg'a qilindi!</b> 🔥\n<b>{days} kun</b>ga ochildi.\n«🔞 18+ → 18+ ruletka» ga kiring 💋",
+        "en": "🎁 <b>You received 18+ access as a gift!</b> 🔥\nGranted for <b>{days} days</b>.\nOpen «🔞 18+ → 18+ roulette» 💋",
+    },
+    "gift_id_number": {
+        "ru": "ID должен быть числом. Введите Telegram ID друга:",
+        "uz": "ID raqam bo'lishi kerak. Do'stning Telegram ID sini kiriting:",
+        "en": "ID must be a number. Enter the friend's Telegram ID:",
+    },
+    "gift_not_self": {
+        "ru": "Нельзя подарить самому себе 🙂 Введите ID друга:",
+        "uz": "O'zingizga sovg'a qila olmaysiz 🙂 Do'stning ID sini kiriting:",
+        "en": "You can't gift yourself 🙂 Enter a friend's ID:",
+    },
+    "gift_user_not_found": {
+        "ru": "Пользователь с таким ID не найден (он должен быть в боте). Попробуйте другой ID:",
+        "uz": "Bunday ID li foydalanuvchi topilmadi (u botda bo'lishi kerak). Boshqa ID kiriting:",
+        "en": "No user with this ID (they must be in the bot). Try another ID:",
+    },
+    "giftcoins_ask_id": {
+        "ru": (
+            "🎁 <b>Подарить коины другу</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Коины спишутся с твоего баланса и придут другу.\n\n"
+            "Введите <b>Telegram ID</b> друга 👇\n"
+            "<i>(друг должен быть запущен в боте)</i>"
+        ),
+        "uz": (
+            "🎁 <b>Do'stga coin sovg'a qilish</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Coinlar balansingizdan yechiladi va do'stga o'tadi.\n\n"
+            "Do'stning <b>Telegram ID</b> sini kiriting 👇"
+        ),
+        "en": (
+            "🎁 <b>Gift coins to a friend</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Coins are deducted from your balance and go to your friend.\n\n"
+            "Enter the friend's <b>Telegram ID</b> 👇"
+        ),
+    },
+    "giftcoins_ask_amount": {
+        "ru": "💎 Сколько коинов подарить? (твой баланс: <b>{balance}</b> 💎)",
+        "uz": "💎 Qancha coin sovg'a qilasiz? (balansingiz: <b>{balance}</b> 💎)",
+        "en": "💎 How many coins to gift? (your balance: <b>{balance}</b> 💎)",
+    },
+    "giftcoins_amount_number": {
+        "ru": "Введите положительное число коинов:",
+        "uz": "Musbat coin sonini kiriting:",
+        "en": "Enter a positive number of coins:",
+    },
+    "giftcoins_not_enough": {
+        "ru": "Недостаточно коинов. Твой баланс: <b>{balance}</b> 💎. Введите меньшую сумму:",
+        "uz": "Coin yetarli emas. Balansingiz: <b>{balance}</b> 💎. Kamroq summa kiriting:",
+        "en": "Not enough coins. Your balance: <b>{balance}</b> 💎. Enter a smaller amount:",
+    },
+    "giftcoins_sent": {
+        "ru": "✅ <b>Готово!</b> Подарено <b>{amount}</b> 💎 пользователю <code>{id}</code> 🎉",
+        "uz": "✅ <b>Tayyor!</b> <code>{id}</code> ga <b>{amount}</b> 💎 sovg'a qilindi 🎉",
+        "en": "✅ <b>Done!</b> Gifted <b>{amount}</b> 💎 to user <code>{id}</code> 🎉",
+    },
+    "giftcoins_received": {
+        "ru": "🎁 <b>Вам подарили {amount} 💎!</b>\nКто-то перевёл тебе коины. Трать в магазине 🛒",
+        "uz": "🎁 <b>Sizga {amount} 💎 sovg'a qilindi!</b>\nKimdir coin yubordi. Do'konda sarflang 🛒",
+        "en": "🎁 <b>You received {amount} 💎 as a gift!</b>\nSomeone sent you coins. Spend in the shop 🛒",
     },
     # === Жалоба (доп., для пользователя) ===
     "report_confirmed_user": {
@@ -2970,6 +3092,7 @@ async def go_home(update, context):
 def profile_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("✏️ Сменить пол"), KeyboardButton("✏️ Изменить возраст")],
+        [KeyboardButton("🎁 Подарить коины")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -3141,6 +3264,9 @@ async def eighteen_plus_menu_router(update, context):
     if text == "18+ магазин":
         await show_eighteen_plus_shop(update, context)
         return
+    if text == "🎁 Подарить 18+":
+        await start_gift_18plus(update, context)
+        return
     if text == "18+ рулетка":
         user = get_user(update.effective_user.id)
         if user["age"]:
@@ -3150,6 +3276,76 @@ async def eighteen_plus_menu_router(update, context):
             await nav(update, context, t("age_select_title"), eighteen_plus_age_kb())
         return
     await update.message.reply_text(t("choose_on_kb"), reply_markup=eighteen_plus_menu_kb())
+
+
+def gift_price_for(user_row):
+    """Цена подарка 18+ с учётом VIP."""
+    return GIFT_18PLUS_PRICE_VIP if is_vip(user_row) else GIFT_18PLUS_PRICE
+
+
+async def start_gift_18plus(update, context):
+    """Начало дарения 18+ доступа другу — спрашиваем ID."""
+    uid = update.effective_user.id
+    user = get_user(uid)
+    price = gift_price_for(user)
+    context.user_data["state"] = "gift18_id"
+    await nav(update, context, t("gift18_ask_id", price=price, days=GIFT_18PLUS_DAYS), cancel_reply_kb(), parse_mode="HTML")
+
+
+async def gift_18plus_router(update, context):
+    """Дарение 18+ доступа: ввод ID → подтверждение → перевод."""
+    state = context.user_data.get("state")
+    text = (update.message.text or "").strip()
+    uid = update.effective_user.id
+    if canon(text) in ("❌ Отмена", "⬅️ Назад"):
+        context.user_data["state"] = "18plus_menu"
+        await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
+        return
+    if state == "gift18_id":
+        if not text.isdigit():
+            await update.message.reply_text(t("gift_id_number"), reply_markup=cancel_reply_kb())
+            return
+        target = int(text)
+        if target == uid:
+            await update.message.reply_text(t("gift_not_self"), reply_markup=cancel_reply_kb())
+            return
+        if not get_user(target):
+            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
+            return
+        context.user_data["gift18_target"] = target
+        context.user_data["state"] = "gift18_confirm"
+        price = gift_price_for(get_user(uid))
+        await nav(update, context, t("gift18_confirm", id=target, price=price, days=GIFT_18PLUS_DAYS),
+                  yes_no_kb(), parse_mode="HTML")
+        return
+    if state == "gift18_confirm":
+        if canon(text) != "✅ Да":
+            await update.message.reply_text(t("choose_on_kb"), reply_markup=yes_no_kb())
+            return
+        target = context.user_data.get("gift18_target")
+        user = get_user(uid)
+        price = gift_price_for(user)
+        if not is_unlimited(user) and (user["coins"] or 0) < price:
+            context.user_data["state"] = "18plus_menu"
+            await nav(update, context, t("not_enough_coins"), eighteen_plus_menu_kb())
+            return
+        if not is_unlimited(user):
+            conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
+            conn.commit()
+        grant_18plus_access(target, GIFT_18PLUS_DAYS)
+        context.user_data["state"] = None
+        context.user_data.pop("gift18_target", None)
+        # Уведомляем получателя
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(target))
+            await context.bot.send_message(target, t("gift18_received", days=GIFT_18PLUS_DAYS),
+                                           parse_mode="HTML", reply_markup=main_menu_kb(target))
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+        await nav(update, context, t("gift18_sent", id=target, days=GIFT_18PLUS_DAYS),
+                  main_menu_kb(uid), parse_mode="HTML")
+        return
 
 
 async def show_eighteen_plus_roulette(update, context):
@@ -3236,6 +3432,7 @@ def eighteen_plus_age_search_kb():
 def eighteen_plus_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18+ рулетка"), KeyboardButton("18+ магазин")],
+        [KeyboardButton("🎁 Подарить 18+")],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
@@ -4234,7 +4431,66 @@ async def profile_router(update, context):
         await clean_screen(update, context)
         await send_menu(update, context, t("age_register_ask"), age_back_kb(), parse_mode="HTML")
         return
+    if text == "🎁 Подарить коины":
+        context.user_data["state"] = "giftcoins_id"
+        await clean_screen(update, context)
+        await send_menu(update, context, t("giftcoins_ask_id"), cancel_reply_kb(), parse_mode="HTML")
+        return
     await context.bot.send_message(update.effective_chat.id, t("choose_action"), reply_markup=profile_kb())
+
+
+async def gift_coins_router(update, context):
+    """Дарение коинов другу: ввод ID → сумма → перевод с баланса."""
+    state = context.user_data.get("state")
+    text = (update.message.text or "").strip()
+    uid = update.effective_user.id
+    if canon(text) in ("❌ Отмена", "⬅️ Назад"):
+        context.user_data["state"] = None
+        await show_profile(update, context)
+        return
+    if state == "giftcoins_id":
+        if not text.isdigit():
+            await update.message.reply_text(t("gift_id_number"), reply_markup=cancel_reply_kb())
+            return
+        target = int(text)
+        if target == uid:
+            await update.message.reply_text(t("gift_not_self"), reply_markup=cancel_reply_kb())
+            return
+        if not get_user(target):
+            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
+            return
+        context.user_data["giftcoins_target"] = target
+        context.user_data["state"] = "giftcoins_amount"
+        bal = get_user(uid)["coins"]
+        await update.message.reply_text(t("giftcoins_ask_amount", balance=bal), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+    if state == "giftcoins_amount":
+        if not text.isdigit() or int(text) <= 0:
+            await update.message.reply_text(t("giftcoins_amount_number"), reply_markup=cancel_reply_kb())
+            return
+        amount = int(text)
+        user = get_user(uid)
+        if not is_unlimited(user) and (user["coins"] or 0) < amount:
+            await update.message.reply_text(t("giftcoins_not_enough", balance=user["coins"]), reply_markup=cancel_reply_kb())
+            return
+        target = context.user_data.get("giftcoins_target")
+        if not is_unlimited(user):
+            conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (amount, uid))
+        conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (amount, target))
+        conn.commit()
+        context.user_data["state"] = None
+        context.user_data.pop("giftcoins_target", None)
+        # Уведомляем получателя
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(target))
+            await context.bot.send_message(target, t("giftcoins_received", amount=amount),
+                                           parse_mode="HTML", reply_markup=main_menu_kb(target))
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+        await nav(update, context, t("giftcoins_sent", id=target, amount=amount),
+                  main_menu_kb(uid), parse_mode="HTML")
+        return
 
 
 def age_back_kb():
@@ -4994,23 +5250,9 @@ async def do_purchase(update, context, item):
     elif rt == "eighteenplus":
         # Покупка доступа к 18+ чату на срок (0 = бессрочно)
         days = item["reward_amount"] if item["reward_amount"] is not None else 0
-        if days and days > 0:
-            base = now_dt()
-            try:
-                if user["eighteenplus_until"] and datetime.fromisoformat(user["eighteenplus_until"]) > now_dt():
-                    base = datetime.fromisoformat(user["eighteenplus_until"])
-            except (KeyError, IndexError, ValueError, TypeError):
-                base = now_dt()
-            new_until = (base + timedelta(days=days)).isoformat()
-        else:
-            new_until = "9999-12-31T23:59:59"  # бессрочно
-        conn.execute("UPDATE users SET eighteenplus_until=?, age_consent=1 WHERE tg_id=?", (new_until, uid))
-        conn.commit()
+        grant_18plus_access(uid, days)
         context.user_data["state"] = None
-        if days and days > 0:
-            txt = t("purchase_18plus", days=days)
-        else:
-            txt = t("purchase_18plus_forever")
+        txt = t("purchase_18plus", days=days) if (days and days > 0) else t("purchase_18plus_forever")
         await nav(update, context, txt, main_menu_kb(uid), parse_mode="HTML")
     else:  # manual
         context.user_data["state"] = None
@@ -7033,6 +7275,12 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "18plus_pref":
         await eighteen_plus_pref_router(update, context)
+        return
+    if state in ("gift18_id", "gift18_confirm"):
+        await gift_18plus_router(update, context)
+        return
+    if state in ("giftcoins_id", "giftcoins_amount"):
+        await gift_coins_router(update, context)
         return
     if state == "18plus_age_search":
         await eighteen_plus_age_search_router(update, context)
