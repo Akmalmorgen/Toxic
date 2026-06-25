@@ -1171,6 +1171,11 @@ T = {
         ),
     },
     "vip_none": {"ru": "—", "uz": "—", "en": "—"},
+    "profile_18plus_line": {
+        "ru": "🔞 В 18+ чате: <b>{time}</b>",
+        "uz": "🔞 18+ chatda: <b>{time}</b>",
+        "en": "🔞 In 18+ chat: <b>{time}</b>",
+    },
     "vip_until": {
         "ru": "до {date} 👑",
         "uz": "{date} gacha 👑",
@@ -3912,18 +3917,27 @@ async def show_profile(update, context):
     else:
         vip_status = t("vip_none")
         coins_display = user['coins']
-    # Время в чат-рулетке (сумма длительностей всех сессий)
+    # Время в чат-рулетке (раздельно: обычная и 18+)
     secs = 0
+    secs_18 = 0
     for s in conn.execute(
-        "SELECT started_at, ended_at FROM roulette_sessions WHERE user1_id=? OR user2_id=?",
+        "SELECT started_at, ended_at, mode FROM roulette_sessions WHERE user1_id=? OR user2_id=?",
         (uid, uid),
     ).fetchall():
         try:
             start = datetime.fromisoformat(s["started_at"])
             end = datetime.fromisoformat(s["ended_at"]) if s["ended_at"] else now_dt()
-            secs += max(0, (end - start).total_seconds())
+            dur = max(0, (end - start).total_seconds())
         except (ValueError, TypeError):
-            pass
+            continue
+        try:
+            smode = s["mode"] or "normal"
+        except (KeyError, IndexError, TypeError):
+            smode = "normal"
+        if smode == "18plus":
+            secs_18 += dur
+        else:
+            secs += dur
     # Сообщения по ссылке (анонимки question/valentine)
     sent = conn.execute(
         "SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND msg_type IN ('question','valentine')",
@@ -3977,6 +3991,9 @@ async def show_profile(update, context):
         stars=stars_spent,
         reg_date=reg_date,
     )
+    # Для совершеннолетних — строка о времени в 18+ чате
+    if is_adult(user):
+        text += "\n" + t("profile_18plus_line", time=fmt_duration(secs_18))
     await clean_screen(update, context)
     context.user_data["state"] = "profile"
     await send_menu(update, context, text, profile_kb(), parse_mode="HTML")
@@ -6228,6 +6245,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Не перехватываем там, где пользователь вводит свободный текст/контент или сидит в чате.
     _NO_NAV = {
         "awaiting_anon_content", "awaiting_reply", "modmsg_text", "rchat", "tg_watch",
+        "18plus_rchat",
         "shop_add_title", "shop_edit_name", "adm_ad_text", "adm_ad_button_text",
         "adm_ad_button_url", "adm_bcast_content", "adm_channel_add",
     }
@@ -6236,6 +6254,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👤 Профиль": show_profile, "🛒 Магазин": show_shop,
         "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
         "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
+        "🔞 18+": eighteen_plus_menu,
         "🏠 Меню": go_home,
     }
     if (text in _NAV and state not in _NO_NAV
@@ -6251,6 +6270,23 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "⏹️ Стоп":
             await rchat_stop(update, context)
+            return
+        if await relay_roulette_message(update, context):
+            return
+        # сессия пропала — сброс в меню
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    if state == "18plus_rchat":
+        if text == "➡️ Далее":
+            await rchat_next(update, context)
+            return
+        if text == "⏹️ Стоп":
+            await rchat_stop(update, context)
+            return
+        if text == "⬅️ Назад" or text == "🏠 Меню":
+            context.user_data["state"] = None
+            await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
             return
         if await relay_roulette_message(update, context):
             return
@@ -6476,7 +6512,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await star_admin_router(update, context)
         return
     # 18+ меню
-    if text == "🔞 18+ возраст":
+    if text == "🔞 18+":
         await eighteen_plus_menu(update, context)
         return
     if text == "18+ магазин":
@@ -6506,23 +6542,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "18plus_age_search":
         await eighteen_plus_age_search_router(update, context)
-        return
-    if state == "18plus_rchat":
-        if text == "➡️ Далее":
-            await rchat_next(update, context)
-            return
-        if text == "⏹️ Стоп":
-            await rchat_stop(update, context)
-            return
-        if text == "⬅️ Назад" or text == "🏠 Меню":
-            context.user_data["state"] = None
-            await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
-            return
-        if await relay_roulette_message(update, context):
-            return
-        # сессия пропала — сброс в меню
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     if text == "⬅️ Назад":
         context.user_data["state"] = None
