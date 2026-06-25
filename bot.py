@@ -672,6 +672,23 @@ def get_user(tg_id):
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
 
 
+def resolve_user_ref(text):
+    """Находит пользователя по числовому tg_id или по @username (он должен быть в боте).
+    Возвращает tg_id или None."""
+    if not text:
+        return None
+    s = text.strip()
+    if s.isdigit():
+        u = get_user(int(s))
+        return u["tg_id"] if u else None
+    # @username — ищем в нашей базе (без учёта регистра)
+    uname = s.lstrip("@").strip().lower()
+    if not uname:
+        return None
+    row = conn.execute("SELECT tg_id FROM users WHERE LOWER(username)=?", (uname,)).fetchone()
+    return row["tg_id"] if row else None
+
+
 def ensure_user(tg_id, username, first_name=None):
     u = get_user(tg_id)
     if u is None:
@@ -1411,7 +1428,7 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Цена подарка: <b>{price}</b> 💎\n"
             "Срок доступа другу: <b>{days} дн.</b>\n\n"
-            "Введите <b>Telegram ID</b> друга, которому хотите подарить 👇\n"
+            "Введите <b>Telegram ID</b> или <b>@username</b> друга, которому хотите подарить 👇\n"
             "<i>(друг должен быть запущен в боте)</i>"
         ),
         "uz": (
@@ -1419,14 +1436,14 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Sovg'a narxi: <b>{price}</b> 💎\n"
             "Do'st uchun muddat: <b>{days} kun</b>\n\n"
-            "Sovg'a qilmoqchi bo'lgan do'stning <b>Telegram ID</b> sini kiriting 👇"
+            "Do'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting 👇"
         ),
         "en": (
             "🎁 <b>Gift 18+ access to a friend</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Gift price: <b>{price}</b> 💎\n"
             "Access for friend: <b>{days} days</b>\n\n"
-            "Enter the friend's <b>Telegram ID</b> 👇"
+            "Enter the friend's <b>Telegram ID</b> or <b>@username</b> 👇"
         ),
     },
     "gift18_confirm": {
@@ -1455,29 +1472,29 @@ T = {
         "en": "You can't gift yourself 🙂 Enter a friend's ID:",
     },
     "gift_user_not_found": {
-        "ru": "Пользователь с таким ID не найден (он должен быть в боте). Попробуйте другой ID:",
-        "uz": "Bunday ID li foydalanuvchi topilmadi (u botda bo'lishi kerak). Boshqa ID kiriting:",
-        "en": "No user with this ID (they must be in the bot). Try another ID:",
+        "ru": "Пользователь не найден (он должен быть запущен в боте). Введите ID или @username:",
+        "uz": "Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:",
+        "en": "User not found (they must be in the bot). Enter ID or @username:",
     },
     "giftcoins_ask_id": {
         "ru": (
             "🎁 <b>Подарить коины другу</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Коины спишутся с твоего баланса и придут другу.\n\n"
-            "Введите <b>Telegram ID</b> друга 👇\n"
+            "Введите <b>Telegram ID</b> или <b>@username</b> друга 👇\n"
             "<i>(друг должен быть запущен в боте)</i>"
         ),
         "uz": (
             "🎁 <b>Do'stga coin sovg'a qilish</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Coinlar balansingizdan yechiladi va do'stga o'tadi.\n\n"
-            "Do'stning <b>Telegram ID</b> sini kiriting 👇"
+            "Do'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting 👇"
         ),
         "en": (
             "🎁 <b>Gift coins to a friend</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "Coins are deducted from your balance and go to your friend.\n\n"
-            "Enter the friend's <b>Telegram ID</b> 👇"
+            "Enter the friend's <b>Telegram ID</b> or <b>@username</b> 👇"
         ),
     },
     "giftcoins_ask_amount": {
@@ -3302,15 +3319,12 @@ async def gift_18plus_router(update, context):
         await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
         return
     if state == "gift18_id":
-        if not text.isdigit():
-            await update.message.reply_text(t("gift_id_number"), reply_markup=cancel_reply_kb())
+        target = resolve_user_ref(text)
+        if target is None:
+            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
             return
-        target = int(text)
         if target == uid:
             await update.message.reply_text(t("gift_not_self"), reply_markup=cancel_reply_kb())
-            return
-        if not get_user(target):
-            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
             return
         context.user_data["gift18_target"] = target
         context.user_data["state"] = "gift18_confirm"
@@ -4449,15 +4463,12 @@ async def gift_coins_router(update, context):
         await show_profile(update, context)
         return
     if state == "giftcoins_id":
-        if not text.isdigit():
-            await update.message.reply_text(t("gift_id_number"), reply_markup=cancel_reply_kb())
+        target = resolve_user_ref(text)
+        if target is None:
+            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
             return
-        target = int(text)
         if target == uid:
             await update.message.reply_text(t("gift_not_self"), reply_markup=cancel_reply_kb())
-            return
-        if not get_user(target):
-            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
             return
         context.user_data["giftcoins_target"] = target
         context.user_data["state"] = "giftcoins_amount"
