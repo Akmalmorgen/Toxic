@@ -5151,41 +5151,36 @@ async def process_shop_add(update, context):
             context.user_data["state"] = "shop_add_days"
             await update.message.reply_text("На сколько дней давать VIP?", reply_markup=cancel_reply_kb())
         else:
-            context.user_data["state"] = "shop_add_category"
-            await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
+            await _finalize_new_item(update, context)
     elif state == "shop_add_amount":
         if not text.isdigit():
             await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
-        context.user_data["state"] = "shop_add_category"
-        await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
+        await _finalize_new_item(update, context)
     elif state == "shop_add_days":
         if not text.isdigit():
             await update.message.reply_text("Введите число дней:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
-        context.user_data["state"] = "shop_add_category"
-        await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
-    elif state == "shop_add_category":
-        if text == "🛒 Обычный товар":
-            item["is_18plus"] = 0
-        elif text == "🔞 Товар 18+":
-            item["is_18plus"] = 1
-        else:
-            await update.message.reply_text("Выберите раздел 👇", reply_markup=shop_category_kb())
-            return
-        save_new_item(item)
-        context.user_data["state"] = None
-        is18 = item.get("is_18plus")
-        await update.message.reply_text(
-            "✅ Товар добавлен в раздел 🔞 18+!" if is18 else "✅ Товар добавлен в магазин!",
-            reply_markup=main_menu_kb(update.effective_user.id),
-        )
-        if is18:
-            await show_eighteen_plus_shop(update, context)
-        else:
-            await show_shop(update, context)
+        await _finalize_new_item(update, context)
+
+
+async def _finalize_new_item(update, context):
+    """Сохраняет товар в ТОТ магазин, где админ сейчас (обычный или 18+) — без лишнего вопроса о разделе."""
+    item = context.user_data.get("new_item", {})
+    item["is_18plus"] = 1 if context.user_data.get("shop_is_18plus") else 0
+    save_new_item(item)
+    context.user_data["state"] = None
+    is18 = item.get("is_18plus")
+    await update.message.reply_text(
+        "✅ Товар добавлен в раздел 🔞 18+!" if is18 else "✅ Товар добавлен в магазин!",
+        reply_markup=main_menu_kb(update.effective_user.id),
+    )
+    if is18:
+        await show_eighteen_plus_shop(update, context)
+    else:
+        await show_shop(update, context)
 
 
 def shop_category_kb():
@@ -6704,7 +6699,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "adm_ad_send":
         await process_ad_send(update, context)
         return
-    if state in ("shop_add_title", "shop_add_price", "shop_add_reward", "shop_add_amount", "shop_add_days", "shop_add_category"):
+    if state in ("shop_add_title", "shop_add_price", "shop_add_reward", "shop_add_amount", "shop_add_days"):
         await process_shop_add(update, context)
         return
     if state in ("shop_edit_name", "shop_edit_price", "shop_edit_amount", "shop_edit_days"):
