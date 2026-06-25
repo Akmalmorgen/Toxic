@@ -2819,6 +2819,14 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    # Пол есть, но возраст ещё не задан (например, старые аккаунты) — спрашиваем возраст
+    if user["age"] is None:
+        context.user_data["state"] = "set_age_first"
+        await update.message.reply_text(
+            t("age_register_ask"), parse_mode="HTML", reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
     name = tg_user.first_name or "друг"
     await update.message.reply_text(
         t("welcome_back", name=html.escape(name)),
