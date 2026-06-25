@@ -485,6 +485,8 @@ def init_db():
     CREATE TABLE IF NOT EXISTS star_packages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
+        title_uz TEXT,
+        title_en TEXT,
         coins INTEGER NOT NULL,
         price_stars INTEGER NOT NULL,
         active INTEGER NOT NULL DEFAULT 1
@@ -551,6 +553,8 @@ def migrate():
         "ALTER TABLE users ADD COLUMN last_active TEXT",
         "ALTER TABLE users ADD COLUMN nudged_at TEXT",
         "ALTER TABLE users ADD COLUMN admin_unlocked INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE star_packages ADD COLUMN title_uz TEXT",
+        "ALTER TABLE star_packages ADD COLUMN title_en TEXT",
     ]
     for sql in alters:
         try:
@@ -2194,7 +2198,7 @@ def admin_menu_kb():
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton("🔒 Отозвать доступ")],
+        [KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -2211,14 +2215,7 @@ def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("🛠 Админ панель"), KeyboardButton("ℹ️ Помощь")],
-        [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True))
-
-
-def key_access_kb():
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔑 Ключ")],
+        [KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -4213,7 +4210,7 @@ async def process_shop_edit_value(update, context):
 
 
 async def show_admin_menu(update, context):
-    if not has_admin_access(update.effective_user.id):
+    if not is_admin(update.effective_user.id):
         return
     context.user_data["state"] = "admin"
     await nav(update, context, "🛠 <b>Админ-панель</b>", admin_menu_kb(), parse_mode="HTML")
@@ -4393,55 +4390,7 @@ async def moder_panel_router(update, context):
     if text == "ℹ️ Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
-    if text == "🛠 Админ панель":
-        if has_admin_access(uid):
-            await show_admin_menu(update, context)
-        else:
-            context.user_data["state"] = "admin_key_locked"
-            await update.message.reply_text(
-                "🔒 <b>Доступ к админ-панели заблокирован</b>\n"
-                "У вас нет ключа доступа.\nНажмите «🔑 Ключ», чтобы ввести его 👇",
-                parse_mode="HTML", reply_markup=key_access_kb(),
-            )
-        return
     await update.message.reply_text("Выберите действие 👇", reply_markup=moder_menu_kb())
-
-
-async def admin_key_router(update, context):
-    """Экран блокировки: кнопка «Ключ» → ввод; «Назад» → меню модера."""
-    text = canon(update.message.text)
-    uid = update.effective_user.id
-    if text == "⬅️ Назад":
-        await show_moder_menu(update, context)
-        return
-    if text == "🔑 Ключ":
-        context.user_data["state"] = "admin_key_enter"
-        await update.message.reply_text(
-            f"🔑 Введите ключ доступа.\n\n"
-            f"Ключ выдаёт только создатель — напишите ему: {CREATOR_USERNAME}",
-            reply_markup=cancel_reply_kb(),
-        )
-        return
-    await update.message.reply_text("Нажмите «🔑 Ключ» или «⬅️ Назад» 👇", reply_markup=key_access_kb())
-
-
-async def process_admin_key(update, context):
-    """Проверка введённого ключа доступа."""
-    raw = (update.message.text or "").strip()
-    uid = update.effective_user.id
-    if canon(raw) in ("❌ Отмена", "⬅️ Назад"):
-        await show_moder_menu(update, context)
-        return
-    if raw == ADMIN_ACCESS_KEY:
-        conn.execute("UPDATE users SET admin_unlocked=1 WHERE tg_id=?", (uid,))
-        conn.commit()
-        await update.message.reply_text("✅ Ключ принят! Доступ к админ-панели открыт 🛠")
-        await show_admin_menu(update, context)
-    else:
-        await update.message.reply_text(
-            f"❌ Неверный ключ. Напишите создателю за ключом: {CREATOR_USERNAME}",
-            reply_markup=cancel_reply_kb(),
-        )
 
 
 async def show_pending_reports(update, context):
@@ -4708,7 +4657,7 @@ async def show_star_shop(update, context):
         return
     smap, rows = {}, []
     for p in pkgs:
-        label = f"{p['title']} — ⭐{p['price_stars']}"
+        label = f"{item_title(p)} — ⭐{p['price_stars']}"
         smap[label] = p["id"]
         rows.append([KeyboardButton(label)])
     rows.append([KeyboardButton("⬅️ Назад")])
@@ -4737,7 +4686,7 @@ async def star_shop_router(update, context):
     context.user_data["state"] = "star_confirm"
     await nav(
         update, context,
-        t("stars_buy_confirm", title=html.escape(pkg['title']), coins=pkg['coins'], stars=pkg['price_stars']),
+        t("stars_buy_confirm", title=html.escape(item_title(pkg)), coins=pkg['coins'], stars=pkg['price_stars']),
         yes_no_kb(), parse_mode="HTML",
     )
 
@@ -4763,12 +4712,12 @@ async def star_confirm_router(update, context):
     )
     await context.bot.send_invoice(
         chat_id=uid,
-        title=pkg["title"],
+        title=item_title(pkg),
         description=t("stars_pkg_desc", coins=pkg['coins']),
         payload=f"coins:{pkg['id']}",
         provider_token="",       # пусто = Telegram Stars
         currency="XTR",
-        prices=[LabeledPrice(pkg["title"], pkg["price_stars"])],
+        prices=[LabeledPrice(item_title(pkg), pkg["price_stars"])],
     )
 
 
@@ -4960,12 +4909,17 @@ async def process_star_wizard(update, context):
         if not text.isdigit():
             await update.message.reply_text("Введи число:")
             return
-        conn.execute("INSERT INTO star_packages (title, coins, price_stars) VALUES (?, ?, ?)",
-                     (item["title"], item["coins"], int(text)))
+        await update.message.reply_text("⏳ Перевожу название на 3 языка…")
+        ru, uz, en = await translate_to_all(item["title"])
+        conn.execute(
+            "INSERT INTO star_packages (title, title_uz, title_en, coins, price_stars) VALUES (?, ?, ?, ?, ?)",
+            (ru, uz, en, item["coins"], int(text)),
+        )
         conn.commit()
         context.user_data["state"] = "star_admin"
         await update.message.reply_text(
-            "✅ Пакет добавлен! Теперь у пользователей появилась кнопка «💎 Купить коины».",
+            f"✅ Пакет добавлен!\n🇷🇺 {ru}\n🇺🇿 {uz}\n🇬🇧 {en}\n"
+            "Теперь у пользователей появилась кнопка «💎 Купить коины».",
             reply_markup=star_admin_kb(),
         )
 
@@ -5354,7 +5308,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
         "🏠 Меню": go_home,
     }
-    if text in _NAV and state not in _NO_NAV and not (state and state.startswith("moder_q_")):
+    if (text in _NAV and state not in _NO_NAV
+            and not (state and state.startswith("moder_q_"))
+            and not (state == "moder" and text == "ℹ️ Помощь")):
         if text == "🛒 Магазин":
             context.user_data["state"] = None
         await _NAV[text](update, context)
@@ -5468,7 +5424,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await nav(update, context, t("search_cancelled"), main_menu_kb(update.effective_user.id))
         return
     # Кнопки админ-клавиатуры
-    if has_admin_access(update.effective_user.id):
+    if is_admin(update.effective_user.id):
         if text == "📊 Статистика":
             await adm_stats_msg(update, context)
             return
@@ -5493,35 +5449,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "🛡 Модеры":
             await show_admin_moder(update, context)
-            return
-        if text == "🔒 Отозвать доступ":
-            if not is_admin(update.effective_user.id):
-                await update.message.reply_text(
-                    "🔒 Отзывать доступ может только создатель.", reply_markup=admin_menu_kb())
-                return
-            rows = conn.execute("SELECT tg_id FROM users WHERE admin_unlocked=1").fetchall()
-            conn.execute("UPDATE users SET admin_unlocked=0 WHERE admin_unlocked=1")
-            conn.commit()
-            cnt = 0
-            for r in rows:
-                if is_admin(r["tg_id"]):
-                    continue
-                cnt += 1
-                try:
-                    _sl = cur_lang(); set_cur_lang(get_lang(r["tg_id"]))
-                    await context.bot.send_message(
-                        r["tg_id"],
-                        "🔒 Ваш доступ к админ-панели отозван создателем. Роль модератора сохранена.",
-                        reply_markup=main_menu_kb(r["tg_id"]),
-                    )
-                    set_cur_lang(_sl)
-                except TelegramError:
-                    pass
-            await update.message.reply_text(
-                f"🔒 Доступ к админ-панели отозван у <b>{cnt}</b> модер(ов).\n"
-                "Сама модерка у них сохранена. Чтобы вернуть доступ — снова введут ключ.",
-                parse_mode="HTML", reply_markup=admin_menu_kb(),
-            )
             return
         if text == "🔨 Бан / Разбан":
             await start_ban(update, context, "admin")
@@ -5549,7 +5476,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "👥 Пригласить":
         await show_referral(update, context)
         return
-    if text == "ℹ️ Помощь":
+    if text == "ℹ️ Помощь" and state != "moder":
         await show_help(update, context)
         return
     if text == "🌐 Язык":
@@ -5565,12 +5492,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Под-меню разделов (reply-клавиатуры)
     if state == "moder":
         await moder_panel_router(update, context)
-        return
-    if state == "admin_key_locked":
-        await admin_key_router(update, context)
-        return
-    if state == "admin_key_enter":
-        await process_admin_key(update, context)
         return
     if state == "language":
         await language_router(update, context)
