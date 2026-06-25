@@ -2188,9 +2188,36 @@ T = {
         "en": "Searching for a partner… ⏳",
     },
     "roulette_found": {
-        "ru": "Собеседник найден! 🎉 Пиши смело.",
-        "uz": "Suhbatdosh topildi! 🎉 Bemalol yozing.",
-        "en": "Partner found! 🎉 Write away.",
+        "ru": (
+            "🎲✨ <b>СОБЕСЕДНИК НАЙДЕН</b> ✨🎲\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💬 <i>Пиши первым — не стесняйся!</i>\n"
+            "<blockquote>"
+            "🙈 Полная анонимность\n"
+            "📎 Можно слать фото, голосовые и стикеры"
+            "</blockquote>\n"
+            "<i>«➡️ Далее» — другой собеседник · «⏹️ Стоп» — выйти</i>"
+        ),
+        "uz": (
+            "🎲✨ <b>SUHBATDOSH TOPILDI</b> ✨🎲\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💬 <i>Birinchi bo'lib yozing — uyalmang!</i>\n"
+            "<blockquote>"
+            "🙈 To'liq anonimlik\n"
+            "📎 Foto, ovozli xabar va stikerlar yuborish mumkin"
+            "</blockquote>\n"
+            "<i>«➡️ Keyingi» — boshqa suhbatdosh · «⏹️ To'xtatish» — chiqish</i>"
+        ),
+        "en": (
+            "🎲✨ <b>A PARTNER IS FOUND</b> ✨🎲\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "💬 <i>Write first — don't be shy!</i>\n"
+            "<blockquote>"
+            "🙈 Full anonymity\n"
+            "📎 You can send photos, voice and stickers"
+            "</blockquote>\n"
+            "<i>«➡️ Next» — another partner · «⏹️ Stop» — exit</i>"
+        ),
     },
     "roulette_left": {
         "ru": "Собеседник покинул чат.",
@@ -4307,7 +4334,7 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
                     await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
                     UD[uid]["state"] = "18plus_rchat"
                 else:
-                    await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                    await context.bot.send_message(uid, t("roulette_found"), parse_mode="HTML", reply_markup=in_chat_kb())
                     UD[uid]["state"] = "rchat"
                 set_cur_lang(_sl)
             except TelegramError:
