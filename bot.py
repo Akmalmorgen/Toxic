@@ -4603,9 +4603,19 @@ async def show_eighteen_plus_shop(update, context):
         shop_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
+    if is_admin(update.effective_user.id):
+        rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
     rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     text = t("18plus_shop_title") if items else t("18plus_shop_empty")
     await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+
+
+async def back_to_shop(update, context):
+    """Возврат в нужный магазин (обычный или 18+) по контексту."""
+    if context.user_data.get("shop_is_18plus"):
+        await show_eighteen_plus_shop(update, context)
+    else:
+        await show_shop(update, context)
 
 
 async def shop_router(update, context):
@@ -4907,7 +4917,7 @@ async def process_shop_add(update, context):
     if text == "❌ Отмена":
         context.user_data["state"] = None
         await update.message.reply_text("Отменено.", reply_markup=main_menu_kb(update.effective_user.id))
-        await show_shop(update, context)
+        await back_to_shop(update, context)
         return
     if state == "shop_add_title":
         await update.message.reply_text("⏳ Перевожу название на 3 языка…")
@@ -5004,7 +5014,8 @@ def save_new_item(item):
 
 
 async def shop_edit_list(update, context):
-    items = conn.execute("SELECT * FROM shop_items WHERE active=1").fetchall()
+    is18 = 1 if context.user_data.get("shop_is_18plus") else 0
+    items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=?", (is18,)).fetchall()
     if not items:
         context.user_data["state"] = None
         await update.message.reply_text("Нет товаров для редактирования.", reply_markup=main_menu_kb(update.effective_user.id))
@@ -5038,7 +5049,7 @@ async def shop_edit_router(update, context):
     uid = update.effective_user.id
     if state == "shop_edit_pick":
         if text == "⬅️ Назад":
-            await show_shop(update, context)
+            await back_to_shop(update, context)
             return
         item_id = context.user_data.get("edit_map", {}).get(text)
         if item_id is None:
@@ -5056,7 +5067,7 @@ async def shop_edit_router(update, context):
     item_id = context.user_data.get("edit_item_id")
     item = conn.execute("SELECT * FROM shop_items WHERE id=?", (item_id,)).fetchone()
     if not item:
-        await show_shop(update, context)
+        await back_to_shop(update, context)
         return
     if text == "⬅️ Назад":
         await shop_edit_list(update, context)
@@ -5081,7 +5092,7 @@ async def shop_edit_router(update, context):
         conn.execute("UPDATE shop_items SET active=0 WHERE id=?", (item_id,))
         conn.commit()
         await update.message.reply_text("🗑 Товар удалён.", reply_markup=main_menu_kb(uid))
-        await show_shop(update, context)
+        await back_to_shop(update, context)
         return
     await update.message.reply_text("Выберите действие 👇", reply_markup=shop_edit_item_kb(item))
 
