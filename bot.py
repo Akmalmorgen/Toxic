@@ -1865,85 +1865,91 @@ T = {
     },
     "help": {
         "ru": (
-            "ℹ️ <b>𐌽ꤕ𐌗ተ</b> 💙\n"
+            "ℹ️ <b>Как пользоваться ботом 𐌽ꤕ𐌗ተ</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Анонимные сообщения, тайные признания и живое общение — в одном месте.</i>\n\n"
-            "✨ <b>Основные разделы:</b>\n"
+            "<i>Здесь тебе пишут анонимно, и ты можешь общаться с незнакомцами. Всё просто 👇</i>\n\n"
+            "📲 <b>Кнопки меню — что делают:</b>\n"
             "<blockquote>"
-            "🔗 <b>Моя ссылка</b> — личная ссылка для анонимных вопросов и валентинок. Делись ей где угодно.\n"
-            "🎲 <b>Чат-рулетка</b> — случайный собеседник по выбранному полу.\n"
-            "👤 <b>Профиль</b> — твой пол, баланс коинов и VIP-статус.\n"
-            "🛒 <b>Магазин</b> — трать коины на VIP и другие товары.\n"
-            "👥 <b>Пригласить</b> — зови друзей и получай <b>+20</b> 💎 (VIP — <b>+50</b> 💎).\n"
-            "💎 <b>Купить коины</b> — пополнение за Telegram Stars ⭐.\n"
-            "🔞 <b>18+</b> — отдельная зона для взрослых (рулетка и магазин). Доступ <b>только с 18 лет</b>: при входе нужно подтвердить возраст. Если меньше 18 — доступ закрыт.\n"
-            "🌐 <b>Язык</b> — русский, узбекский или английский."
+            "🔗 <b>Моя ссылка</b> — твоя личная ссылка. Кинь её в сторис или другу — и тебе будут писать анонимные сообщения. Ты не узнаешь кто (если не откроешь за ⭐).\n\n"
+            "🎲 <b>Чат-рулетка</b> — нажми, выбери кого ищешь (парня/девушку) и бот соединит тебя со случайным собеседником. Не понравился — жми «Далее».\n\n"
+            "👤 <b>Профиль</b> — тут твои данные: пол, возраст, коины 💎, статус VIP, сколько друзей пригласил.\n\n"
+            "🛒 <b>Магазин</b> — здесь тратишь коины 💎 на VIP и другие штуки.\n\n"
+            "👥 <b>Пригласить</b> — зови друзей по ссылке. За каждого друга <b>+20</b> 💎 (а если ты VIP — <b>+50</b> 💎).\n\n"
+            "💎 <b>Купить коины</b> — пополнить баланс коинов через Telegram Stars ⭐.\n\n"
+            "🔞 <b>18+</b> — зона для взрослых. Откроется <b>только если тебе есть 18</b>. Возраст указываешь при входе в бота.\n\n"
+            "🌐 <b>Язык</b> — поменять язык: русский, узбекский, английский."
             "</blockquote>\n"
-            "👑 <b>Что даёт VIP:</b>\n"
+            "💎 <b>Что такое коины?</b>\n"
+            "<i>Это внутренняя валюта бота. Зарабатывай их за друзей и активность или покупай за ⭐, а трать в магазине.</i>\n\n"
+            "👑 <b>Что даёт VIP (премиум):</b>\n"
             "<blockquote>"
-            "• без лимита анонимных сообщений\n"
-            "• скидка <b>20%</b> в магазине\n"
-            "• <b>+5</b> 💎 каждый день\n"
-            "• приоритет в чат-рулетке\n"
-            "• корона и медиа (фото/видео/гиф) в анонимках\n"
-            "• безлимитная смена ссылки"
+            "• пишешь анонимки <b>без ограничений</b> (у обычных — лимит 20 в день)\n"
+            "• <b>−20%</b> на всё в магазине (цены сразу ниже)\n"
+            "• <b>+5</b> 💎 в подарок каждый день\n"
+            "• тебя находят в рулетке <b>быстрее</b> (приоритет)\n"
+            "• можно слать фото, видео, гиф и стикеры в анонимках + корона 👑\n"
+            "• меняй свою ссылку <b>сколько хочешь</b> (у обычных — раз в неделю)"
             "</blockquote>\n"
-            "🛡 <i>Для безопасности сообщения и чаты могут проверяться модераторами.</i>\n"
-            "💬 <i>Выбери раздел в меню ниже 👇</i>"
+            "🛡 <i>Для безопасности переписки могут проверяться модераторами.</i>\n"
+            "💬 <i>Выбери нужную кнопку в меню снизу 👇</i>"
         ),
         "uz": (
-            "ℹ️ <b>𐌽ꤕ𐌗ተ</b> 💙\n"
+            "ℹ️ <b>𐌽ꤕ𐌗ተ botidan qanday foydalanish</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Anonim xabarlar, sirli e'tiroflar va jonli muloqot — bir joyda.</i>\n\n"
-            "✨ <b>Asosiy bo'limlar:</b>\n"
+            "<i>Bu yerda sizga anonim yozishadi va notanishlar bilan suhbatlashasiz. Hammasi oddiy 👇</i>\n\n"
+            "📲 <b>Menyu tugmalari — nima qiladi:</b>\n"
             "<blockquote>"
-            "🔗 <b>Havolam</b> — anonim savol va valentinkalar uchun shaxsiy havola. Uni istalgan joyda ulashing.\n"
-            "🎲 <b>Chat-ruletka</b> — tanlangan jins bo'yicha tasodifiy suhbatdosh.\n"
-            "👤 <b>Profil</b> — jinsingiz, coin balansi va VIP holati.\n"
-            "🛒 <b>Do'kon</b> — coinlarni VIP va boshqa mahsulotlarga sarflang.\n"
-            "👥 <b>Taklif qilish</b> — do'stlarni chaqiring va <b>+20</b> 💎 oling (VIP — <b>+50</b> 💎).\n"
-            "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali to'ldirish.\n"
-            "🔞 <b>18+</b> — kattalar uchun alohida zona (ruletka va do'kon). Kirish <b>faqat 18 yoshdan</b>: kirishda yoshni tasdiqlash kerak. 18 dan kichik bo'lsa — kirish yopiq.\n"
-            "🌐 <b>Til</b> — rus, o'zbek yoki ingliz."
+            "🔗 <b>Havolam</b> — shaxsiy havolangiz. Uni storis yoki do'stga tashlang — sizga anonim xabar yozishadi. Kimligini bilmaysiz (⭐ evaziga ochmasangiz).\n\n"
+            "🎲 <b>Chat-ruletka</b> — bosing, kimni qidirayotganingizni tanlang (yigit/qiz) va bot sizni tasodifiy suhbatdosh bilan bog'laydi. Yoqmasa — «Keyingi».\n\n"
+            "👤 <b>Profil</b> — ma'lumotlaringiz: jins, yosh, coinlar 💎, VIP holati, nechta do'st taklif qilgansiz.\n\n"
+            "🛒 <b>Do'kon</b> — bu yerda coinlarni 💎 VIP va boshqa narsalarga sarflaysiz.\n\n"
+            "👥 <b>Taklif qilish</b> — do'stlarni havola orqali chaqiring. Har bir do'st uchun <b>+20</b> 💎 (VIP bo'lsangiz — <b>+50</b> 💎).\n\n"
+            "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali coin balansini to'ldirish.\n\n"
+            "🔞 <b>18+</b> — kattalar zonasi. Faqat <b>18 yoshdan</b> ochiladi. Yoshni botga kirishda kiritasiz.\n\n"
+            "🌐 <b>Til</b> — tilni o'zgartirish: rus, o'zbek, ingliz."
             "</blockquote>\n"
-            "👑 <b>VIP nima beradi:</b>\n"
+            "💎 <b>Coin nima?</b>\n"
+            "<i>Bu botning ichki valyutasi. Do'stlar va faollik uchun ishlang yoki ⭐ ga sotib oling, do'konda sarflang.</i>\n\n"
+            "👑 <b>VIP (premium) nima beradi:</b>\n"
             "<blockquote>"
-            "• anonim xabarlar limitisiz\n"
-            "• do'konda <b>20%</b> chegirma\n"
-            "• har kuni <b>+5</b> 💎\n"
-            "• chat-ruletkada ustunlik\n"
-            "• anonimlarda toj va media (foto/video/gif)\n"
-            "• havolani cheksiz o'zgartirish"
+            "• anonim xabarlarni <b>cheksiz</b> yozasiz (oddiylarda — kuniga 20 ta)\n"
+            "• do'konda hammasiga <b>−20%</b> (narxlar darrov pastroq)\n"
+            "• har kuni <b>+5</b> 💎 sovg'a\n"
+            "• ruletkada sizni <b>tezroq</b> topishadi (ustunlik)\n"
+            "• anonimlarda foto, video, gif, stiker + toj 👑\n"
+            "• havolangizni <b>xohlagancha</b> o'zgartirasiz (oddiylarda — haftada bir)"
             "</blockquote>\n"
-            "🛡 <i>Xavfsizlik uchun xabarlar va chatlar moderatorlar tomonidan tekshirilishi mumkin.</i>\n"
-            "💬 <i>Quyidagi menyudan bo'limni tanlang 👇</i>"
+            "🛡 <i>Xavfsizlik uchun yozishmalar moderatorlar tomonidan tekshirilishi mumkin.</i>\n"
+            "💬 <i>Pastdagi menyudan kerakli tugmani tanlang 👇</i>"
         ),
         "en": (
-            "ℹ️ <b>𐌽ꤕ𐌗ተ</b> 💙\n"
+            "ℹ️ <b>How to use the 𐌽ꤕ𐌗ተ bot</b> 💙\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Anonymous messages, secret confessions and live chatting — all in one place.</i>\n\n"
-            "✨ <b>Main sections:</b>\n"
+            "<i>People message you anonymously here, and you can chat with strangers. It's simple 👇</i>\n\n"
+            "📲 <b>Menu buttons — what they do:</b>\n"
             "<blockquote>"
-            "🔗 <b>My link</b> — your personal link for anonymous questions and valentines. Share it anywhere.\n"
-            "🎲 <b>Chat roulette</b> — a random partner by the gender you choose.\n"
-            "👤 <b>Profile</b> — your gender, coin balance and VIP status.\n"
-            "🛒 <b>Shop</b> — spend coins on VIP and other items.\n"
-            "👥 <b>Invite</b> — invite friends and get <b>+20</b> 💎 (VIP — <b>+50</b> 💎).\n"
-            "💎 <b>Buy coins</b> — top up with Telegram Stars ⭐.\n"
-            "🔞 <b>18+</b> — a separate adult zone (roulette and shop). Access <b>only for 18+</b>: you must verify your age on entry. Under 18 — access denied.\n"
-            "🌐 <b>Language</b> — Russian, Uzbek or English."
+            "🔗 <b>My link</b> — your personal link. Post it in stories or send to a friend — people will message you anonymously. You won't know who (unless you reveal for ⭐).\n\n"
+            "🎲 <b>Chat roulette</b> — tap it, choose who you want (a guy/a girl) and the bot connects you with a random partner. Don't like them — tap «Next».\n\n"
+            "👤 <b>Profile</b> — your info: gender, age, coins 💎, VIP status, how many friends you invited.\n\n"
+            "🛒 <b>Shop</b> — spend your coins 💎 on VIP and other items here.\n\n"
+            "👥 <b>Invite</b> — invite friends via your link. <b>+20</b> 💎 per friend (VIP gets <b>+50</b> 💎).\n\n"
+            "💎 <b>Buy coins</b> — top up your coin balance with Telegram Stars ⭐.\n\n"
+            "🔞 <b>18+</b> — an adult zone. Opens <b>only if you're 18+</b>. You set your age when you enter the bot.\n\n"
+            "🌐 <b>Language</b> — change language: Russian, Uzbek, English."
             "</blockquote>\n"
-            "👑 <b>What VIP gives:</b>\n"
+            "💎 <b>What are coins?</b>\n"
+            "<i>It's the bot's in-app currency. Earn them for friends and activity or buy with ⭐, and spend in the shop.</i>\n\n"
+            "👑 <b>What VIP (premium) gives:</b>\n"
             "<blockquote>"
-            "• no limit on anonymous messages\n"
-            "• <b>20%</b> discount in the shop\n"
-            "• <b>+5</b> 💎 every day\n"
-            "• priority in chat roulette\n"
-            "• crown and media (photo/video/gif) in anon messages\n"
-            "• unlimited link change"
+            "• send anonymous messages <b>with no limit</b> (regular users — 20 per day)\n"
+            "• <b>−20%</b> off everything in the shop (prices shown lower right away)\n"
+            "• <b>+5</b> 💎 gift every day\n"
+            "• you get matched <b>faster</b> in roulette (priority)\n"
+            "• send photos, videos, gifs and stickers in anon messages + crown 👑\n"
+            "• change your link <b>as often as you want</b> (regular — once a week)"
             "</blockquote>\n"
-            "🛡 <i>For safety, messages and chats may be reviewed by moderators.</i>\n"
-            "💬 <i>Pick a section in the menu below 👇</i>"
+            "🛡 <i>For safety, conversations may be reviewed by moderators.</i>\n"
+            "💬 <i>Pick the button you need in the menu below 👇</i>"
         ),
     },
     # === Профиль ===
@@ -2163,6 +2169,11 @@ T = {
         "ru": "🛒 <b>Магазин пока пуст.</b>",
         "uz": "🛒 <b>Do'kon hali bo'sh.</b>",
         "en": "🛒 <b>The shop is empty.</b>",
+    },
+    "shop_vip_note": {
+        "ru": "👑 <i>Цены показаны с твоей VIP-скидкой −20%.</i>",
+        "uz": "👑 <i>Narxlar VIP chegirmangiz −20% bilan ko'rsatilgan.</i>",
+        "en": "👑 <i>Prices shown with your VIP −20% discount.</i>",
     },
     "18plus_shop_title": {
         "ru": "🔞 <b>18+ Магазин</b>\nВыберите товар 👇",
@@ -4610,18 +4621,22 @@ async def show_shop(update, context):
     items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=0").fetchall()
     context.user_data["state"] = "shop"
     context.user_data["shop_is_18plus"] = False
+    viewer = get_user(update.effective_user.id)
     shop_map = {}
     rows = []
     for it in items:
-        label = f"{item_title(it)} — {it['price']} 💎"
+        disp = effective_price(it["price"], viewer)
+        label = f"{item_title(it)} — {disp} 💎"
         shop_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
     if is_admin(update.effective_user.id):
         rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
     rows.append([KeyboardButton("⬅️ Назад")])
-    text = t("shop_title") if items else t("shop_empty")
-    await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+    base = t("shop_title") if items else t("shop_empty")
+    if items and is_vip(viewer) and not is_admin(update.effective_user.id):
+        base += "\n" + t("shop_vip_note")
+    await nav(update, context, base, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
 
 
 async def show_eighteen_plus_shop(update, context):
@@ -4629,18 +4644,22 @@ async def show_eighteen_plus_shop(update, context):
     items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=1").fetchall()
     context.user_data["state"] = "shop"
     context.user_data["shop_is_18plus"] = True
+    viewer = get_user(update.effective_user.id)
     shop_map = {}
     rows = []
     for it in items:
-        label = f"{item_title(it)} — {it['price']} 💎"
+        disp = effective_price(it["price"], viewer)
+        label = f"{item_title(it)} — {disp} 💎"
         shop_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
     if is_admin(update.effective_user.id):
         rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
     rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
-    text = t("18plus_shop_title") if items else t("18plus_shop_empty")
-    await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+    base = t("18plus_shop_title") if items else t("18plus_shop_empty")
+    if items and is_vip(viewer) and not is_admin(update.effective_user.id):
+        base += "\n" + t("shop_vip_note")
+    await nav(update, context, base, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
 
 
 async def back_to_shop(update, context):
