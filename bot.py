@@ -186,6 +186,11 @@ class _CB:
             text, reply_markup=reply_markup, parse_mode=parse_mode, **kw
         )
 
+    async def edit_message_caption(self, caption=None, reply_markup=None, parse_mode=None, **kw):
+        return await self._cq.message.edit_caption(
+            caption=caption, reply_markup=reply_markup, parse_mode=parse_mode, **kw
+        )
+
 
 class UpdateShim:
     """Лёгкий аналог PTB Update: достаточно того, что реально используется в коде."""
