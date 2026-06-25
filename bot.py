@@ -1721,7 +1721,7 @@ T = {
             "Приглашено: <b>{total}</b>\n"
             "Заработано: <b>{earned}</b> 💎\n\n"
             "🔗 Твоя ссылка:\n"
-            "<code>{link}</code>\n"
+            "<blockquote>{link}</blockquote>\n"
             "⚠️ Если друг заблокирует бота — коины за него спишутся обратно."
         ),
         "uz": (
@@ -1731,7 +1731,7 @@ T = {
             "Taklif qilindi: <b>{total}</b>\n"
             "Ishlab topildi: <b>{earned}</b> 💎\n\n"
             "🔗 Havolangiz:\n"
-            "<code>{link}</code>\n"
+            "<blockquote>{link}</blockquote>\n"
             "⚠️ Agar do'st botni bloklasa — uning coinlari qaytarib olinadi."
         ),
         "en": (
@@ -1741,7 +1741,7 @@ T = {
             "Invited: <b>{total}</b>\n"
             "Earned: <b>{earned}</b> 💎\n\n"
             "🔗 Your link:\n"
-            "<code>{link}</code>\n"
+            "<blockquote>{link}</blockquote>\n"
             "⚠️ If a friend blocks the bot — their coins will be deducted back."
         ),
     },
@@ -1782,6 +1782,16 @@ T = {
         "ru": "💎 {n} за друга · VIP {v} 💎",
         "uz": "💎 do'st uchun {n} · VIP {v} 💎",
         "en": "💎 {n} per friend · VIP {v} 💎",
+    },
+    "btn_share_ref": {
+        "ru": "📤 Поделиться ссылкой",
+        "uz": "📤 Havolani ulashish",
+        "en": "📤 Share the link",
+    },
+    "ref_share_text": {
+        "ru": "🔥 Залетай в анонимный бот! Тебе пишут тайно, чат-рулетка, подарки 🎁 Жми 👇",
+        "uz": "🔥 Anonim botga kir! Sizga yashirin yozishadi, chat-ruletka, sovg'alar 🎁 Bosing 👇",
+        "en": "🔥 Join the anonymous bot! Get secret messages, chat roulette, gifts 🎁 Tap 👇",
     },
     "ref_claim_vip_btn": {
         "ru": "🎁 VIP бесплатно ({have}/{need})",
@@ -6675,21 +6685,29 @@ async def reward_link_activity(context, uid, kind):
         conn.commit()
 
 
-def ref_rewards_kb(uid):
-    """Инлайн-кнопки наград за рефералов с прогрессом."""
+def ref_rewards_kb(uid, link=None):
+    """Инлайн-кнопки наград за рефералов с прогрессом (+ «Поделиться» если передана ссылка)."""
     qual = qualified_referrals(uid)
-    return InlineKeyboardMarkup([
+    rows = []
+    if link:
+        full = link if link.startswith("http") else ("https://" + link)
+        share_url = ("https://t.me/share/url?url=" + urllib.parse.quote(full, safe="")
+                     + "&text=" + urllib.parse.quote(t("ref_share_text"), safe=""))
+        rows.append([InlineKeyboardButton(t("btn_share_ref"), url=share_url)])
+    rows += [
         [InlineKeyboardButton(t("ref_claim_coins_btn", n=REF_REWARD_NORMAL, v=REF_REWARD_VIP), callback_data="ref_info")],
         [InlineKeyboardButton(t("ref_claim_vip_btn", have=qual, need=cfg_vip_threshold()), callback_data="claim_vip")],
         [InlineKeyboardButton(t("ref_claim_moder_btn", have=qual, need=cfg_moder_threshold()), callback_data="claim_moder")],
-    ])
+    ]
+    return InlineKeyboardMarkup(rows)
 
 
 async def refresh_ref_rewards(update, context):
     """Перерисовывает инлайн-кнопки наград (после клейма прогресс меняется)."""
     query = update.callback_query
     try:
-        await query.edit_message_reply_markup(reply_markup=ref_rewards_kb(query.from_user.id))
+        link = await build_start_link(context, f"ref_{query.from_user.id}")
+        await query.edit_message_reply_markup(reply_markup=ref_rewards_kb(query.from_user.id, link))
     except TelegramError:
         pass
 
@@ -6776,7 +6794,7 @@ async def show_referral(update, context):
     )
     context.user_data["state"] = "referral"
     photo = get_setting("ref_photo")
-    kb = ref_rewards_kb(uid)
+    kb = ref_rewards_kb(uid, link)
     if photo:
         try:
             msg = await context.bot.send_photo(
