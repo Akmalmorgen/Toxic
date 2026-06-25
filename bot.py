@@ -429,6 +429,7 @@ def init_db():
         gender TEXT NOT NULL,
         pref TEXT NOT NULL,
         is_vip INTEGER NOT NULL DEFAULT 0,
+        mode TEXT NOT NULL DEFAULT 'normal',
         joined_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS roulette_sessions (
@@ -437,6 +438,7 @@ def init_db():
         user2_id INTEGER NOT NULL,
         active INTEGER NOT NULL DEFAULT 1,
         ended_by INTEGER,
+        mode TEXT NOT NULL DEFAULT 'normal',
         started_at TEXT NOT NULL,
         ended_at TEXT
     );
@@ -519,7 +521,26 @@ def init_db():
         state TEXT NOT NULL,
         updated_at TEXT NOT NULL
     );
-
+    -- 18+ магазин товаров
+    CREATE TABLE IF NOT EXISTS eighteen_plus_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        title_uz TEXT,
+        title_en TEXT,
+        description TEXT,
+        price INTEGER NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1
+    );
+    -- Заявки на подтверждение возраста (для пользователей <18)
+    CREATE TABLE IF NOT EXISTS age_verification_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        photo_file_id TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        admin_response TEXT,
+        created_at TEXT NOT NULL,
+        responded_at TEXT
+    );
     -- Произвольные настройки (редактируемые админом): ключ -> значение.
     CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
@@ -553,6 +574,9 @@ def migrate():
         "ALTER TABLE users ADD COLUMN last_active TEXT",
         "ALTER TABLE users ADD COLUMN nudged_at TEXT",
         "ALTER TABLE users ADD COLUMN admin_unlocked INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN age TEXT",
+        "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
+        "ALTER TABLE roulette_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
         "ALTER TABLE star_packages ADD COLUMN title_uz TEXT",
         "ALTER TABLE star_packages ADD COLUMN title_en TEXT",
     ]
@@ -857,6 +881,16 @@ BTN = {
     "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
     "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
     "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
+    "🔞 18+ возраст": ("🔞 18+ yosh", "🔞 18+ age"),
+    "🔞 18+ магазин": ("🔞 18+ do'kon", "🔞 18+ shop"),
+    "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
+    "🔞 Мне нет 18": ("🔞 18 yoshda emasman", "🔞 I'm under 18"),
+    "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
+    "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
+    "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
+    "📷 Отправить фото": ("📷 Foto yuborish", "📷 Send photo"),
+    "18+ рулетка": ("18+ ruletka", "18+ roulette"),
+    "18+ магазин": ("18+ do'kon", "18+ shop"),
 }
 # Обратная карта: метка на любом языке -> каноническая русская метка
 _ALIAS = {}
@@ -1192,6 +1226,11 @@ T = {
         "ru": "Выберите товар на клавиатуре 👇",
         "uz": "Klaviaturadan mahsulotni tanlang 👇",
         "en": "Choose an item on the keyboard 👇",
+    },
+    "18plus_shop_pick_item": {
+        "ru": "Выберите товар 18+ на клавиатуре 👇",
+        "uz": "18+ mahsulotini klaviaturadan tanlang 👇",
+        "en": "Choose a 18+ item on the keyboard 👇",
     },
     "item_unavailable": {
         "ru": "Товар недоступен.",
@@ -1785,6 +1824,7 @@ T = {
             "🛒 <b>Магазин</b> — трать коины на VIP и другие товары.\n"
             "👥 <b>Пригласить</b> — зови друзей и получай <b>+20</b> 💎 (VIP — <b>+50</b> 💎).\n"
             "💎 <b>Купить коины</b> — пополнение за Telegram Stars ⭐.\n"
+            "🔞 <b>18+</b> — отдельная зона для взрослых (рулетка и магазин). Доступ <b>только с 18 лет</b>: при входе нужно подтвердить возраст. Если меньше 18 — доступ закрыт.\n"
             "🌐 <b>Язык</b> — русский, узбекский или английский."
             "</blockquote>\n"
             "👑 <b>Что даёт VIP:</b>\n"
@@ -1811,6 +1851,7 @@ T = {
             "🛒 <b>Do'kon</b> — coinlarni VIP va boshqa mahsulotlarga sarflang.\n"
             "👥 <b>Taklif qilish</b> — do'stlarni chaqiring va <b>+20</b> 💎 oling (VIP — <b>+50</b> 💎).\n"
             "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali to'ldirish.\n"
+            "🔞 <b>18+</b> — kattalar uchun alohida zona (ruletka va do'kon). Kirish <b>faqat 18 yoshdan</b>: kirishda yoshni tasdiqlash kerak. 18 dan kichik bo'lsa — kirish yopiq.\n"
             "🌐 <b>Til</b> — rus, o'zbek yoki ingliz."
             "</blockquote>\n"
             "👑 <b>VIP nima beradi:</b>\n"
@@ -1837,6 +1878,7 @@ T = {
             "🛒 <b>Shop</b> — spend coins on VIP and other items.\n"
             "👥 <b>Invite</b> — invite friends and get <b>+20</b> 💎 (VIP — <b>+50</b> 💎).\n"
             "💎 <b>Buy coins</b> — top up with Telegram Stars ⭐.\n"
+            "🔞 <b>18+</b> — a separate adult zone (roulette and shop). Access <b>only for 18+</b>: you must verify your age on entry. Under 18 — access denied.\n"
             "🌐 <b>Language</b> — Russian, Uzbek or English."
             "</blockquote>\n"
             "👑 <b>What VIP gives:</b>\n"
@@ -2070,6 +2112,16 @@ T = {
         "uz": "🛒 <b>Do'kon hali bo'sh.</b>",
         "en": "🛒 <b>The shop is empty.</b>",
     },
+    "18plus_shop_title": {
+        "ru": "🔞 <b>18+ Магазин</b>\nВыберите товар 👇",
+        "uz": "🔞 <b>18+ Do'kon</b>\nMahsulotni tanlang 👇",
+        "en": "🔞 <b>18+ Shop</b>\nChoose an item 👇",
+    },
+    "18plus_shop_empty": {
+        "ru": "🔞 <b>Магазин 18+ пока пуст.</b>",
+        "uz": "🔞 <b>18+ do'kon hali bo'sh.</b>",
+        "en": "🔞 <b>The 18+ shop is empty.</b>",
+    },
     "stars_title": {
         "ru": "💎 <b>Покупка коинов за Telegram Stars</b>\nВыбери пакет 👇",
         "uz": "💎 <b>Telegram Stars uchun coin sotib olish</b>\nPaketni tanlang 👇",
@@ -2110,6 +2162,309 @@ T = {
         "ru": "👥 <b>Пригласи друзей и получи коины!</b>\n\n🔗 Твоя реф-ссылка:\n{link}\n\n+{bonus} 💎 за каждого друга.",
         "uz": "👥 <b>Do'stlarni taklif qiling va coin oling!</b>\n\n🔗 Ref-havolangiz:\n{link}\n\n+{bonus} 💎 har bir do'st uchun.",
         "en": "👥 <b>Invite friends and earn coins!</b>\n\n🔗 Your referral link:\n{link}\n\n+{bonus} 💎 for each friend.",
+    },
+    # === 18+ ===
+    "age_gate_title": {
+        "ru": "🔞 <b>Возрастной портал</b> 🔞\n\nЭтот раздел доступен только пользователям 18+",
+        "uz": "🔞 <b>Yosh portali</b> 🔞\n\nBu bo'lim faqat 18+ yoshdagi foydalanuvchilar uchun",
+        "en": "🔞 <b>Age Gate</b> 🔞\n\nThis section is only for users 18+",
+    },
+    "age_gate_intro": {
+        "ru": (
+            "Добро пожаловать в 18+ зону! 🎉\n"
+            "Здесь только взрослые собеседники и контент.\n"
+            "Перед входом подтвердите свой возраст."
+        ),
+        "uz": (
+            "18+ zonaga xush kelibsiz! 🎉\n"
+            "Bu yerda faqat kattalar suhbatdoshlari va kontent bor.\n"
+            "Kirishdan oldin yoshingizni tasdiqlang."
+        ),
+        "en": (
+            "Welcome to the 18+ zone! 🎉\n"
+            "Here you'll find only adult partners and content.\n"
+            "Please verify your age before entering."
+        ),
+    },
+    "age_consent_text": {
+        "ru": (
+            "🔞 <b>18+ ЧАТ ДЛЯ ВЗРОСЛЫХ</b> 🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Добро пожаловать! Это <b>не обычный Next</b> — это зона для взрослых 18+.\n\n"
+            "<b>✅ Здесь можно:</b>\n"
+            "<blockquote>"
+            "• общаться свободно на любые темы для взрослых\n"
+            "• отправлять фото, видео, стикеры, голосовые\n"
+            "• быть откровенным — это чат для взрослых"
+            "</blockquote>\n"
+            "<b>🚫 Здесь нельзя:</b>\n"
+            "<blockquote>"
+            "• контент с несовершеннолетними (строгий бан)\n"
+            "• насилие, угрозы, шантаж\n"
+            "• мошенничество и спам\n"
+            "• продажа запрещённых веществ"
+            "</blockquote>\n"
+            "🛡 <i>Чаты могут проверяться модераторами. За нарушения — вечный бан.</i>\n\n"
+            "Нажимая «Согласиться», вы подтверждаете, что вам <b>18+</b> и принимаете правила 👇"
+        ),
+        "uz": (
+            "🔞 <b>18+ KATTALAR CHATI</b> 🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Xush kelibsiz! Bu <b>oddiy Next emas</b> — bu 18+ kattalar zonasi.\n\n"
+            "<b>✅ Bu yerda mumkin:</b>\n"
+            "<blockquote>"
+            "• kattalar uchun istalgan mavzuda erkin muloqot\n"
+            "• foto, video, stiker, ovozli xabar yuborish\n"
+            "• ochiq bo'lish — bu kattalar chati"
+            "</blockquote>\n"
+            "<b>🚫 Bu yerda mumkin emas:</b>\n"
+            "<blockquote>"
+            "• voyaga yetmaganlar bilan kontent (qattiq ban)\n"
+            "• zo'ravonlik, tahdid, shantaj\n"
+            "• firibgarlik va spam\n"
+            "• taqiqlangan moddalar savdosi"
+            "</blockquote>\n"
+            "🛡 <i>Chatlar moderatorlar tomonidan tekshirilishi mumkin. Buzilish uchun — abadiy ban.</i>\n\n"
+            "«Roziman» tugmasini bosib, siz <b>18+</b> ekanligingizni tasdiqlaysiz 👇"
+        ),
+        "en": (
+            "🔞 <b>18+ ADULT CHAT</b> 🔞\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "Welcome! This is <b>not the usual Next</b> — it's an adult 18+ zone.\n\n"
+            "<b>✅ Here you can:</b>\n"
+            "<blockquote>"
+            "• chat freely on any adult topics\n"
+            "• send photos, videos, stickers, voice\n"
+            "• be open — it's an adult chat"
+            "</blockquote>\n"
+            "<b>🚫 Here you cannot:</b>\n"
+            "<blockquote>"
+            "• content with minors (strict ban)\n"
+            "• violence, threats, blackmail\n"
+            "• fraud and spam\n"
+            "• selling illegal substances"
+            "</blockquote>\n"
+            "🛡 <i>Chats may be reviewed by moderators. Violations = permanent ban.</i>\n\n"
+            "By tapping «I agree» you confirm you are <b>18+</b> and accept the rules 👇"
+        ),
+    },
+    "age_verify_ask_photo": {
+        "ru": (
+            "📷 <b>Подтверждение возраста</b>\n\n"
+            "Отправьте фото документа, подтверждающего ваш возраст (можно прикрыть личные данные, оставьте дату рождения).\n"
+            "Администратор проверит и откроет доступ."
+        ),
+        "uz": (
+            "📷 <b>Yoshni tasdiqlash</b>\n\n"
+            "Yoshingizni tasdiqlovchi hujjat fotosini yuboring (shaxsiy ma'lumotlarni yoping, tug'ilgan sanani qoldiring).\n"
+            "Administrator tekshirib, kirishni ochadi."
+        ),
+        "en": (
+            "📷 <b>Age verification</b>\n\n"
+            "Send a photo of a document confirming your age (you may hide personal data, leave the birth date).\n"
+            "The administrator will review and grant access."
+        ),
+    },
+    "roulette_found_18plus": {
+        "ru": (
+            "🔞 <b>Собеседник 18+ найден!</b>\n"
+            "Это чат для взрослых — здесь можно отправлять всё, кроме запрещённого правилами.\n"
+            "Приятного общения 💋"
+        ),
+        "uz": (
+            "🔞 <b>18+ suhbatdosh topildi!</b>\n"
+            "Bu kattalar chati — qoidalar bilan taqiqlanganidan tashqari hammasini yuborish mumkin.\n"
+            "Yoqimli muloqot 💋"
+        ),
+        "en": (
+            "🔞 <b>An 18+ partner is found!</b>\n"
+            "This is an adult chat — you can send everything except what the rules forbid.\n"
+            "Enjoy 💋"
+        ),
+    },
+    "age_select_title": {
+        "ru": "📅 <b>Ваш возраст?</b>",
+        "uz": "📅 <b>Sizning yoshingiz?</b>",
+        "en": "📅 <b>How old are you?</b>",
+    },
+    "age_18_20": {
+        "ru": "18/20",
+        "uz": "18/20",
+        "en": "18/20",
+    },
+    "age_20_22": {
+        "ru": "20/22",
+        "uz": "20/22",
+        "en": "20/22",
+    },
+    "age_22_25": {
+        "ru": "22/25",
+        "uz": "22/25",
+        "en": "22/25",
+    },
+    "age_25_30": {
+        "ru": "25/30",
+        "uz": "25/30",
+        "en": "25/30",
+    },
+    "age_30_plus": {
+        "ru": "30+",
+        "uz": "30+",
+        "en": "30+",
+    },
+    "age_under_18": {
+        "ru": "Менее 18",
+        "uz": "18 dan kichik",
+        "en": "Under 18",
+    },
+    "age_gate_button": {
+        "ru": "🔞 18+ контент",
+        "uz": "🔞 18+ kontent",
+        "en": "🔞 18+ content",
+    },
+    "age_verification_required": {
+        "ru": (
+            "⏳ <b>Ваш возраст: {age}</b>\n\n"
+            "Этот контент доступен только пользователям 18+.\n"
+            "Если вам меньше 18, вы можете запросить подтверждение возраста, загрузив фото."
+        ),
+        "uz": (
+            "⏳ <b>Sizning yoshingiz: {age}</b>\n\n"
+            "Bu kontent faqat 18+ foydalanuvchilar uchun.\n"
+            "Agar siz 18 yoshdan kichik bo'lsangiz, foto yuklab yoshingizni tasdiqlash so'rovi yubora olasiz."
+        ),
+        "en": (
+            "⏳ <b>Your age: {age}</b>\n\n"
+            "This content is only for users 18+.\n"
+            "If you're under 18, you can request age verification by uploading a photo."
+        ),
+    },
+    "age_under_18_deny": {
+        "ru": (
+            "🚫 <b>Доступ закрыт</b>\n\n"
+            "К сожалению, вы не можете использовать 18+ контент.\n"
+            "Вам должно быть минимум 18 лет."
+        ),
+        "uz": (
+            "🚫 <b>Kirish mumkin emas</b>\n\n"
+            "Afsuski, 18+ kontentdan foydalana olmaysiz.\n"
+            "Sizda kamida 18 yosh bo'lishi kerak."
+        ),
+        "en": (
+            "🚫 <b>Access Denied</b>\n\n"
+            "Unfortunately, you cannot access 18+ content.\n"
+            "You must be at least 18 years old."
+        ),
+    },
+    "age_verification_sent": {
+        "ru": (
+            "✅ <b>Заявка отправлена!</b>\n\n"
+            "Администратор рассмотрит ваш запрос.\n"
+            "Пожалуйста, подождите ответа."
+        ),
+        "uz": (
+            "✅ <b>So'rov yuborildi!</b>\n\n"
+            "Administrator so'rovingizni ko'rib chiqadi.\n"
+            "Iltimos, javobni kuting."
+        ),
+        "en": (
+            "✅ <b>Request sent!</b>\n\n"
+            "The administrator will review your request.\n"
+            "Please wait for a response."
+        ),
+    },
+    "age_verification_pending": {
+        "ru": "⏳ <b>Ваш запрос на подтверждение возраста находится на рассмотрении</b>",
+        "uz": "⏳ <b>Yoshingizni tasdiqlash so'rovingiz ko'rib chiqilmoqda</b>",
+        "en": "⏳ <b>Your age verification request is being reviewed</b>",
+    },
+    "age_verification_approved": {
+        "ru": (
+            "✅ <b>Ваш возраст подтверждён!</b>\n"
+            "Теперь у вас есть доступ к 18+ контенту."
+        ),
+        "uz": (
+            "✅ <b>Yoshingiz tasdiqlandi!</b>\n"
+            "Endi 18+ kontentdan foydalana olasiz."
+        ),
+        "en": (
+            "✅ <b>Your age has been verified!</b>\n"
+            "You now have access to 18+ content."
+        ),
+    },
+    "age_verification_rejected": {
+        "ru": (
+            "❌ <b>Ваш запрос на подтверждение возраста отклонён</b>\n\n"
+            "{reason}"
+        ),
+        "uz": (
+            "❌ <b>Yoshingizni tasdiqlash so'rovi rad etildi</b>\n\n"
+            "{reason}"
+        ),
+        "en": (
+            "❌ <b>Your age verification request was rejected</b>\n\n"
+            "{reason}"
+        ),
+    },
+    "age_verify_already": {
+        "ru": "Заявка уже обработана.",
+        "uz": "Ariza allaqachon ko'rib chiqilgan.",
+        "en": "The request has already been handled.",
+    },
+    "age_verify_approved_staff": {
+        "ru": "✅ Возраст подтверждён, доступ к 18+ открыт.",
+        "uz": "✅ Yosh tasdiqlandi, 18+ ochildi.",
+        "en": "✅ Age verified, 18+ access granted.",
+    },
+    "age_verify_rejected_staff": {
+        "ru": "❌ Заявка на 18+ отклонена.",
+        "uz": "❌ 18+ arizasi rad etildi.",
+        "en": "❌ 18+ request rejected.",
+    },
+    "age_18_plus_item": {
+        "ru": "🔞 18+ товар",
+        "uz": "🔞 18+ mahsulot",
+        "en": "🔞 18+ item",
+    },
+    "18plus_purchase_coins": {
+        "ru": "✅ <b>Покупка совершена!</b> Начислено <b>{amt}</b> 💎",
+        "uz": "✅ <b>Xarid amalga oshirildi!</b> <b>{amt}</b> 💎 qo'shildi",
+        "en": "✅ <b>Purchase complete!</b> <b>{amt}</b> 💎 added",
+    },
+    "18plus_purchase_manual": {
+        "ru": "✅ <b>Покупка совершена!</b> Админ свяжется с вами.",
+        "uz": "✅ <b>Xarid amalga oshirildi!</b> Admin siz bilan bog'lanadi.",
+        "en": "✅ <b>Purchase complete!</b> The admin will contact you.",
+    },
+    "18plus_admin_menu": {
+        "ru": "🔞 <b>Админка: 18+ магазин</b>\n\nВыберите действие 👇",
+        "uz": "🔞 <b>Admin: 18+ do'kon</b>\n\nAmalni tanlang 👇",
+        "en": "🔞 <b>Admin: 18+ shop</b>\n\nChoose an action 👇",
+    },
+    "18plus_add_item": {
+        "ru": "➕ Добавить товар 18+",
+        "uz": "➕ 18+ mahsulot qo'shish",
+        "en": "➕ Add 18+ item",
+    },
+    "18plus_list_items": {
+        "ru": "📋 Список товаров 18+",
+        "uz": "📋 18+ mahsulotlar ro'yxati",
+        "en": "📋 18+ items list",
+    },
+    "18plus_item_added": {
+        "ru": "✅ Товар добавлен!",
+        "uz": "✅ Mahsulot qo'shildi!",
+        "en": "✅ Item added!",
+    },
+    "18plus_item_deleted": {
+        "ru": "✅ Товар удалён!",
+        "uz": "✅ Mahsulot o'chirildi!",
+        "en": "✅ Item deleted!",
+    },
+    "18plus_confirm_delete": {
+        "ru": "Вы уверены, что хотите удалить товар «<b>{title}</b>»?",
+        "uz": "«<b>{title}</b>» mahsulotini o'chirmoqchimisiz?",
+        "en": "Are you sure you want to delete item «<b>{title}</b>»?",
     },
 }
 
@@ -2169,6 +2524,10 @@ def main_menu_kb(tg_id):
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
         star_label = styled(tr_btn("💎 Купить коины"), "premium")
         rows.append([KeyboardButton(star_label)])
+    # Кнопка 18+ — скрыта только у тех, кому отказано (возраст < 18 и не прошёл проверку)
+    u18 = get_user(tg_id)
+    if not (u18 and u18["age"] == "under18"):
+        rows.append([KeyboardButton("🔞 18+ возраст")])
     if is_admin(tg_id):
         rows.append([KeyboardButton("🛠 Админка")])
     else:
@@ -2198,8 +2557,16 @@ def admin_menu_kb():
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton("🔞 18+ магазин")],
         [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_admin_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("➕ Добавить товар")],
+        [KeyboardButton("📋 Список товаров"), KeyboardButton("🗑 Удалить товар")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -2244,6 +2611,29 @@ def link_menu_kb():
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_age_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
+        [KeyboardButton("25/30"), KeyboardButton("30+")],
+        [KeyboardButton("🔞 Мне нет 18")],
+        [KeyboardButton("❌ Отмена")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_consent_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("✅ Согласиться")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_verify_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("📷 Отправить фото")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -2359,6 +2749,177 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=main_menu_kb(tg_user.id),
     )
+
+
+async def eighteen_plus_menu(update, context):
+    """Показывает меню 18+ контента (с возрастным барьером и согласием)."""
+    user = get_user(update.effective_user.id)
+    await clean_screen(update, context)
+    if not user["age"]:
+        # Возраст не выбран — сперва выбор возраста
+        context.user_data["state"] = "18plus_age_select"
+        await send_menu(update, context, t("age_select_title"), eighteen_plus_age_kb())
+        return
+    if user["age"] == "under18":
+        # Несовершеннолетний — доступ закрыт, предлагаем верификацию
+        context.user_data["state"] = "18plus_verify_offer"
+        await send_menu(update, context, t("age_under_18_deny"), eighteen_plus_verify_kb(), parse_mode="HTML")
+        return
+    # Возраст 18+ — показываем приветствие/согласие
+    context.user_data["state"] = "18plus_consent"
+    await send_menu(update, context, t("age_consent_text"), eighteen_plus_consent_kb(), parse_mode="HTML")
+
+
+async def eighteen_plus_consent_router(update, context):
+    """Обработка согласия с правилами 18+."""
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    if text == "✅ Согласиться":
+        context.user_data["state"] = "18plus_menu"
+        await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
+        return
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=eighteen_plus_consent_kb())
+
+
+async def eighteen_plus_age_router(update, context):
+    """Обработка выбора возраста в 18+ рулетке."""
+    text = canon(update.message.text)
+    if text == "❌ Отмена" or text == "⬅️ Назад":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    # Несовершеннолетний — сохраняем и предлагаем верификацию
+    if text == "🔞 Мне нет 18":
+        conn.execute("UPDATE users SET age='under18' WHERE tg_id=?", (update.effective_user.id,))
+        conn.commit()
+        context.user_data["state"] = "18plus_verify_offer"
+        await nav(update, context, t("age_under_18_deny"), eighteen_plus_verify_kb(), parse_mode="HTML")
+        return
+    age_ranges = {
+        "18/20": "18-20",
+        "20/22": "20-22",
+        "22/25": "22-25",
+        "25/30": "25-30",
+        "30+": "30+",
+    }
+    age = age_ranges.get(text)
+    if not age:
+        await update.message.reply_text(t("pick_on_kb"), reply_markup=eighteen_plus_age_kb())
+        return
+    conn.execute("UPDATE users SET age=? WHERE tg_id=?", (age, update.effective_user.id))
+    conn.commit()
+    # Возраст подтверждён (18+) — показываем экран согласия
+    context.user_data["state"] = "18plus_consent"
+    await nav(update, context, t("age_consent_text"), eighteen_plus_consent_kb(), parse_mode="HTML")
+
+
+async def eighteen_plus_verify_offer_router(update, context):
+    """Несовершеннолетний: предложение отправить фото для подтверждения возраста."""
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    if text == "📷 Отправить фото":
+        # Проверим, нет ли уже заявки на рассмотрении
+        pending = conn.execute(
+            "SELECT 1 FROM age_verification_requests WHERE user_id=? AND status='pending' LIMIT 1",
+            (update.effective_user.id,),
+        ).fetchone()
+        if pending:
+            await update.message.reply_text(t("age_verification_pending"), parse_mode="HTML")
+            return
+        context.user_data["state"] = "18plus_verify_upload"
+        await update.message.reply_text(t("age_verify_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=eighteen_plus_verify_kb())
+
+
+async def eighteen_plus_menu_router(update, context):
+    """Обработка кнопок 18+ меню."""
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    # Показать 18+ рулетку
+    if text == "18+ магазин":
+        await show_eighteen_plus_shop(update, context)
+        return
+    if text == "18+ рулетка":
+        user = get_user(update.effective_user.id)
+        if user["age"]:
+            await show_eighteen_plus_roulette(update, context)
+        else:
+            context.user_data["state"] = "18plus_age_select"
+            await nav(update, context, t("age_select_title"), eighteen_plus_age_kb())
+        return
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=eighteen_plus_menu_kb())
+
+
+async def show_eighteen_plus_roulette(update, context):
+    """Показывает 18+ рулетку."""
+    user = get_user(update.effective_user.id)
+    active = get_active_session(user["tg_id"])
+    await clean_screen(update, context)
+    if active:
+        UD[user["tg_id"]]["state"] = "18plus_rchat"
+        await context.bot.send_message(update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb())
+        return
+    in_queue = conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=? AND mode='18plus'", (user["tg_id"],)).fetchone()
+    if in_queue:
+        await context.bot.send_message(update.effective_chat.id, t("roulette_searching"), reply_markup=searching_kb())
+        return
+    context.user_data["state"] = "18plus_pref"
+    await send_menu(update, context, t("roulette_who"), eighteen_plus_roulette_pref_kb())
+
+
+async def eighteen_plus_pref_router(update, context):
+    """Обработка выбора пола в 18+ рулетке."""
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+    pref = {"👨 Парня": "m", "👩 Девушку": "f", "🤷 Любого": "any"}.get(text)
+    if not pref:
+        await context.bot.send_message(update.effective_chat.id, t("pick_on_kb"), reply_markup=eighteen_plus_roulette_pref_kb())
+        return
+    user = get_user(update.effective_user.id)
+    conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
+    conn.execute(
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, '18plus', ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
+    )
+    conn.commit()
+    context.user_data["state"] = None
+    await clean_screen(update, context)
+    await context.bot.send_message(update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb())
+
+
+def eighteen_plus_menu_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18+ рулетка"), KeyboardButton("18+ магазин")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_roulette_pref_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
+
+
+def eighteen_plus_shop_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18+ магазин")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
 
 
 async def set_gender_from_text(update, context):
@@ -3375,19 +3936,31 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
         for b in rows[i + 1:]:
             if b["user_id"] in matched_ids:
                 continue
+            # Режимы должны совпадать: обычная рулетка матчит обычную, 18+ только 18+
+            a_mode = (a["mode"] if "mode" in a.keys() else None) or "normal"
+            b_mode = (b["mode"] if "mode" in b.keys() else None) or "normal"
+            if a_mode != b_mode:
+                continue
             if compatible(a, b) and not is_banned_pair(a["user_id"], b["user_id"]):
                 conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
                 conn.execute(
-                    "INSERT INTO roulette_sessions (user1_id, user2_id, active, started_at) VALUES (?, ?, 1, ?)",
-                    (a["user_id"], b["user_id"], now_iso()),
+                    "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) VALUES (?, ?, 1, ?, ?)",
+                    (a["user_id"], b["user_id"], a_mode, now_iso()),
                 )
                 conn.commit()
                 matched_ids.add(a["user_id"])
                 matched_ids.add(b["user_id"])
+                is_18 = (a_mode == "18plus")
                 for uid in (a["user_id"], b["user_id"]):
                     try:
-                        await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
-                        UD[uid]["state"] = "rchat"   # в чате — кнопки управления внизу
+                        _sl = cur_lang(); set_cur_lang(get_lang(uid))
+                        if is_18:
+                            await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
+                            UD[uid]["state"] = "18plus_rchat"
+                        else:
+                            await context.bot.send_message(uid, t("roulette_found"), reply_markup=in_chat_kb())
+                            UD[uid]["state"] = "rchat"   # в чате — кнопки управления внизу
+                        set_cur_lang(_sl)
                     except TelegramError:
                         pass
                 break
@@ -3417,22 +3990,27 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
+        sess_mode = "normal"
+        try:
+            sess_mode = session["mode"] or "normal"
+        except (KeyError, IndexError, TypeError):
+            sess_mode = "normal"
         conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
-            (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+            (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, sess_mode, now_iso()),
         )
         conn.commit()
     return session
 
 
-async def _requeue_and_search(context, uid):
+async def _requeue_and_search(context, uid, mode="normal"):
     """Ставит пользователя в очередь с его прежними настройками и показывает экран поиска."""
     user = get_user(uid)
     conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
-        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, mode, now_iso()),
     )
     conn.commit()
     UD[uid]["state"] = None
@@ -3444,17 +4022,35 @@ async def _requeue_and_search(context, uid):
 async def rchat_next(update, context):
     """Кнопка «Далее»: завершить чат и искать нового с теми же настройками."""
     uid = update.effective_user.id
-    await end_roulette_session(context, uid, requeue_ender=True)
+    sess = get_active_session(uid)
+    sess_mode = "normal"
+    if sess:
+        try:
+            sess_mode = sess["mode"] or "normal"
+        except (KeyError, IndexError, TypeError):
+            sess_mode = "normal"
+    await end_roulette_session(context, uid, requeue_ender=False)
     context.user_data["state"] = None
-    await _requeue_and_search(context, uid)
+    await _requeue_and_search(context, uid, mode=sess_mode)
 
 
 async def rchat_stop(update, context):
     """Кнопка «Стоп»: завершить чат и вернуться к выбору, кого искать."""
     uid = update.effective_user.id
+    sess = get_active_session(uid)
+    sess_mode = "normal"
+    if sess:
+        try:
+            sess_mode = sess["mode"] or "normal"
+        except (KeyError, IndexError, TypeError):
+            sess_mode = "normal"
     await end_roulette_session(context, uid, requeue_ender=False)
-    context.user_data["state"] = "roulette_pref"
-    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
+    if sess_mode == "18plus":
+        context.user_data["state"] = "18plus_pref"
+        await context.bot.send_message(uid, t("roulette_who"), reply_markup=eighteen_plus_roulette_pref_kb())
+    else:
+        context.user_data["state"] = "roulette_pref"
+        await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
 
 
 async def rleft_research(update, context):
@@ -3494,9 +4090,15 @@ async def relay_roulette_message(update, context):
     if not session:
         return False
     other_id = session["user2_id"] if session["user1_id"] == update.effective_user.id else session["user1_id"]
-    # Анти-спам: блокируем контакты/ссылки/соцсети в рулетке (кроме персонала)
+    # Режим сессии: в 18+ чате разрешено отправлять всё (фильтр не применяется)
+    try:
+        sess_mode = session["mode"] or "normal"
+    except (KeyError, IndexError, TypeError):
+        sess_mode = "normal"
+    # Анти-спам: блокируем контакты/ссылки/соцсети в обычной рулетке (кроме персонала и 18+ чата)
     txt = update.message.text if update.message else None
-    if txt and not is_staff(update.effective_user.id) and has_forbidden_contacts(txt):
+    if (sess_mode != "18plus" and txt and not is_staff(update.effective_user.id)
+            and has_forbidden_contacts(txt)):
         try:
             await update.message.reply_text(t("no_contacts"))
         except TelegramError:
@@ -3765,6 +4367,24 @@ async def show_shop(update, context):
     await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
 
 
+async def show_eighteen_plus_shop(update, context):
+    """Магазин 18+ товаров."""
+    items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
+    context.user_data["state"] = "18plus_shop"
+    shop_map = {}
+    rows = []
+    for it in items:
+        label = f"{item_title(it)} — {it['price']} 💎"
+        shop_map[label] = it["id"]
+        rows.append([KeyboardButton(label)])
+    context.user_data["shop_map"] = shop_map
+    if is_admin(update.effective_user.id):
+        rows.append([KeyboardButton("➕ Добавить товар")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
+    text = t("18plus_shop_title") if items else t("18plus_shop_empty")
+    await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+
+
 async def shop_router(update, context):
     text = canon(update.message.text)
     uid = update.effective_user.id
@@ -3885,6 +4505,76 @@ async def do_purchase(update, context, item):
         )
 
 
+async def eighteen_plus_shop_router(update, context):
+    """Магазин 18+ товаров."""
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(uid))
+        return
+    if text == "➕ Добавить товар" and is_admin(uid):
+        context.user_data["state"] = "18plus_add_title"
+        context.user_data["new_18plus"] = {}
+        await nav(update, context, "📝 Название товара (текст кнопки):", cancel_reply_kb())
+        return
+    item_id = context.user_data.get("shop_map", {}).get(text)
+    if item_id is None:
+        await nav(update, context, t("18plus_shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True)))
+        return
+    item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=? AND active=1", (item_id,)).fetchone()
+    if not item:
+        await nav(update, context, t("item_unavailable"), main_menu_kb(uid))
+        return
+    context.user_data["pending_item"] = item_id
+    context.user_data["state"] = "18plus_confirm"
+    price = item["price"]
+    price_txt = t("price_plain", price=price)
+    await nav(
+        update, context,
+        t("shop_buy_confirm", title=html.escape(item_title(it)), price=price_txt),
+        yes_no_kb(), parse_mode="HTML",
+    )
+
+
+async def eighteen_plus_shop_confirm_router(update, context):
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+    if text == "❌ Отмена":
+        await show_eighteen_plus_shop(update, context)
+        return
+    if text != "✅ Да":
+        await update.message.reply_text(t("choose_on_kb"), reply_markup=yes_no_kb())
+        return
+    item_id = context.user_data.get("pending_item")
+    item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=? AND active=1", (item_id,)).fetchone()
+    if not item:
+        context.user_data["state"] = None
+        await update.message.reply_text(t("item_unavailable"), reply_markup=main_menu_kb(uid))
+        return
+    user = get_user(uid)
+    price = item["price"]
+    if user["coins"] < price:
+        context.user_data["state"] = None
+        await nav(update, context, t("not_enough_coins"), main_menu_kb(uid))
+        return
+    conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
+    conn.execute(
+        "INSERT INTO purchases (user_id, item_id, price_paid, created_at) VALUES (?, ?, ?, ?)",
+        (uid, item["id"], price, now_iso()),
+    )
+    conn.commit()
+    user = get_user(uid)
+    await notify_staff(
+        context,
+        f"💰 Покупка 18+!\nПользователь: {user_mention(user)}\n"
+        f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎",
+        parse_mode="HTML",
+    )
+    context.user_data["state"] = None
+    await nav(update, context, t("18plus_purchase_coins", amt=0), main_menu_kb(uid), parse_mode="HTML")
+
+
 # ── Анкета модератора ──
 
 async def moder_q_router(update, context):
@@ -4001,6 +4691,59 @@ async def on_moder_app_decision(update, context):
         except TelegramError:
             pass
         await query.edit_message_text(t("moder_rejected_staff"))
+
+
+async def on_age_verify_decision(update, context):
+    """Админ одобряет/отклоняет заявку на подтверждение возраста 18+."""
+    query = update.callback_query
+    await query.answer()
+    if not is_admin(query.from_user.id):
+        await query.answer(t("admin_only"), show_alert=True)
+        return
+    _, decision, uid = query.data.split(":")
+    uid = int(uid)
+    req = conn.execute(
+        "SELECT * FROM age_verification_requests WHERE user_id=? AND status='pending' ORDER BY id DESC LIMIT 1",
+        (uid,),
+    ).fetchone()
+    if not req:
+        await query.answer(t("age_verify_already"), show_alert=True)
+        try:
+            await query.edit_message_caption(caption=t("age_verify_already"))
+        except TelegramError:
+            pass
+        return
+    if decision == "ok":
+        # Возраст подтверждён — ставим 18+ (диапазон 18-20 по умолчанию)
+        conn.execute("UPDATE users SET age='18-20' WHERE tg_id=?", (uid,))
+        conn.execute("UPDATE age_verification_requests SET status='approved', responded_at=? WHERE id=?",
+                     (now_iso(), req["id"]))
+        conn.commit()
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(uid))
+            await context.bot.send_message(uid, t("age_verification_approved"), parse_mode="HTML",
+                                           reply_markup=main_menu_kb(uid))
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+        try:
+            await query.edit_message_caption(caption=t("age_verify_approved_staff"))
+        except TelegramError:
+            pass
+    else:
+        conn.execute("UPDATE age_verification_requests SET status='rejected', responded_at=? WHERE id=?",
+                     (now_iso(), req["id"]))
+        conn.commit()
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(uid))
+            await context.bot.send_message(uid, t("age_verification_rejected", reason=""), parse_mode="HTML")
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+        try:
+            await query.edit_message_caption(caption=t("age_verify_rejected_staff"))
+        except TelegramError:
+            pass
 
 
 async def process_shop_add(update, context):
@@ -4924,6 +5667,100 @@ async def process_star_wizard(update, context):
         )
 
 
+# ── Админ: 18+ магазин ──
+
+async def show_eighteen_plus_admin_menu(update, context):
+    items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
+    lst = "\n".join(f"• {i['title']} — {i['price']} 💎" for i in items) or "(товаров нет)"
+    text = t("18plus_admin_menu") + "\n\nТовары:\n" + lst
+    await update.message.reply_text(text, parse_mode="HTML", reply_markup=eighteen_plus_admin_kb())
+
+
+async def eighteen_plus_admin_router(update, context):
+    text = canon(update.message.text)
+    if text == "⬅️ Назад" or text == "🏠 Меню":
+        context.user_data["state"] = None
+        await show_admin_menu(update, context)
+        return
+    if text == "➕ Добавить товар":
+        context.user_data["state"] = "18plus_add_title"
+        context.user_data["new_18plus"] = {}
+        await update.message.reply_text("Введите название товара:", reply_markup=cancel_reply_kb())
+        return
+    if text == "📋 Список товаров":
+        items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
+        if not items:
+            await update.message.reply_text("Товаров пока нет.")
+            return
+        for item in items:
+            text = f"• <b>{item['title']}</b>\n💰 Цена: {item['price']} 💎\nID: <code>{item['id']}</code>"
+            await update.message.reply_text(text, parse_mode="HTML")
+        return
+    if text == "🗑 Удалить товар":
+        context.user_data["state"] = "18plus_delete_id"
+        await update.message.reply_text("Введите ID товара для удаления:", reply_markup=cancel_reply_kb())
+        return
+    await update.message.reply_text("Выберите действие на клавиатуре 👇", reply_markup=eighteen_plus_admin_kb())
+
+
+async def process_eighteen_plus_admin(update, context):
+    text = canon(update.message.text)
+    state = context.user_data.get("state")
+    if state == "18plus_add_title":
+        if text == "❌ Отмена":
+            context.user_data["state"] = "18plus_admin"
+            await show_eighteen_plus_admin_menu(update, context)
+            return
+        context.user_data["new_18plus"]["title"] = text
+        context.user_data["state"] = "18plus_add_price"
+        await update.message.reply_text("Введите цену в коинах:", reply_markup=cancel_reply_kb())
+        return
+    if state == "18plus_add_price":
+        if text == "❌ Отмена":
+            context.user_data["state"] = "18plus_admin"
+            await show_eighteen_plus_admin_menu(update, context)
+            return
+        if not text.isdigit():
+            await update.message.reply_text("Введите число:")
+            return
+        item = context.user_data["new_18plus"]
+        await update.message.reply_text("⏳ Перевожу название на 3 языка…")
+        ru, uz, en = await translate_to_all(item["title"])
+        conn.execute(
+            "INSERT INTO eighteen_plus_items (title, title_uz, title_en, price) VALUES (?, ?, ?, ?)",
+            (ru, uz, en, int(text)),
+        )
+        conn.commit()
+        context.user_data["state"] = "18plus_admin"
+        await update.message.reply_text(
+            f"✅ Товар добавлен!\n🇷🇺 {ru}\n🇺🇿 {uz}\n🇬🇧 {en}\n💰 Цена: {item['price']} 💎",
+            reply_markup=eighteen_plus_admin_kb(),
+        )
+        return
+    if state == "18plus_delete_id":
+        if text == "❌ Отмена":
+            context.user_data["state"] = "18plus_admin"
+            await show_eighteen_plus_admin_menu(update, context)
+            return
+        if not text.isdigit():
+            await update.message.reply_text("Введите число (ID товара):")
+            return
+        item_id = int(text)
+        item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=?", (item_id,)).fetchone()
+        if not item:
+            await update.message.reply_text("Товар не найден.")
+            return
+        conn.execute("UPDATE eighteen_plus_items SET active=0 WHERE id=?", (item_id,))
+        conn.commit()
+        context.user_data["state"] = "18plus_admin"
+        await update.message.reply_text(
+            f"✅ Товар «{item['title']}» удалён.",
+            reply_markup=eighteen_plus_admin_kb(),
+        )
+        return
+    await update.message.reply_text("Выберите действие на клавиатуре 👇", reply_markup=eighteen_plus_admin_kb())
+
+
 async def handle_referral(update, context, code, existed):
     """Начисляет коины пригласившему за нового пользователя."""
     if existed:
@@ -5456,6 +6293,10 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == "⭐ Коины за Stars":
             await show_star_admin(update, context)
             return
+        if text == "🔞 18+ магазин":
+            context.user_data["state"] = "18plus_admin"
+            await show_eighteen_plus_admin_menu(update, context)
+            return
     # Главное меню — навигация доступна из любого раздела
     if text == "🔗 Моя ссылка":
         await show_link_menu(update, context)
@@ -5463,12 +6304,19 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "🎲 Чат-рулетка":
         await show_roulette_entry(update, context)
         return
+    if text == "18+ рулетка":
+        await show_eighteen_plus_roulette(update, context)
+        return
     if text == "👤 Профиль":
         await show_profile(update, context)
         return
     if text == "🛒 Магазин":
         context.user_data["state"] = None
         await show_shop(update, context)
+        return
+    if text == "🔞 18+ магазин":
+        context.user_data["state"] = None
+        await show_eighteen_plus_shop(update, context)
         return
     if text == "💎 Купить коины":
         await show_star_shop(update, context)
@@ -5523,6 +6371,12 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "shop":
         await shop_router(update, context)
         return
+    if state == "18plus_shop":
+        await eighteen_plus_shop_router(update, context)
+        return
+    if state == "18plus_confirm":
+        await eighteen_plus_shop_confirm_router(update, context)
+        return
     if state == "shop_confirm":
         await shop_confirm_router(update, context)
         return
@@ -5534,6 +6388,58 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "star_admin":
         await star_admin_router(update, context)
+        return
+    if state == "18plus_admin":
+        await eighteen_plus_admin_router(update, context)
+        return
+    if state == "18plus_add_title" or state == "18plus_add_price" or state == "18plus_delete_id":
+        await process_eighteen_plus_admin(update, context)
+        return
+    # 18+ меню
+    if text == "🔞 18+ возраст":
+        await eighteen_plus_menu(update, context)
+        return
+    if text == "18+ магазин":
+        await show_eighteen_plus_shop(update, context)
+        return
+    if state == "18plus_age_select":
+        await eighteen_plus_age_router(update, context)
+        return
+    if state == "18plus_consent":
+        await eighteen_plus_consent_router(update, context)
+        return
+    if state == "18plus_verify_offer":
+        await eighteen_plus_verify_offer_router(update, context)
+        return
+    if state == "18plus_verify_upload":
+        if canon(update.message.text) in ("❌ Отмена", "⬅️ Назад"):
+            context.user_data["state"] = None
+            await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+            return
+        await update.message.reply_text(t("age_verify_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+    if state == "18plus_menu":
+        await eighteen_plus_menu_router(update, context)
+        return
+    if state == "18plus_pref":
+        await eighteen_plus_pref_router(update, context)
+        return
+    if state == "18plus_rchat":
+        if text == "➡️ Далее":
+            await rchat_next(update, context)
+            return
+        if text == "⏹️ Стоп":
+            await rchat_stop(update, context)
+            return
+        if text == "⬅️ Назад" or text == "🏠 Меню":
+            context.user_data["state"] = None
+            await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+            return
+        if await relay_roulette_message(update, context):
+            return
+        # сессия пропала — сброс в меню
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
     if text == "⬅️ Назад":
         context.user_data["state"] = None
@@ -5564,6 +6470,40 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await show_ref_settings(update, context)
         else:
             await update.message.reply_text("Отправьте именно фото (или «❌ Отмена»).", reply_markup=cancel_reply_kb())
+        return
+    # Верификация возраста: пользователь прислал фото документа
+    if state == "18plus_verify_upload":
+        if update.message and update.message.photo:
+            photo = update.message.photo[-1]
+            uid = update.effective_user.id
+            conn.execute(
+                "INSERT INTO age_verification_requests (user_id, photo_file_id, created_at) VALUES (?, ?, ?)",
+                (uid, photo.file_id, now_iso()),
+            )
+            conn.commit()
+            context.user_data["state"] = None
+            await update.message.reply_text(
+                t("age_verification_sent"), parse_mode="HTML",
+                reply_markup=main_menu_kb(uid),
+            )
+            # Уведомить только админов (не модеров) — с кружком фото и кнопками
+            requester = get_user(uid)
+            cap = (f"🔞 <b>Заявка на подтверждение 18+</b>\n"
+                   f"Пользователь: {user_mention(requester)}\n"
+                   f"ID: <code>{uid}</code>")
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("✅ Одобрить", callback_data=f"agever:ok:{uid}"),
+                 InlineKeyboardButton("❌ Отменить", callback_data=f"agever:no:{uid}")],
+                [InlineKeyboardButton("✉️ В ЛС пользователю", url=f"tg://user?id={uid}")],
+            ])
+            for admin_id in ADMIN_IDS:
+                try:
+                    await context.bot.send_photo(admin_id, photo.file_id, caption=cap,
+                                                 parse_mode="HTML", reply_markup=markup)
+                except TelegramError:
+                    pass
+        else:
+            await update.message.reply_text(t("age_verify_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
         return
     if state == "awaiting_anon_content":
         await process_anon_content(update, context)
@@ -5695,6 +6635,7 @@ _CALLBACKS = [
     ("claim_moder", on_claim_moder, True),
     ("ref_info", on_ref_info, True),
     ("tgban:", on_tg_ban, False),
+    ("agever:", on_age_verify_decision, False),
 ]
 
 
