@@ -582,6 +582,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN age TEXT",
         "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
         "ALTER TABLE roulette_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
+        "ALTER TABLE shop_items ADD COLUMN is_18plus INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE star_packages ADD COLUMN title_uz TEXT",
         "ALTER TABLE star_packages ADD COLUMN title_en TEXT",
     ]
@@ -886,14 +887,16 @@ BTN = {
     "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
     "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
     "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
-    "🔞 18+ возраст": ("🔞 18+ yosh", "🔞 18+ age"),
-    "🔞 18+ магазин": ("🔞 18+ do'kon", "🔞 18+ shop"),
+    "🔞 18+": ("🔞 18+", "🔞 18+"),
     "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
     "🔞 Мне нет 18": ("🔞 18 yoshda emasman", "🔞 I'm under 18"),
     "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
     "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
     "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
     "📷 Отправить фото": ("📷 Foto yuborish", "📷 Send photo"),
+    "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
+    "🛒 Обычный товар": ("🛒 Oddiy mahsulot", "🛒 Regular item"),
+    "🔞 Товар 18+": ("🔞 18+ mahsulot", "🔞 18+ item"),
     "18+ рулетка": ("18+ ruletka", "18+ roulette"),
     "18+ магазин": ("18+ do'kon", "18+ shop"),
 }
@@ -2292,6 +2295,21 @@ T = {
         "uz": "📅 <b>Sizning yoshingiz?</b>",
         "en": "📅 <b>How old are you?</b>",
     },
+    "age_register_ask": {
+        "ru": "📅 <b>Укажите ваш возраст</b>\n\nЭто нужно для доступа к разделу 🔞 18+. Если меньше 18 — раздел будет недоступен.",
+        "uz": "📅 <b>Yoshingizni kiriting</b>\n\nBu 🔞 18+ bo'limiga kirish uchun kerak. 18 dan kichik bo'lsa — bo'lim yopiq bo'ladi.",
+        "en": "📅 <b>Select your age</b>\n\nNeeded for access to the 🔞 18+ section. If under 18 — the section will be unavailable.",
+    },
+    "age_saved": {
+        "ru": "✅ Возраст сохранён: <b>{age}</b>\n\nГлавное меню 👇",
+        "uz": "✅ Yosh saqlandi: <b>{age}</b>\n\nAsosiy menyu 👇",
+        "en": "✅ Age saved: <b>{age}</b>\n\nMain menu 👇",
+    },
+    "age_under18_saved": {
+        "ru": "Понятно. Раздел 🔞 18+ будет недоступен.\nЕсли вам исполнилось 18 — измените возраст в Профиле и подтвердите его.\n\nГлавное меню 👇",
+        "uz": "Tushunarli. 🔞 18+ bo'limi yopiq bo'ladi.\nAgar 18 yoshga to'lgan bo'lsangiz — Profilda yoshni o'zgartiring va tasdiqlang.\n\nAsosiy menyu 👇",
+        "en": "Got it. The 🔞 18+ section will be unavailable.\nIf you've turned 18 — change your age in Profile and verify it.\n\nMain menu 👇",
+    },
     "age_18_20": {
         "ru": "18/20",
         "uz": "18/20",
@@ -2529,10 +2547,10 @@ def main_menu_kb(tg_id):
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
         star_label = styled(tr_btn("💎 Купить коины"), "premium")
         rows.append([KeyboardButton(star_label)])
-    # Кнопка 18+ — скрыта только у тех, кому отказано (возраст < 18 и не прошёл проверку)
+    # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст из набора 18+)
     u18 = get_user(tg_id)
-    if not (u18 and u18["age"] == "under18"):
-        rows.append([KeyboardButton("🔞 18+ возраст")])
+    if u18 and u18["age"] in ("18-20", "20-22", "22-25", "25-30", "30+"):
+        rows.append([KeyboardButton("🔞 18+")])
     if is_admin(tg_id):
         rows.append([KeyboardButton("🛠 Админка")])
     else:
@@ -2562,7 +2580,7 @@ def admin_menu_kb():
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("📣 Реклама"), KeyboardButton("✉️ Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton("🔞 18+ магазин")],
+        [KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -2698,7 +2716,7 @@ async def go_home(update, context):
 
 def profile_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("✏️ Сменить пол")],
+        [KeyboardButton("✏️ Сменить пол"), KeyboardButton("✏️ Изменить возраст")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -2941,13 +2959,89 @@ async def set_gender_from_text(update, context):
         return
     conn.execute("UPDATE users SET gender=? WHERE tg_id=?", (gender, update.effective_user.id))
     conn.commit()
-    context.user_data["state"] = None
     g = {"m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
          "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"}}[gender][cur_lang()]
+    user = get_user(update.effective_user.id)
+    # При первичной регистрации после пола спрашиваем возраст (если ещё не задан)
+    if state == "set_gender_first" and not user["age"]:
+        context.user_data["state"] = "set_age_first"
+        await update.message.reply_text(
+            t("gender_set_short", g=g), parse_mode="HTML",
+        )
+        await update.message.reply_text(
+            t("age_register_ask"), parse_mode="HTML", reply_markup=age_register_kb(),
+        )
+        return
+    context.user_data["state"] = None
     await update.message.reply_text(
         t("gender_saved", g=g),
         parse_mode="HTML",
         reply_markup=main_menu_kb(update.effective_user.id),
+    )
+
+
+def age_register_kb():
+    """Клавиатура выбора возраста при регистрации/смене (с вариантом «нет 18»)."""
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
+        [KeyboardButton("25/30"), KeyboardButton("30+")],
+        [KeyboardButton("🔞 Мне нет 18")],
+    ], resize_keyboard=True))
+
+
+AGE_RANGES = {
+    "18/20": "18-20", "20/22": "20-22", "22/25": "22-25",
+    "25/30": "25-30", "30+": "30+",
+}
+
+
+async def set_age_from_text(update, context):
+    """Выбор возраста при регистрации (set_age_first) и смене в профиле (set_age_profile)."""
+    text = canon(update.message.text)
+    state = context.user_data.get("state")
+    uid = update.effective_user.id
+    user = get_user(uid)
+    # Отмена/назад — только в профиле
+    if text in ("⬅️ Назад", "❌ Отмена") and state == "set_age_profile":
+        await show_profile(update, context)
+        return
+    # «Мне нет 18»
+    if text == "🔞 Мне нет 18":
+        conn.execute("UPDATE users SET age='under18' WHERE tg_id=?", (uid,))
+        conn.commit()
+        context.user_data["state"] = None
+        await update.message.reply_text(
+            t("age_under18_saved"), parse_mode="HTML",
+            reply_markup=main_menu_kb(uid),
+        )
+        return
+    age = AGE_RANGES.get(text)
+    if not age:
+        kb = age_profile_kb() if state == "set_age_profile" else age_register_kb()
+        await update.message.reply_text(t("pick_on_kb"), reply_markup=kb)
+        return
+    # Если пользователь был отмечен как «нет 18» и хочет поставить 18+ — нужна верификация
+    if state == "set_age_profile" and user["age"] == "under18":
+        pending = conn.execute(
+            "SELECT 1 FROM age_verification_requests WHERE user_id=? AND status='pending' LIMIT 1",
+            (uid,),
+        ).fetchone()
+        if pending:
+            await update.message.reply_text(t("age_verification_pending"), parse_mode="HTML",
+                                             reply_markup=main_menu_kb(uid))
+            context.user_data["state"] = None
+            return
+        context.user_data["state"] = "18plus_verify_upload"
+        context.user_data["pending_age"] = age
+        await update.message.reply_text(t("age_verify_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+    # Иначе — просто сохраняем возраст (доверяем при регистрации / смене между 18+)
+    conn.execute("UPDATE users SET age=? WHERE tg_id=?", (age, uid))
+    conn.commit()
+    context.user_data["state"] = None
+    await update.message.reply_text(
+        t("age_saved", age=age), parse_mode="HTML",
+        reply_markup=main_menu_kb(uid),
     )
 
 
@@ -3821,7 +3915,22 @@ async def profile_router(update, context):
         await clean_screen(update, context)
         await send_menu(update, context, t("choose_new_gender"), gender_kb(with_back=True))
         return
+    if text == "✏️ Изменить возраст":
+        context.user_data["state"] = "set_age_profile"
+        await clean_screen(update, context)
+        await send_menu(update, context, t("age_register_ask"), age_profile_kb(), parse_mode="HTML")
+        return
     await context.bot.send_message(update.effective_chat.id, t("choose_action"), reply_markup=profile_kb())
+
+
+def age_profile_kb():
+    """Возраст в профиле — с кнопкой возврата."""
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
+        [KeyboardButton("25/30"), KeyboardButton("30+")],
+        [KeyboardButton("🔞 Мне нет 18")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
 
 
 def searching_kb():
@@ -4356,8 +4465,9 @@ async def process_modmsg_text(update, context):
 
 
 async def show_shop(update, context):
-    items = conn.execute("SELECT * FROM shop_items WHERE active=1").fetchall()
+    items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=0").fetchall()
     context.user_data["state"] = "shop"
+    context.user_data["shop_is_18plus"] = False
     shop_map = {}
     rows = []
     for it in items:
@@ -4373,9 +4483,10 @@ async def show_shop(update, context):
 
 
 async def show_eighteen_plus_shop(update, context):
-    """Магазин 18+ товаров."""
-    items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
-    context.user_data["state"] = "18plus_shop"
+    """Магазин 18+ товаров (та же таблица shop_items, но is_18plus=1)."""
+    items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=1").fetchall()
+    context.user_data["state"] = "shop"
+    context.user_data["shop_is_18plus"] = True
     shop_map = {}
     rows = []
     for it in items:
@@ -4383,8 +4494,6 @@ async def show_eighteen_plus_shop(update, context):
         shop_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
-    if is_admin(update.effective_user.id):
-        rows.append([KeyboardButton("➕ Добавить товар")])
     rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     text = t("18plus_shop_title") if items else t("18plus_shop_empty")
     await nav(update, context, text, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
@@ -4431,7 +4540,10 @@ async def shop_confirm_router(update, context):
     text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "❌ Отмена":
-        await show_shop(update, context)
+        if context.user_data.get("shop_is_18plus"):
+            await show_eighteen_plus_shop(update, context)
+        else:
+            await show_shop(update, context)
         return
     if text != "✅ Да":
         await update.message.reply_text(t("choose_on_kb"), reply_markup=yes_no_kb())
@@ -4509,78 +4621,6 @@ async def do_purchase(update, context, item):
             main_menu_kb(uid), parse_mode="HTML",
         )
 
-
-async def eighteen_plus_shop_router(update, context):
-    """Магазин 18+ товаров."""
-    text = canon(update.message.text)
-    uid = update.effective_user.id
-    if text == "⬅️ Назад" or text == "🏠 Меню":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(uid))
-        return
-    if text == "➕ Добавить товар" and is_admin(uid):
-        context.user_data["state"] = "18plus_add_title"
-        context.user_data["new_18plus"] = {}
-        await nav(update, context, "📝 Название товара (текст кнопки):", cancel_reply_kb())
-        return
-    item_id = context.user_data.get("shop_map", {}).get(text)
-    if item_id is None:
-        await nav(update, context, t("18plus_shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True)))
-        return
-    item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=? AND active=1", (item_id,)).fetchone()
-    if not item:
-        await nav(update, context, t("item_unavailable"), main_menu_kb(uid))
-        return
-    context.user_data["pending_item"] = item_id
-    context.user_data["state"] = "18plus_confirm"
-    price = item["price"]
-    price_txt = t("price_plain", price=price)
-    await nav(
-        update, context,
-        t("shop_buy_confirm", title=html.escape(item_title(it)), price=price_txt),
-        yes_no_kb(), parse_mode="HTML",
-    )
-
-
-async def eighteen_plus_shop_confirm_router(update, context):
-    text = canon(update.message.text)
-    uid = update.effective_user.id
-    if text == "❌ Отмена":
-        await show_eighteen_plus_shop(update, context)
-        return
-    if text != "✅ Да":
-        await update.message.reply_text(t("choose_on_kb"), reply_markup=yes_no_kb())
-        return
-    item_id = context.user_data.get("pending_item")
-    item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=? AND active=1", (item_id,)).fetchone()
-    if not item:
-        context.user_data["state"] = None
-        await update.message.reply_text(t("item_unavailable"), reply_markup=main_menu_kb(uid))
-        return
-    user = get_user(uid)
-    price = item["price"]
-    if user["coins"] < price:
-        context.user_data["state"] = None
-        await nav(update, context, t("not_enough_coins"), main_menu_kb(uid))
-        return
-    conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (price, uid))
-    conn.execute(
-        "INSERT INTO purchases (user_id, item_id, price_paid, created_at) VALUES (?, ?, ?, ?)",
-        (uid, item["id"], price, now_iso()),
-    )
-    conn.commit()
-    user = get_user(uid)
-    await notify_staff(
-        context,
-        f"💰 Покупка 18+!\nПользователь: {user_mention(user)}\n"
-        f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎",
-        parse_mode="HTML",
-    )
-    context.user_data["state"] = None
-    await nav(update, context, t("18plus_purchase_coins", amt=0), main_menu_kb(uid), parse_mode="HTML")
-
-
-# ── Анкета модератора ──
 
 async def moder_q_router(update, context):
     state = context.user_data.get("state")
@@ -4792,41 +4832,63 @@ async def process_shop_add(update, context):
             context.user_data["state"] = "shop_add_days"
             await update.message.reply_text("На сколько дней давать VIP?", reply_markup=cancel_reply_kb())
         else:
-            save_new_item(item)
-            context.user_data["state"] = None
-            await update.message.reply_text("✅ Товар добавлен!", reply_markup=main_menu_kb(update.effective_user.id))
-            await show_shop(update, context)
+            context.user_data["state"] = "shop_add_category"
+            await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
     elif state == "shop_add_amount":
         if not text.isdigit():
             await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
-        save_new_item(item)
-        context.user_data["state"] = None
-        await update.message.reply_text("✅ Товар добавлен!", reply_markup=main_menu_kb(update.effective_user.id))
-        await show_shop(update, context)
+        context.user_data["state"] = "shop_add_category"
+        await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
     elif state == "shop_add_days":
         if not text.isdigit():
             await update.message.reply_text("Введите число дней:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
+        context.user_data["state"] = "shop_add_category"
+        await update.message.reply_text("В какой раздел добавить товар?", reply_markup=shop_category_kb())
+    elif state == "shop_add_category":
+        if text == "🛒 Обычный товар":
+            item["is_18plus"] = 0
+        elif text == "🔞 Товар 18+":
+            item["is_18plus"] = 1
+        else:
+            await update.message.reply_text("Выберите раздел 👇", reply_markup=shop_category_kb())
+            return
         save_new_item(item)
         context.user_data["state"] = None
-        await update.message.reply_text("✅ VIP-товар добавлен!", reply_markup=main_menu_kb(update.effective_user.id))
-        await show_shop(update, context)
+        is18 = item.get("is_18plus")
+        await update.message.reply_text(
+            "✅ Товар добавлен в раздел 🔞 18+!" if is18 else "✅ Товар добавлен в магазин!",
+            reply_markup=main_menu_kb(update.effective_user.id),
+        )
+        if is18:
+            await show_eighteen_plus_shop(update, context)
+        else:
+            await show_shop(update, context)
+
+
+def shop_category_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("🛒 Обычный товар")],
+        [KeyboardButton("🔞 Товар 18+")],
+        [KeyboardButton("❌ Отмена")],
+    ], resize_keyboard=True))
 
 
 def save_new_item(item):
     rt = item.get("reward_type", "manual")
     conn.execute(
-        "INSERT INTO shop_items (title, title_uz, title_en, price, is_vip, duration_days, reward_type, reward_amount, active) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        "INSERT INTO shop_items (title, title_uz, title_en, price, is_vip, duration_days, reward_type, reward_amount, is_18plus, active) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
         (
             item["title"], item.get("title_uz"), item.get("title_en"), item["price"],
             1 if rt == "vip" else 0,
             item.get("reward_amount") if rt == "vip" else None,
             rt,
             item.get("reward_amount"),
+            item.get("is_18plus", 0),
         ),
     )
     conn.commit()
@@ -5672,100 +5734,6 @@ async def process_star_wizard(update, context):
         )
 
 
-# ── Админ: 18+ магазин ──
-
-async def show_eighteen_plus_admin_menu(update, context):
-    items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
-    lst = "\n".join(f"• {i['title']} — {i['price']} 💎" for i in items) or "(товаров нет)"
-    text = t("18plus_admin_menu") + "\n\nТовары:\n" + lst
-    await update.message.reply_text(text, parse_mode="HTML", reply_markup=eighteen_plus_admin_kb())
-
-
-async def eighteen_plus_admin_router(update, context):
-    text = canon(update.message.text)
-    if text == "⬅️ Назад" or text == "🏠 Меню":
-        context.user_data["state"] = None
-        await show_admin_menu(update, context)
-        return
-    if text == "➕ Добавить товар":
-        context.user_data["state"] = "18plus_add_title"
-        context.user_data["new_18plus"] = {}
-        await update.message.reply_text("Введите название товара:", reply_markup=cancel_reply_kb())
-        return
-    if text == "📋 Список товаров":
-        items = conn.execute("SELECT * FROM eighteen_plus_items WHERE active=1").fetchall()
-        if not items:
-            await update.message.reply_text("Товаров пока нет.")
-            return
-        for item in items:
-            text = f"• <b>{item['title']}</b>\n💰 Цена: {item['price']} 💎\nID: <code>{item['id']}</code>"
-            await update.message.reply_text(text, parse_mode="HTML")
-        return
-    if text == "🗑 Удалить товар":
-        context.user_data["state"] = "18plus_delete_id"
-        await update.message.reply_text("Введите ID товара для удаления:", reply_markup=cancel_reply_kb())
-        return
-    await update.message.reply_text("Выберите действие на клавиатуре 👇", reply_markup=eighteen_plus_admin_kb())
-
-
-async def process_eighteen_plus_admin(update, context):
-    text = canon(update.message.text)
-    state = context.user_data.get("state")
-    if state == "18plus_add_title":
-        if text == "❌ Отмена":
-            context.user_data["state"] = "18plus_admin"
-            await show_eighteen_plus_admin_menu(update, context)
-            return
-        context.user_data["new_18plus"]["title"] = text
-        context.user_data["state"] = "18plus_add_price"
-        await update.message.reply_text("Введите цену в коинах:", reply_markup=cancel_reply_kb())
-        return
-    if state == "18plus_add_price":
-        if text == "❌ Отмена":
-            context.user_data["state"] = "18plus_admin"
-            await show_eighteen_plus_admin_menu(update, context)
-            return
-        if not text.isdigit():
-            await update.message.reply_text("Введите число:")
-            return
-        item = context.user_data["new_18plus"]
-        await update.message.reply_text("⏳ Перевожу название на 3 языка…")
-        ru, uz, en = await translate_to_all(item["title"])
-        conn.execute(
-            "INSERT INTO eighteen_plus_items (title, title_uz, title_en, price) VALUES (?, ?, ?, ?)",
-            (ru, uz, en, int(text)),
-        )
-        conn.commit()
-        context.user_data["state"] = "18plus_admin"
-        await update.message.reply_text(
-            f"✅ Товар добавлен!\n🇷🇺 {ru}\n🇺🇿 {uz}\n🇬🇧 {en}\n💰 Цена: {item['price']} 💎",
-            reply_markup=eighteen_plus_admin_kb(),
-        )
-        return
-    if state == "18plus_delete_id":
-        if text == "❌ Отмена":
-            context.user_data["state"] = "18plus_admin"
-            await show_eighteen_plus_admin_menu(update, context)
-            return
-        if not text.isdigit():
-            await update.message.reply_text("Введите число (ID товара):")
-            return
-        item_id = int(text)
-        item = conn.execute("SELECT * FROM eighteen_plus_items WHERE id=?", (item_id,)).fetchone()
-        if not item:
-            await update.message.reply_text("Товар не найден.")
-            return
-        conn.execute("UPDATE eighteen_plus_items SET active=0 WHERE id=?", (item_id,))
-        conn.commit()
-        context.user_data["state"] = "18plus_admin"
-        await update.message.reply_text(
-            f"✅ Товар «{item['title']}» удалён.",
-            reply_markup=eighteen_plus_admin_kb(),
-        )
-        return
-    await update.message.reply_text("Выберите действие на клавиатуре 👇", reply_markup=eighteen_plus_admin_kb())
-
-
 async def handle_referral(update, context, code, existed):
     """Начисляет коины пригласившему за нового пользователя."""
     if existed:
@@ -6186,6 +6154,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state in ("set_gender_first", "set_gender_profile"):
         await set_gender_from_text(update, context)
         return
+    if state in ("set_age_first", "set_age_profile"):
+        await set_age_from_text(update, context)
+        return
     if state == "awaiting_link_code":
         await process_link_code(update, context, text)
         return
@@ -6204,7 +6175,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "adm_ad_send":
         await process_ad_send(update, context)
         return
-    if state in ("shop_add_title", "shop_add_price", "shop_add_reward", "shop_add_amount", "shop_add_days"):
+    if state in ("shop_add_title", "shop_add_price", "shop_add_reward", "shop_add_amount", "shop_add_days", "shop_add_category"):
         await process_shop_add(update, context)
         return
     if state in ("shop_edit_name", "shop_edit_price", "shop_edit_amount", "shop_edit_days"):
@@ -6298,10 +6269,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == "⭐ Коины за Stars":
             await show_star_admin(update, context)
             return
-        if text == "🔞 18+ магазин":
-            context.user_data["state"] = "18plus_admin"
-            await show_eighteen_plus_admin_menu(update, context)
-            return
     # Главное меню — навигация доступна из любого раздела
     if text == "🔗 Моя ссылка":
         await show_link_menu(update, context)
@@ -6376,12 +6343,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "shop":
         await shop_router(update, context)
         return
-    if state == "18plus_shop":
-        await eighteen_plus_shop_router(update, context)
-        return
-    if state == "18plus_confirm":
-        await eighteen_plus_shop_confirm_router(update, context)
-        return
     if state == "shop_confirm":
         await shop_confirm_router(update, context)
         return
@@ -6393,12 +6354,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "star_admin":
         await star_admin_router(update, context)
-        return
-    if state == "18plus_admin":
-        await eighteen_plus_admin_router(update, context)
-        return
-    if state == "18plus_add_title" or state == "18plus_add_price" or state == "18plus_delete_id":
-        await process_eighteen_plus_admin(update, context)
         return
     # 18+ меню
     if text == "🔞 18+ возраст":
