@@ -4217,8 +4217,14 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     # Уведомить модераторов-наблюдателей и перекинуть их на другую сессию
     await handle_spectators_on_end(context, session["id"])
     # Второму участнику: сообщение «собеседник ушёл» + reply-клавиатура снизу (на его языке)
+    _smode = "normal"
+    try:
+        _smode = session["mode"] or "normal"
+    except (KeyError, IndexError, TypeError):
+        _smode = "normal"
     UD[other_id]["state"] = "rleft"
     UD[other_id]["last_session"] = session["id"]
+    UD[other_id]["last_mode"] = _smode
     _sl = cur_lang()
     set_cur_lang(get_lang(other_id))
     try:
@@ -4304,14 +4310,16 @@ async def rchat_stop(update, context):
 async def rleft_research(update, context):
     """Кнопка «Новый поиск» у того, кого покинули."""
     uid = update.effective_user.id
+    last_mode = context.user_data.get("last_mode", "normal")
     context.user_data["state"] = None
     context.user_data.pop("last_session", None)
+    context.user_data.pop("last_mode", None)
     if get_active_session(uid):
         return
     if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
         await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
         return
-    await _requeue_and_search(context, uid)
+    await _requeue_and_search(context, uid, mode=last_mode)
 
 
 async def rleft_report(update, context):
