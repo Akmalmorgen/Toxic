@@ -5135,6 +5135,11 @@ async def process_shop_add(update, context):
             await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
             return
         item["price"] = int(text)
+        # В 18+ магазине — простой товар (выдаётся вручную), без выбора VIP/Модер/Коины
+        if context.user_data.get("shop_is_18plus"):
+            item["reward_type"] = "manual"
+            await _finalize_new_item(update, context)
+            return
         context.user_data["state"] = "shop_add_reward"
         await update.message.reply_text("🎁 Что получит покупатель при покупке?", reply_markup=reward_type_kb())
     elif state == "shop_add_reward":
