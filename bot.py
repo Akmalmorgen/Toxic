@@ -1199,6 +1199,40 @@ T = {
         "uz": "✅ Tekshirish",
         "en": "✅ Check",
     },
+    "subgate_start": {
+        "ru": (
+            "🔒 <b>Чтобы пользоваться ботом — подпишись 👇</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Нажми на кнопки ниже, подпишись, затем вернись и нажми «✅ Проверить».</i>"
+        ),
+        "uz": (
+            "🔒 <b>Botdan foydalanish uchun — obuna bo'ling 👇</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Quyidagi tugmalarni bosing, obuna bo'ling, keyin qaytib «✅ Tekshirish» ni bosing.</i>"
+        ),
+        "en": (
+            "🔒 <b>To use the bot — subscribe 👇</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            "<i>Tap the buttons below, subscribe, then come back and press «✅ Check».</i>"
+        ),
+    },
+    "link_limit_sub": {
+        "ru": (
+            "⏳ Менять ссылку можно раз в неделю (осталось {days} дн.).\n\n"
+            "🔥 <b>Не хочешь ждать?</b> Подпишись на каналы ниже — и меняй ссылку <b>сколько хочешь, даже без VIP</b> 👇\n"
+            "<i>После подписки снова нажми «✏️ Сменить ссылку».</i>"
+        ),
+        "uz": (
+            "⏳ Havolani haftada bir marta o'zgartirish mumkin ({days} kun qoldi).\n\n"
+            "🔥 <b>Kutishni xohlamaysizmi?</b> Quyidagi kanallarga obuna bo'ling — va havolani <b>xohlagancha, hatto VIPsiz</b> o'zgartiring 👇\n"
+            "<i>Obunadan keyin yana «✏️ Havolani o'zgartirish» ni bosing.</i>"
+        ),
+        "en": (
+            "⏳ You can change your link once a week ({days} days left).\n\n"
+            "🔥 <b>Don't want to wait?</b> Subscribe to the channels below — and change your link <b>as often as you want, even without VIP</b> 👇\n"
+            "<i>After subscribing, tap «✏️ Change link» again.</i>"
+        ),
+    },
     # === Профиль (доп.) ===
     "profile_full": {
         "ru": (
@@ -3178,6 +3212,16 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await handle_incoming_link(update, context, code)
             return
 
+    # 🔒 Принудительная подписка для входа (если включена админом)
+    if get_setting("subgate_enabled", "0") == "1" and not is_admin(tg_user.id):
+        chans = await get_mandatory_channels()
+        if chans and not await user_subscribed_all(context, tg_user.id, chans):
+            await update.message.reply_text(
+                t("subgate_start"), parse_mode="HTML",
+                reply_markup=subscribe_gate_kb(chans),
+            )
+            return
+
     if not user["gender"]:
         context.user_data["state"] = "set_gender_first"
         name = tg_user.first_name or "друг"
@@ -3772,8 +3816,28 @@ async def start_change_link(update, context):
     user = get_user(update.effective_user.id)
     can_change, error_msg = can_change_link(user)
     if not can_change:
-        await nav(update, context, error_msg, link_menu_kb())
-        return
+        # Подписка на обязательные каналы снимает недельный лимит (даже без VIP)
+        chans = await get_mandatory_channels()
+        if chans and await user_subscribed_all(context, update.effective_user.id, chans):
+            can_change = True
+        else:
+            # Предлагаем подписаться, чтобы менять без ожидания
+            days = 7
+            try:
+                last = datetime.fromisoformat(user["link_changed_at"])
+                days = max(1, (last + timedelta(days=LINK_CHANGE_COOLDOWN_DAYS) - now_dt()).days + 1)
+            except (ValueError, TypeError):
+                pass
+            await clean_screen(update, context)
+            if chans:
+                msg = await context.bot.send_message(
+                    update.effective_chat.id, t("link_limit_sub", days=days),
+                    parse_mode="HTML", reply_markup=subscribe_gate_kb(chans))
+                track_extra(context, msg)
+                await send_menu(update, context, t("link_section"), link_menu_kb(), parse_mode="HTML")
+            else:
+                await send_menu(update, context, error_msg, link_menu_kb())
+            return
     context.user_data["state"] = "awaiting_link_code"
     await nav(update, context, t("link_change"), link_code_kb())
 
@@ -4159,6 +4223,47 @@ def subscribe_kb(msg_id, channels):
         rows.append([InlineKeyboardButton(channel_title(c), url=channel_url(c["chat_username"]))])
     rows.append([InlineKeyboardButton(t("btn_check_sub"), callback_data=f"subcheck:{msg_id}")])
     return InlineKeyboardMarkup(rows)
+
+
+def subscribe_gate_kb(channels):
+    """Инлайн-кнопки подписки для входа в бота (+ «Проверить» с callback subgate)."""
+    rows = [[InlineKeyboardButton(channel_title(c), url=channel_url(c["chat_username"]))] for c in channels]
+    rows.append([InlineKeyboardButton(t("btn_check_sub"), callback_data="subgate")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def deliver_start_menu(context, uid):
+    """Показывает приветствие/меню после прохождения гейта подписки (учитывает регистрацию)."""
+    user = get_user(uid)
+    _sl = cur_lang(); set_cur_lang(get_lang(uid))
+    name = html.escape(user["first_name"] or "друг")
+    try:
+        if not user["gender"]:
+            UD[uid]["state"] = "set_gender_first"
+            await context.bot.send_message(uid, t("welcome", name=name), parse_mode="HTML", reply_markup=gender_kb())
+        elif user["age"] is None:
+            UD[uid]["state"] = "set_age_first"
+            await context.bot.send_message(uid, t("age_register_ask"), parse_mode="HTML", reply_markup=ReplyKeyboardRemove())
+        else:
+            await context.bot.send_message(uid, t("welcome_back", name=name), parse_mode="HTML", reply_markup=main_menu_kb(uid))
+    finally:
+        set_cur_lang(_sl)
+
+
+async def on_subgate_check(update, context):
+    """Проверка подписки для входа в бота."""
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    chans = await get_mandatory_channels()
+    if chans and not await user_subscribed_all(context, uid, chans):
+        await query.answer(t("sub_not_found"), show_alert=True)
+        return
+    try:
+        await query.message.delete()
+    except TelegramError:
+        pass
+    await deliver_start_menu(context, uid)
 
 
 async def user_subscribed_all(context, user_id, channels):
@@ -6178,9 +6283,12 @@ async def adm_channels_msg(update, context):
 
 
 def adm_channels_kb():
+    enabled = get_setting("subgate_enabled", "0") == "1"
+    toggle = "🔒 Подписка для входа: ВКЛ" if enabled else "🔓 Подписка для входа: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("➕ Добавить канал")],
         [KeyboardButton("🗑 Удалить канал")],
+        [KeyboardButton(toggle)],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
@@ -6208,6 +6316,15 @@ async def adm_channels_router(update, context):
         return
 
     if state == "adm_channels_menu":
+        if ctext.startswith("🔒 Подписка для входа") or ctext.startswith("🔓 Подписка для входа") or "Подписка для входа" in ctext:
+            cur = get_setting("subgate_enabled", "0") == "1"
+            set_setting("subgate_enabled", "0" if cur else "1")
+            await update.message.reply_text(
+                "🔓 Подписка для входа ВЫКЛЮЧЕНА. Подписка нужна только для удаления сообщений."
+                if cur else
+                "🔒 Подписка для входа ВКЛЮЧЕНА. Теперь, чтобы пользоваться ботом, нужно подписаться на каналы.",
+                reply_markup=adm_channels_kb())
+            return
         if ctext == "➕ Добавить канал":
             cnt = conn.execute("SELECT COUNT(*) c FROM mandatory_channels").fetchone()["c"]
             if cnt >= 10:
@@ -7675,6 +7792,7 @@ _CALLBACKS = [
     ("reply:", on_reply_button, False),
     ("del:", on_delete_button, False),
     ("subcheck:", on_subcheck_button, False),
+    ("subgate", on_subgate_check, True),
     ("report_anon:", on_report_anon, False),
     ("reveal:", on_reveal_button, False),
     ("reveal_pay:", on_reveal_pay, False),
