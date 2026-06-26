@@ -7207,6 +7207,7 @@ async def on_ref_info(update, context):
 async def show_referral(update, context):
     uid = update.effective_user.id
     await clean_screen(update, context)
+    context.user_data.pop("top_msg_id", None)
     link = await build_start_link(context, f"ref_{uid}")
     total = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["c"]
     earned = conn.execute("SELECT COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["s"]
@@ -7330,6 +7331,7 @@ async def referral_router(update, context):
     text = canon(update.message.text)
     uid = update.effective_user.id
     if text == "⬅️ Назад":
+        context.user_data.pop("top_msg_id", None)
         context.user_data["state"] = None
         await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
@@ -7343,21 +7345,33 @@ async def referral_router(update, context):
 
 
 async def show_top(update, context):
+    # Показываем топ НАД реф-ссылкой, НЕ удаляя её. Всё чистится только по «⬅️ Назад».
+    try:
+        await update.message.delete()  # убираем только нажатие пользователя
+    except TelegramError:
+        pass
+    # если топ уже показывали (повторное нажатие) — заменяем старый список
+    prev = context.user_data.get("top_msg_id")
+    if prev:
+        await try_delete_message(context, update.effective_chat.id, prev)
     rows = conn.execute(
         "SELECT referrer_id, COUNT(*) c, COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE active=1 "
         "GROUP BY referrer_id ORDER BY c DESC, s DESC LIMIT 10"
     ).fetchall()
     if not rows:
-        await nav(update, context, t("top_empty"), referral_kb(update.effective_user.id))
-        return
-    medals = ["🥇", "🥈", "🥉"]
-    lines = [t("top_title"), "━━━━━━━━━━━━━━━━━━━━"]
-    for i, r in enumerate(rows):
-        u = conn.execute("SELECT * FROM users WHERE tg_id=?", (r["referrer_id"],)).fetchone()
-        name = u["first_name"] if (u and u["first_name"]) else f"ID {r['referrer_id']}"
-        prefix = medals[i] if i < 3 else f"{i + 1}."
-        lines.append(f"{prefix} {html.escape(name)} — {r['c']} 👥 ({r['s']} 💎)")
-    await nav(update, context, "\n".join(lines), referral_kb(), parse_mode="HTML")
+        text = t("top_empty")
+    else:
+        medals = ["🥇", "🥈", "🥉"]
+        lines = [t("top_title"), "━━━━━━━━━━━━━━━━━━━━"]
+        for i, r in enumerate(rows):
+            u = conn.execute("SELECT * FROM users WHERE tg_id=?", (r["referrer_id"],)).fetchone()
+            name = u["first_name"] if (u and u["first_name"]) else f"ID {r['referrer_id']}"
+            prefix = medals[i] if i < 3 else f"{i + 1}."
+            lines.append(f"{prefix} {html.escape(name)} — {r['c']} 👥 ({r['s']} 💎)")
+        text = "\n".join(lines)
+    msg = await context.bot.send_message(update.effective_chat.id, text, parse_mode="HTML")
+    context.user_data["top_msg_id"] = msg.message_id
+    track_extra(context, msg)  # удалится при «⬅️ Назад» вместе с реф-ссылкой
 
 
 async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
