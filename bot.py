@@ -951,8 +951,6 @@ BTN = {
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
     "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
-    "🛠 Админ панель": ("🛠 Admin panel", "🛠 Admin panel"),
-    "🔑 Ключ": ("🔑 Kalit", "🔑 Key"),
     "👨 Мужской": ("👨 Erkak", "👨 Male"),
     "👩 Женский": ("👩 Ayol", "👩 Female"),
     "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
