@@ -3248,6 +3248,31 @@ async def grant_daily_bonus(uid, context):
         pass
 
 
+async def notify_admins_new_user(context, tg_user):
+    """Уведомляет всех админов о новом пользователе: имя, ID, @username, время."""
+    uname = f"@{tg_user.username}" if getattr(tg_user, "username", None) else "—"
+    name = html.escape(tg_user.first_name or "—")
+    when = now_dt().strftime("%d.%m.%Y %H:%M")
+    try:
+        total = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
+    except Exception:  # noqa
+        total = "?"
+    text = (
+        "🆕 <b>Новый пользователь!</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Имя: <b>{name}</b>\n"
+        f"🆔 ID: <code>{tg_user.id}</code>\n"
+        f"🔗 Username: {uname}\n"
+        f"🕒 Время: {when} (UTC)\n"
+        f"📊 Всего в боте: <b>{total}</b>"
+    )
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(admin_id, text, parse_mode="HTML")
+        except TelegramError:
+            pass
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = update.effective_user
     existed = get_user(tg_user.id) is not None
@@ -3255,6 +3280,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_banned(user):
         await update.message.reply_text(t("banned"))
         return
+    # Уведомление админам о новом пользователе (только при первом старте)
+    if not existed and not is_admin(tg_user.id):
+        await notify_admins_new_user(context, tg_user)
     await grant_daily_bonus(tg_user.id, context)
     args = context.args
 
@@ -5174,8 +5202,13 @@ async def attach_spectator(context, mod_id, session, auto=False):
     SESSION_SPECTATORS[session["id"]].add(mod_id)
     UD[mod_id]["state"] = "tg_watch"
     u1 = get_user(session["user1_id"]); u2 = get_user(session["user2_id"])
+    try:
+        smode = session["mode"] or "normal"
+    except (KeyError, IndexError, TypeError):
+        smode = "normal"
+    mlabel = "🔞 18+ чат" if smode == "18plus" else "🎲 Обычный чат"
     head = "🔄 <b>Новая сессия для наблюдения</b>" if auto else "👁 <b>Вы наблюдаете за сессией</b>"
-    info = (f"{head}\n1️⃣ {user_mention(u1)}\n2️⃣ {user_mention(u2)}\n\n"
+    info = (f"{head}  ({mlabel})\n1️⃣ {user_mention(u1)}\n2️⃣ {user_mention(u2)}\n\n"
             "Сообщения участников приходят сюда. Кнопки ниже — забанить.")
     try:
         await context.bot.send_message(mod_id, info, parse_mode="HTML", reply_markup=tg_watch_kb())
@@ -5225,13 +5258,18 @@ def active_sessions_list_text():
     ).fetchall()
     if not rows:
         return None
-    lines = ["🎲 <b>Активные сессии рулетки</b>", "━━━━━━━━━━━━━━━━━━━━"]
+    lines = ["🎲 <b>Активные сессии рулетки</b>  (🔞 — 18+ чат)", "━━━━━━━━━━━━━━━━━━━━"]
     for s in rows:
         u1 = get_user(s["user1_id"]); u2 = get_user(s["user2_id"])
         g1 = gender_label(u1["gender"]) if u1 and u1["gender"] else "—"
         g2 = gender_label(u2["gender"]) if u2 and u2["gender"] else "—"
+        try:
+            smode = s["mode"] or "normal"
+        except (KeyError, IndexError, TypeError):
+            smode = "normal"
+        micon = "🔞" if smode == "18plus" else "🎲"
         lines.append(
-            f"#{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) ↔ 2️⃣ <code>{s['user2_id']}</code> ({g2})"
+            f"{micon} #{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) ↔ 2️⃣ <code>{s['user2_id']}</code> ({g2})"
         )
     lines.append("\n👁 Введите ID одного из участников, чтобы наблюдать:")
     return "\n".join(lines)
