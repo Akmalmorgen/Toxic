@@ -478,7 +478,8 @@ def init_db():
     );
     CREATE TABLE IF NOT EXISTS mandatory_channels (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_username TEXT NOT NULL
+        chat_username TEXT NOT NULL,
+        title TEXT
     );
     CREATE TABLE IF NOT EXISTS ad_config (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -593,6 +594,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN age TEXT",
         "ALTER TABLE users ADD COLUMN age_consent INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN eighteenplus_until TEXT",
+        "ALTER TABLE mandatory_channels ADD COLUMN title TEXT",
         "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
         "ALTER TABLE roulette_queue ADD COLUMN actual_age INTEGER",
         "ALTER TABLE roulette_queue ADD COLUMN age_min INTEGER",
@@ -939,6 +941,9 @@ BTN = {
     "📤 Выгрузить пользователей": ("📤 Foydalanuvchilarni yuklash", "📤 Export users"),
     "💰 Начислить коины": ("💰 Coin qo'shish", "💰 Add coins"),
     "📢 Обязательные каналы": ("📢 Majburiy kanallar", "📢 Required channels"),
+    "➕ Добавить канал": ("➕ Kanal qo'shish", "➕ Add channel"),
+    "🗑 Удалить канал": ("🗑 Kanalni o'chirish", "🗑 Delete channel"),
+    "✅ Сохранить": ("✅ Saqlash", "✅ Save"),
     "📣 Реклама": ("📣 Reklama", "📣 Ad"),
     "✉️ Рассылка": ("✉️ Xabar tarqatish", "✉️ Broadcast"),
     "📢 Рассылка": ("📢 Xabar tarqatish", "📢 Broadcast"),
@@ -1174,6 +1179,25 @@ T = {
         "ru": "Чтобы удалить сообщение, подпишись на канал(ы):\n\n",
         "uz": "Xabarni o'chirish uchun kanal(lar)ga obuna bo'ling:\n\n",
         "en": "To delete the message, subscribe to the channel(s):\n\n",
+    },
+    "sub_to_delete_short": {
+        "ru": (
+            "🔒 <b>Чтобы удалить сообщение — подпишись 👇</b>\n"
+            "<i>Нажми на кнопки ниже, подпишись, вернись и нажми «✅ Проверить».</i>"
+        ),
+        "uz": (
+            "🔒 <b>Xabarni o'chirish uchun — obuna bo'ling 👇</b>\n"
+            "<i>Quyidagi tugmalarni bosing, obuna bo'ling, qayting va «✅ Tekshirish» ni bosing.</i>"
+        ),
+        "en": (
+            "🔒 <b>To delete the message — subscribe 👇</b>\n"
+            "<i>Tap the buttons below, subscribe, come back and press «✅ Check».</i>"
+        ),
+    },
+    "btn_check_sub": {
+        "ru": "✅ Проверить",
+        "uz": "✅ Tekshirish",
+        "en": "✅ Check",
     },
     # === Профиль (доп.) ===
     "profile_full": {
@@ -4086,14 +4110,68 @@ async def get_mandatory_channels():
     return conn.execute("SELECT * FROM mandatory_channels").fetchall()
 
 
+def channel_url(raw):
+    """Строит кликабельную ссылку из @username / t.me/... / полной ссылки."""
+    raw = (raw or "").strip()
+    if raw.startswith("http://") or raw.startswith("https://"):
+        return raw
+    if raw.startswith("t.me/") or raw.startswith("telegram.me/"):
+        return "https://" + raw
+    return "https://t.me/" + raw.lstrip("@")
+
+
+def channel_title(ch):
+    """Название кнопки канала: кастомное или из ссылки."""
+    try:
+        ttl = ch["title"]
+    except (KeyError, IndexError, TypeError):
+        ttl = None
+    if ttl:
+        return ttl
+    raw = (ch["chat_username"] or "").strip()
+    name = raw.lstrip("@").rstrip("/").split("/")[-1]
+    return "📢 " + (name or "Канал")
+
+
+def _chat_ref_for_check(raw):
+    """Возвращает @username для проверки подписки или None, если проверить нельзя
+    (приватная ссылка-приглашение, бот и т.п.)."""
+    raw = (raw or "").strip()
+    if raw.startswith("@"):
+        return raw
+    low = raw.lower()
+    if "t.me/" in low:
+        tail = raw.split("t.me/", 1)[1].strip("/")
+        # приватные инвайты (+xxx / joinchat) проверить нельзя
+        if tail.startswith("+") or tail.lower().startswith("joinchat"):
+            return None
+        tail = tail.split("?")[0].split("/")[0]
+        return "@" + tail if tail else None
+    if raw and not raw.startswith("http"):
+        return "@" + raw.lstrip("@")
+    return None
+
+
+def subscribe_kb(msg_id, channels):
+    """Инлайн-кнопки: каждый канал — кнопка-ссылка (со стрелкой) + кнопка «Проверить»."""
+    rows = []
+    for c in channels:
+        rows.append([InlineKeyboardButton(channel_title(c), url=channel_url(c["chat_username"]))])
+    rows.append([InlineKeyboardButton(t("btn_check_sub"), callback_data=f"subcheck:{msg_id}")])
+    return InlineKeyboardMarkup(rows)
+
+
 async def user_subscribed_all(context, user_id, channels):
     for ch in channels:
+        ref = _chat_ref_for_check(ch["chat_username"])
+        if ref is None:
+            continue  # проверить нельзя (бот/приватная ссылка) — не блокируем
         try:
-            member = await context.bot.get_chat_member(ch["chat_username"], user_id)
+            member = await context.bot.get_chat_member(ref, user_id)
             if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
                 return False
         except TelegramError:
-            return False
+            continue  # бот не админ в канале/не нашёл — пропускаем, не блокируем намертво
     return True
 
 
@@ -4105,10 +4183,10 @@ async def on_delete_button(update, context):
     if channels:
         ok = await user_subscribed_all(context, query.from_user.id, channels)
         if not ok:
-            text = t("sub_to_delete")
-            text += "\n".join(f"https://t.me/{c['chat_username'].lstrip('@')}" for c in channels)
-            kb = InlineKeyboardMarkup([[InlineKeyboardButton(t("btn_subscribed"), callback_data=f"subcheck:{msg_id}")]])
-            await query.message.reply_text(text, reply_markup=kb)
+            await query.message.reply_text(
+                t("sub_to_delete_short"), parse_mode="HTML",
+                reply_markup=subscribe_kb(msg_id, channels),
+            )
             return
     await do_delete_message(query, context, msg_id)
 
@@ -4120,7 +4198,7 @@ async def on_subcheck_button(update, context):
     channels = await get_mandatory_channels()
     ok = await user_subscribed_all(context, query.from_user.id, channels)
     if not ok:
-        await query.message.reply_text(t("sub_not_found"))
+        await query.answer(t("sub_not_found"), show_alert=True)
         return
     await do_delete_message(query, context, msg_id)
 
@@ -6083,12 +6161,130 @@ async def adm_export_msg(update, context):
 
 async def adm_channels_msg(update, context):
     channels = await get_mandatory_channels()
-    text = "Обязательные каналы:\n" + ("\n".join(c["chat_username"] for c in channels) or "(пусто)")
-    context.user_data["state"] = "adm_channel_add"
+    if channels:
+        lst = "\n".join(f"{i+1}. {channel_title(c)} → {c['chat_username']}" for i, c in enumerate(channels))
+    else:
+        lst = "(пусто)"
+    context.user_data["state"] = "adm_channels_menu"
     await update.message.reply_text(
-        text + "\n\nОтправь @username канала, чтобы добавить, или «❌ Отмена».",
-        reply_markup=cancel_reply_kb(),
+        f"📢 <b>Обязательные каналы</b> ({len(channels)}/10)\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"<blockquote>{lst}</blockquote>\n"
+        "Это каналы/чаты/боты, на которые нужно подписаться, чтобы <b>удалить сообщение</b>.\n"
+        "Выбери действие 👇",
+        parse_mode="HTML",
+        reply_markup=adm_channels_kb(),
     )
+
+
+def adm_channels_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("➕ Добавить канал")],
+        [KeyboardButton("🗑 Удалить канал")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
+
+
+async def adm_channels_router(update, context):
+    """Управление обязательными каналами: меню → название → ссылка → предпросмотр → сохранить."""
+    state = context.user_data.get("state")
+    text = (update.message.text or "").strip()
+    ctext = canon(text)
+    uid = update.effective_user.id
+    if not is_admin(uid):
+        context.user_data["state"] = None
+        return
+    # Общие выходы
+    if ctext in ("⬅️ Назад", "🏠 Меню") and state in ("adm_channels_menu",):
+        context.user_data["state"] = None
+        if ctext == "🏠 Меню":
+            await go_home(update, context)
+        else:
+            await show_admin_menu(update, context)
+        return
+    if ctext == "❌ Отмена":
+        context.user_data.pop("new_channel", None)
+        await adm_channels_msg(update, context)
+        return
+
+    if state == "adm_channels_menu":
+        if ctext == "➕ Добавить канал":
+            cnt = conn.execute("SELECT COUNT(*) c FROM mandatory_channels").fetchone()["c"]
+            if cnt >= 10:
+                await update.message.reply_text("Достигнут максимум — 10 каналов. Удали лишний, чтобы добавить новый.", reply_markup=adm_channels_kb())
+                return
+            context.user_data["new_channel"] = {}
+            context.user_data["state"] = "adm_ch_name"
+            await update.message.reply_text(
+                "📝 Введите <b>название кнопки</b> (как она будет видна пользователю, например: «Наш канал 📢»):",
+                parse_mode="HTML", reply_markup=cancel_reply_kb())
+            return
+        if ctext == "🗑 Удалить канал":
+            channels = await get_mandatory_channels()
+            if not channels:
+                await update.message.reply_text("Каналов нет.", reply_markup=adm_channels_kb())
+                return
+            rows = [[KeyboardButton(f"{i+1}. {channel_title(c)}")] for i, c in enumerate(channels)]
+            rows.append([KeyboardButton("⬅️ Назад")])
+            context.user_data["del_map"] = {f"{i+1}. {channel_title(c)}": c["id"] for i, c in enumerate(channels)}
+            context.user_data["state"] = "adm_ch_delete"
+            await update.message.reply_text("Выбери канал для удаления 👇", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
+            return
+        await update.message.reply_text("Выбери действие 👇", reply_markup=adm_channels_kb())
+        return
+
+    if state == "adm_ch_name":
+        context.user_data["new_channel"]["title"] = text
+        context.user_data["state"] = "adm_ch_link"
+        await update.message.reply_text(
+            "🔗 Теперь вставь <b>@канал</b>, чат, бота или ссылку (https://t.me/...):",
+            parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+
+    if state == "adm_ch_link":
+        context.user_data["new_channel"]["link"] = text
+        title = context.user_data["new_channel"]["title"]
+        # Предпросмотр — как будет выглядеть кнопка
+        preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=channel_url(text))]])
+        context.user_data["state"] = "adm_ch_confirm"
+        await update.message.reply_text(
+            "👀 <b>Предпросмотр кнопки:</b>\n"
+            f"Название: <b>{html.escape(title)}</b>\n"
+            f"Ссылка: {html.escape(channel_url(text))}\n\n"
+            "Так будет выглядеть кнопка 👇\nВсё верно?",
+            parse_mode="HTML", reply_markup=preview_kb)
+        await update.message.reply_text(
+            "Сохранить?",
+            reply_markup=tr_kb(ReplyKeyboardMarkup([[KeyboardButton("✅ Сохранить")], [KeyboardButton("❌ Отмена")]], resize_keyboard=True)))
+        return
+
+    if state == "adm_ch_confirm":
+        if ctext == "✅ Сохранить" or canon(text) == "✅ Да":
+            nc = context.user_data.get("new_channel", {})
+            conn.execute("INSERT INTO mandatory_channels (chat_username, title) VALUES (?, ?)",
+                         (nc.get("link", ""), nc.get("title")))
+            conn.commit()
+            context.user_data.pop("new_channel", None)
+            await update.message.reply_text("✅ Канал добавлен!", reply_markup=admin_menu_kb())
+            await adm_channels_msg(update, context)
+            return
+        await update.message.reply_text("Нажми «✅ Сохранить» или «❌ Отмена».")
+        return
+
+    if state == "adm_ch_delete":
+        if ctext == "⬅️ Назад":
+            await adm_channels_msg(update, context)
+            return
+        cid = context.user_data.get("del_map", {}).get(text)
+        if cid is None:
+            await update.message.reply_text("Выбери канал на клавиатуре 👇")
+            return
+        conn.execute("DELETE FROM mandatory_channels WHERE id=?", (cid,))
+        conn.commit()
+        context.user_data.pop("del_map", None)
+        await update.message.reply_text("🗑 Канал удалён.", reply_markup=admin_menu_kb())
+        await adm_channels_msg(update, context)
+        return
 
 
 async def process_bcast_audience_text(update, context):
@@ -6143,18 +6339,6 @@ async def process_adm_coins_wizard(update, context):
         except TelegramError:
             pass
 
-
-
-async def process_adm_channel_wizard(update, context):
-    username = update.message.text.strip()
-    if username == "❌ Отмена":
-        context.user_data["state"] = None
-        await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
-        return
-    conn.execute("INSERT INTO mandatory_channels (chat_username) VALUES (?)", (username,))
-    conn.commit()
-    context.user_data["state"] = None
-    await update.message.reply_text(f"Канал {username} добавлен ✅", reply_markup=admin_menu_kb())
 
 
 async def process_adm_ad_wizard(update, context):
@@ -6990,7 +7174,8 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "awaiting_anon_content", "awaiting_reply", "modmsg_text", "rchat", "tg_watch",
         "18plus_rchat",
         "shop_add_title", "shop_edit_name", "adm_ad_text", "adm_ad_button_text",
-        "adm_ad_button_url", "adm_bcast_content", "adm_channel_add",
+        "adm_ad_button_url", "adm_bcast_content",
+        "adm_ch_name", "adm_ch_link",
     }
     _NAV = {
         "🔗 Моя ссылка": show_link_menu, "🎲 Чат-рулетка": show_roulette_entry,
@@ -7119,8 +7304,8 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state and state.startswith("adm_coins_"):
         await process_adm_coins_wizard(update, context)
         return
-    if state == "adm_channel_add":
-        await process_adm_channel_wizard(update, context)
+    if state in ("adm_channels_menu", "adm_ch_name", "adm_ch_link", "adm_ch_confirm", "adm_ch_delete"):
+        await adm_channels_router(update, context)
         return
     if state and state.startswith("adm_ad_"):
         await process_adm_ad_wizard(update, context)
