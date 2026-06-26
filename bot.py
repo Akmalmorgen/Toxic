@@ -7934,15 +7934,30 @@ def run_safe_cleanup():
         six_h = (now_dt() - timedelta(hours=6)).isoformat()
         ten_min = (now_dt() - timedelta(minutes=10)).isoformat()
         old_sessions = (now_dt() - timedelta(days=90)).isoformat()
+        old_anon = (now_dt() - timedelta(days=180)).isoformat()
+        del_anon = (now_dt() - timedelta(days=7)).isoformat()
+        old_reports = (now_dt() - timedelta(days=30)).isoformat()
         conn.execute("DELETE FROM link_flow WHERE updated_at < ?", (six_h,))
         conn.execute("DELETE FROM roulette_queue WHERE joined_at < ?", (ten_min,))
         # истёкшие баны (вечные баны хранятся как 9999-... и сюда не попадают)
         conn.execute("DELETE FROM bans WHERE until < ?", (now_iso(),))
+        # завершённые сессии старше 90 дней (статистика профиля по ним всё равно неактуальна)
         conn.execute(
             "DELETE FROM roulette_sessions WHERE active=0 AND ended_at IS NOT NULL AND ended_at < ?",
             (old_sessions,),
         )
+        # анонимки: удалённые — через неделю, любые — через 180 дней (чтобы БД не разрасталась)
+        conn.execute("DELETE FROM anon_messages WHERE deleted=1 AND created_at < ?", (del_anon,))
+        conn.execute("DELETE FROM anon_messages WHERE created_at < ?", (old_anon,))
+        # обработанные жалобы старше 30 дней
+        conn.execute("DELETE FROM reports WHERE status <> 'pending' AND created_at < ?", (old_reports,))
         conn.commit()
+        # SQLite: подрезаем WAL-файл, чтобы он не рос бесконечно при активной записи
+        if not DATABASE_URL:
+            try:
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            except Exception as _e:  # noqa
+                log.warning("wal_checkpoint: %s", _e)
         log.info("janitor: безопасная очистка выполнена")
     except Exception as e:  # noqa
         log.warning("safe_cleanup: %s", e)
@@ -8036,6 +8051,14 @@ async def _janitor_loop():
                 await janitor_heavy()
                 await janitor_unreachable_sweep()
                 set_setting("janitor_last", now_iso())
+                # SQLite: возвращаем освободившееся место ОС после массовых удалений
+                if not DATABASE_URL:
+                    try:
+                        conn.commit()
+                        conn.execute("VACUUM")
+                        log.info("janitor: VACUUM выполнен (место освобождено)")
+                    except Exception as e:  # noqa
+                        log.warning("VACUUM: %s", e)
         except Exception as e:  # noqa
             log.error("janitor_loop: %s", e)
         await asyncio.sleep(JANITOR_WAKE_HOURS * 3600)
@@ -8067,7 +8090,17 @@ async def _run():
     asyncio.create_task(_matchmaker_loop())
     asyncio.create_task(_janitor_loop())
     log.info("Бот запущен, поллинг...")
-    await dp.start_polling(bot)
+    # Устойчивый поллинг: при сетевом сбое не падаем, а перезапускаемся через паузу
+    while True:
+        try:
+            await dp.start_polling(bot)
+            break  # штатное завершение
+        except TelegramConflictError as e:
+            log.error("Conflict: запущено несколько инстансов бота. %s", e)
+            break
+        except Exception as e:  # noqa
+            log.error("Поллинг упал, перезапуск через 5с: %s", e)
+            await asyncio.sleep(5)
 
 
 def main():
