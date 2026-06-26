@@ -3899,6 +3899,7 @@ async def handle_incoming_link(update, context, code):
     owner = conn.execute("SELECT * FROM users WHERE custom_link=?", (code,)).fetchone()
     if not owner:
         await update.message.reply_text(t("anon_invalid_link"))
+        await deliver_start_menu(context, sender_id)
         return
     if owner["tg_id"] == sender_id:
         await update.message.reply_text(
@@ -3912,6 +3913,7 @@ async def handle_incoming_link(update, context, code):
     ).fetchone()
     if ban:
         await update.message.reply_text(t("anon_banned"))
+        await deliver_start_menu(context, sender_id)
         return
     context.user_data["state"] = "awaiting_anon_type"
     context.user_data["anon_target"] = owner["tg_id"]
@@ -3926,10 +3928,8 @@ async def on_anon_type_text(update, context):
         context.user_data["state"] = None
         context.user_data.pop("anon_target", None)
         clear_link_flow(update.effective_user.id)
-        await update.message.reply_text(
-            t("anon_cancelled_menu"),
-            reply_markup=main_menu_kb(update.effective_user.id)
-        )
+        # Авто-/start после отмены: приветствие + регистрация (если новый) или меню
+        await deliver_start_menu(context, update.effective_user.id)
         return
     if text == "❓ Вопрос":
         msg_type = "question"
@@ -4110,12 +4110,14 @@ async def process_anon_content(update, context):
     context.user_data.pop("anon_type", None)
     clear_link_flow(sender.id)
     if mid is None:
-        await context.bot.send_message(
-            sender.id, t("anon_failed"), reply_markup=main_menu_kb(sender.id)
-        )
+        await context.bot.send_message(sender.id, t("anon_failed"))
+        # Авто-/start: приветствие + регистрация (если новый) или меню
+        await deliver_start_menu(context, sender.id)
         return
     await reward_link_activity(context, sender.id, "sent")
-    await context.bot.send_message(sender.id, t("main_menu"), reply_markup=main_menu_kb(sender.id))
+    # После отправки анонимки автоматически запускаем /start:
+    # новому пользователю — приветствие и регистрация, остальным — главное меню.
+    await deliver_start_menu(context, sender.id)
 
 
 async def on_reply_button(update, context):
