@@ -3060,6 +3060,7 @@ def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -6064,6 +6065,9 @@ async def moder_panel_router(update, context):
     if text == "📤 Выгрузить пользователей":
         await adm_export_msg(update, context)
         return
+    if text == "📢 Обязательные каналы":
+        await adm_channels_msg(update, context)
+        return
     if text == "ℹ️ Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
@@ -6278,19 +6282,22 @@ async def adm_channels_msg(update, context):
         "Это каналы/чаты/боты, на которые нужно подписаться, чтобы <b>удалить сообщение</b>.\n"
         "Выбери действие 👇",
         parse_mode="HTML",
-        reply_markup=adm_channels_kb(),
+        reply_markup=adm_channels_kb(update.effective_user.id),
     )
 
 
-def adm_channels_kb():
-    enabled = get_setting("subgate_enabled", "0") == "1"
-    toggle = "🔒 Подписка для входа: ВКЛ" if enabled else "🔓 Подписка для входа: ВЫКЛ"
-    return tr_kb(ReplyKeyboardMarkup([
+def adm_channels_kb(uid=None):
+    rows = [
         [KeyboardButton("➕ Добавить канал")],
         [KeyboardButton("🗑 Удалить канал")],
-        [KeyboardButton(toggle)],
-        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
-    ], resize_keyboard=True))
+    ]
+    # Переключатель «Подписка для входа» — только у админа
+    if uid is not None and is_admin(uid):
+        enabled = get_setting("subgate_enabled", "0") == "1"
+        toggle = "🔒 Подписка для входа: ВКЛ" if enabled else "🔓 Подписка для входа: ВЫКЛ"
+        rows.append([KeyboardButton(toggle)])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 async def adm_channels_router(update, context):
@@ -6299,7 +6306,7 @@ async def adm_channels_router(update, context):
     text = (update.message.text or "").strip()
     ctext = canon(text)
     uid = update.effective_user.id
-    if not is_admin(uid):
+    if not is_staff(uid):
         context.user_data["state"] = None
         return
     # Общие выходы
@@ -6307,8 +6314,10 @@ async def adm_channels_router(update, context):
         context.user_data["state"] = None
         if ctext == "🏠 Меню":
             await go_home(update, context)
-        else:
+        elif is_admin(uid):
             await show_admin_menu(update, context)
+        else:
+            await show_moder_menu(update, context)
         return
     if ctext == "❌ Отмена":
         context.user_data.pop("new_channel", None)
@@ -6316,19 +6325,22 @@ async def adm_channels_router(update, context):
         return
 
     if state == "adm_channels_menu":
-        if ctext.startswith("🔒 Подписка для входа") or ctext.startswith("🔓 Подписка для входа") or "Подписка для входа" in ctext:
+        if (ctext.startswith("🔒 Подписка для входа") or ctext.startswith("🔓 Подписка для входа") or "Подписка для входа" in ctext):
+            if not is_admin(uid):
+                await update.message.reply_text("Эта настройка доступна только администратору.", reply_markup=adm_channels_kb(uid))
+                return
             cur = get_setting("subgate_enabled", "0") == "1"
             set_setting("subgate_enabled", "0" if cur else "1")
             await update.message.reply_text(
                 "🔓 Подписка для входа ВЫКЛЮЧЕНА. Подписка нужна только для удаления сообщений."
                 if cur else
                 "🔒 Подписка для входа ВКЛЮЧЕНА. Теперь, чтобы пользоваться ботом, нужно подписаться на каналы.",
-                reply_markup=adm_channels_kb())
+                reply_markup=adm_channels_kb(uid))
             return
         if ctext == "➕ Добавить канал":
             cnt = conn.execute("SELECT COUNT(*) c FROM mandatory_channels").fetchone()["c"]
             if cnt >= 10:
-                await update.message.reply_text("Достигнут максимум — 10 каналов. Удали лишний, чтобы добавить новый.", reply_markup=adm_channels_kb())
+                await update.message.reply_text("Достигнут максимум — 10 каналов. Удали лишний, чтобы добавить новый.", reply_markup=adm_channels_kb(uid))
                 return
             context.user_data["new_channel"] = {}
             context.user_data["state"] = "adm_ch_name"
@@ -6339,7 +6351,7 @@ async def adm_channels_router(update, context):
         if ctext == "🗑 Удалить канал":
             channels = await get_mandatory_channels()
             if not channels:
-                await update.message.reply_text("Каналов нет.", reply_markup=adm_channels_kb())
+                await update.message.reply_text("Каналов нет.", reply_markup=adm_channels_kb(uid))
                 return
             rows = [[KeyboardButton(f"{i+1}. {channel_title(c)}")] for i, c in enumerate(channels)]
             rows.append([KeyboardButton("⬅️ Назад")])
@@ -6347,7 +6359,7 @@ async def adm_channels_router(update, context):
             context.user_data["state"] = "adm_ch_delete"
             await update.message.reply_text("Выбери канал для удаления 👇", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
             return
-        await update.message.reply_text("Выбери действие 👇", reply_markup=adm_channels_kb())
+        await update.message.reply_text("Выбери действие 👇", reply_markup=adm_channels_kb(uid))
         return
 
     if state == "adm_ch_name":
@@ -6382,7 +6394,7 @@ async def adm_channels_router(update, context):
                          (nc.get("link", ""), nc.get("title")))
             conn.commit()
             context.user_data.pop("new_channel", None)
-            await update.message.reply_text("✅ Канал добавлен!", reply_markup=admin_menu_kb())
+            await update.message.reply_text("✅ Канал добавлен!", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
             await adm_channels_msg(update, context)
             return
         await update.message.reply_text("Нажми «✅ Сохранить» или «❌ Отмена».")
@@ -6399,7 +6411,7 @@ async def adm_channels_router(update, context):
         conn.execute("DELETE FROM mandatory_channels WHERE id=?", (cid,))
         conn.commit()
         context.user_data.pop("del_map", None)
-        await update.message.reply_text("🗑 Канал удалён.", reply_markup=admin_menu_kb())
+        await update.message.reply_text("🗑 Канал удалён.", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
         await adm_channels_msg(update, context)
         return
 
