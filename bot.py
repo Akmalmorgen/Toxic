@@ -3981,7 +3981,7 @@ async def handle_incoming_link(update, context, code):
     owner = conn.execute("SELECT * FROM users WHERE custom_link=?", (code,)).fetchone()
     if not owner:
         await update.message.reply_text(t("anon_invalid_link"))
-        await deliver_start_menu(context, sender_id)
+        await deliver_start_menu(context, sender_id, greet=False)
         return
     if owner["tg_id"] == sender_id:
         await update.message.reply_text(
@@ -3995,7 +3995,7 @@ async def handle_incoming_link(update, context, code):
     ).fetchone()
     if ban:
         await update.message.reply_text(t("anon_banned"))
-        await deliver_start_menu(context, sender_id)
+        await deliver_start_menu(context, sender_id, greet=False)
         return
     context.user_data["state"] = "awaiting_anon_type"
     context.user_data["anon_target"] = owner["tg_id"]
@@ -4010,8 +4010,8 @@ async def on_anon_type_text(update, context):
         context.user_data["state"] = None
         context.user_data.pop("anon_target", None)
         clear_link_flow(update.effective_user.id)
-        # Авто-/start после отмены: приветствие + регистрация (если новый) или меню
-        await deliver_start_menu(context, update.effective_user.id)
+        # Авто-/start после отмены: новому — приветствие+регистрация, остальным — просто меню
+        await deliver_start_menu(context, update.effective_user.id, greet=False)
         return
     if text == "❓ Вопрос":
         msg_type = "question"
@@ -4193,13 +4193,13 @@ async def process_anon_content(update, context):
     clear_link_flow(sender.id)
     if mid is None:
         await context.bot.send_message(sender.id, t("anon_failed"))
-        # Авто-/start: приветствие + регистрация (если новый) или меню
-        await deliver_start_menu(context, sender.id)
+        # Авто-/start: приветствие + регистрация (если новый), иначе просто меню
+        await deliver_start_menu(context, sender.id, greet=False)
         return
     await reward_link_activity(context, sender.id, "sent")
-    # После отправки анонимки автоматически запускаем /start:
-    # новому пользователю — приветствие и регистрация, остальным — главное меню.
-    await deliver_start_menu(context, sender.id)
+    # После отправки анонимки: новому пользователю — приветствие и регистрация,
+    # уже зарегистрированному — просто главное меню (без спама «С возвращением»).
+    await deliver_start_menu(context, sender.id, greet=False)
 
 
 async def on_reply_button(update, context):
@@ -4329,8 +4329,10 @@ def subscribe_gate_kb(channels):
     return InlineKeyboardMarkup(rows)
 
 
-async def deliver_start_menu(context, uid):
-    """Показывает приветствие/меню после прохождения гейта подписки (учитывает регистрацию)."""
+async def deliver_start_menu(context, uid, greet=True):
+    """Показывает приветствие/меню (учитывает регистрацию).
+    greet=False — для уже зарегистрированных показываем просто главное меню без «С возвращением»
+    (например, после отправки/отмены анонимки — чтобы не спамить приветствием)."""
     user = get_user(uid)
     _sl = cur_lang(); set_cur_lang(get_lang(uid))
     name = html.escape(user["first_name"] or "друг")
@@ -4341,8 +4343,11 @@ async def deliver_start_menu(context, uid):
         elif user["age"] is None:
             UD[uid]["state"] = "set_age_first"
             await context.bot.send_message(uid, t("age_register_ask"), parse_mode="HTML", reply_markup=ReplyKeyboardRemove())
-        else:
+        elif greet:
             await context.bot.send_message(uid, t("welcome_back", name=name), parse_mode="HTML", reply_markup=main_menu_kb(uid))
+        else:
+            UD[uid]["state"] = None
+            await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
     finally:
         set_cur_lang(_sl)
 
