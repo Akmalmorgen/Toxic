@@ -3293,9 +3293,13 @@ async def eighteen_plus_consent_router(update, context):
 async def eighteen_plus_age_router(update, context):
     """Обработка выбора возраста в 18+ рулетке."""
     text = canon(update.message.text)
+    if text == "🏠 Меню":
+        await go_home(update, context)
+        return
     if text == "❌ Отмена" or text == "⬅️ Назад":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        # Шаг назад: к меню 18+
+        context.user_data["state"] = "18plus_menu"
+        await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
         return
     # Несовершеннолетний — сохраняем и предлагаем верификацию
     if text == "🔞 Мне нет 18":
@@ -3461,9 +3465,13 @@ async def show_eighteen_plus_roulette(update, context):
 async def eighteen_plus_pref_router(update, context):
     """Обработка выбора пола в 18+ рулетке."""
     text = canon(update.message.text)
-    if text == "⬅️ Назад" or text == "🏠 Меню":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+    if text == "🏠 Меню":
+        await go_home(update, context)
+        return
+    if text == "⬅️ Назад":
+        # Шаг назад: к меню 18+
+        context.user_data["state"] = "18plus_menu"
+        await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
         return
     pref = {"👨 Парня": "m", "👩 Девушку": "f", "🤷 Любого": "any"}.get(text)
     if not pref:
@@ -3481,9 +3489,13 @@ async def eighteen_plus_pref_router(update, context):
 async def eighteen_plus_age_search_router(update, context):
     """Выбор диапазона возраста для поиска в 18+ рулетке, затем постановка в очередь."""
     text = canon(update.message.text)
-    if text == "⬅️ Назад" or text == "🏠 Меню":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+    if text == "🏠 Меню":
+        await go_home(update, context)
+        return
+    if text == "⬅️ Назад":
+        # Шаг назад: к выбору пола собеседника
+        context.user_data["state"] = "18plus_pref"
+        await nav(update, context, t("roulette_who"), eighteen_plus_roulette_pref_kb())
         return
     if text == "🤷 Любой возраст":
         age_min, age_max = 18, 200
@@ -5336,9 +5348,19 @@ async def back_to_shop(update, context):
 async def shop_router(update, context):
     text = canon(update.message.text)
     uid = update.effective_user.id
+    if text == "🏠 Меню":
+        context.user_data["shop_is_18plus"] = False
+        await go_home(update, context)
+        return
     if text == "⬅️ Назад":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(uid))
+        if context.user_data.get("shop_is_18plus"):
+            # Шаг назад: из 18+ магазина в меню 18+
+            context.user_data["shop_is_18plus"] = False
+            context.user_data["state"] = "18plus_menu"
+            await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
+        else:
+            context.user_data["state"] = None
+            await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
     if text == "➕ Добавить товар" and is_admin(uid):
         context.user_data["state"] = "shop_add_title"
