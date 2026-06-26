@@ -1627,9 +1627,9 @@ T = {
         "en": "👑 <b>VIP management by ID</b>\n\nGrant or revoke VIP for a user 👇",
     },
     "vip_ask_id": {
-        "ru": "Введите tg_id пользователя:",
-        "uz": "Foydalanuvchining tg_id sini kiriting:",
-        "en": "Enter the user's tg_id:",
+        "ru": "Введите <b>tg_id</b> или <b>@username</b> пользователя:",
+        "uz": "Foydalanuvchining <b>tg_id</b> yoki <b>@username</b> ini kiriting:",
+        "en": "Enter the user's <b>tg_id</b> or <b>@username</b>:",
     },
     "vip_ask_days": {
         "ru": "На сколько дней выдать VIP? (число)",
@@ -1647,9 +1647,9 @@ T = {
         "en": "Enter a positive number of days:",
     },
     "vip_user_not_found": {
-        "ru": "Пользователь не найден. Введите другой ID:",
-        "uz": "Foydalanuvchi topilmadi. Boshqa ID kiriting:",
-        "en": "User not found. Enter another ID:",
+        "ru": "Пользователь не найден (он должен быть в боте). Введите ID или @username:",
+        "uz": "Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:",
+        "en": "User not found (they must be in the bot). Enter ID or @username:",
     },
     "vip_granted_admin": {
         "ru": "✅ VIP выдан пользователю <code>{id}</code> на <b>{days}</b> дн.",
@@ -5994,11 +5994,8 @@ async def admin_vip_router(update, context):
         await update.message.reply_text(t("done"), reply_markup=admin_vip_kb())
         return
     if state in ("vip_give_id", "vip_take_id"):
-        if not text.isdigit():
-            await update.message.reply_text(t("vip_id_number"), reply_markup=cancel_reply_kb())
-            return
-        target = int(text)
-        if not get_user(target):
+        target = resolve_user_ref(text)
+        if target is None:
             await update.message.reply_text(t("vip_user_not_found"), reply_markup=cancel_reply_kb())
             return
         if state == "vip_take_id":
@@ -6123,10 +6120,11 @@ async def process_adm_coins_wizard(update, context):
         await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
         return
     if state == "adm_coins_id":
-        if not text.isdigit():
-            await update.message.reply_text("id должен быть числом:")
+        target = resolve_user_ref(update.message.text.strip())
+        if target is None:
+            await update.message.reply_text("Пользователь не найден. Введите ID или @username:", reply_markup=cancel_reply_kb())
             return
-        context.user_data["coins_target"] = int(text)
+        context.user_data["coins_target"] = target
         context.user_data["state"] = "adm_coins_amount"
         await update.message.reply_text("На сколько изменить баланс (можно отрицательное число)?", reply_markup=cancel_reply_kb())
     elif state == "adm_coins_amount":
@@ -7150,7 +7148,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "💰 Начислить коины":
             context.user_data["state"] = "adm_coins_id"
-            await update.message.reply_text("Введи tg_id пользователя:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("Введи tg_id или @username пользователя:", reply_markup=cancel_reply_kb())
             return
         if text == "📢 Обязательные каналы":
             await adm_channels_msg(update, context)
