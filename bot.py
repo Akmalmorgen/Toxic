@@ -362,6 +362,15 @@ if USE_PG:
 else:
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # Настройки производительности и параллельного доступа (важно при тысячах пользователей)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")      # параллельное чтение во время записи
+        conn.execute("PRAGMA synchronous=NORMAL")    # быстрее, безопасно в WAL
+        conn.execute("PRAGMA busy_timeout=5000")     # ждать блокировку до 5с вместо ошибки
+        conn.execute("PRAGMA temp_store=MEMORY")
+        conn.execute("PRAGMA cache_size=-16000")     # ~16 МБ кэша страниц
+    except Exception as _e:
+        log.warning("sqlite pragma skip: %s", _e)
     log.info("БД: sqlite (%s)", DB_PATH)
 
 
@@ -566,6 +575,51 @@ def init_db():
     """)
     conn.commit()
     migrate()
+    ensure_indexes()
+
+
+def ensure_indexes():
+    """Индексы для «горячих» запросов — чтобы БД не тормозила при тысячах пользователей.
+    Работает и для sqlite, и для PostgreSQL (CREATE INDEX IF NOT EXISTS поддерживают оба)."""
+    indexes = [
+        # Главный горячий путь: поиск активной сессии при КАЖДОМ сообщении в рулетке
+        "CREATE INDEX IF NOT EXISTS idx_sessions_active_u1 ON roulette_sessions(active, user1_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_active_u2 ON roulette_sessions(active, user2_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_u1 ON roulette_sessions(user1_id)",
+        "CREATE INDEX IF NOT EXISTS idx_sessions_u2 ON roulette_sessions(user2_id)",
+        # Анонимные сообщения (список «мои анонимки», ответы, ветки)
+        "CREATE INDEX IF NOT EXISTS idx_anon_to ON anon_messages(to_id)",
+        "CREATE INDEX IF NOT EXISTS idx_anon_from ON anon_messages(from_id)",
+        "CREATE INDEX IF NOT EXISTS idx_anon_parent ON anon_messages(parent_id)",
+        # Жалобы (панель модератора)
+        "CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)",
+        "CREATE INDEX IF NOT EXISTS idx_reports_reported ON reports(reported_id)",
+        # Парные баны (проверка при каждой отправке анонимки)
+        "CREATE INDEX IF NOT EXISTS idx_bans_pair ON bans(owner_id, banned_id)",
+        "CREATE INDEX IF NOT EXISTS idx_bans_banned ON bans(banned_id)",
+        # Рефералы (профиль, топ пригласивших)
+        "CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id)",
+        # Покупки
+        "CREATE INDEX IF NOT EXISTS idx_purchases_user ON purchases(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_starpur_user ON star_purchases(user_id)",
+        # Пользователи: поиск по @username и сканы джанитора по активности
+        "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_users_lastactive ON users(last_active)",
+        # Очереди заявок
+        "CREATE INDEX IF NOT EXISTS idx_ageverif_status ON age_verification_requests(status)",
+        "CREATE INDEX IF NOT EXISTS idx_moderapps_status ON moder_apps(status)",
+        # Очередь рулетки по режиму
+        "CREATE INDEX IF NOT EXISTS idx_queue_mode ON roulette_queue(mode)",
+    ]
+    created = 0
+    for q in indexes:
+        try:
+            conn.execute(q)
+            created += 1
+        except Exception as e:
+            log.warning("index skip: %s (%s)", q.split(" ON ")[0], e)
+    conn.commit()
+    log.info("БД: индексы готовы (%d/%d)", created, len(indexes))
 
 
 def migrate():
