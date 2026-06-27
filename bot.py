@@ -29,6 +29,7 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.types import (
     Message, CallbackQuery, ChatMemberUpdated, PreCheckoutQuery, ErrorEvent,
     ReplyKeyboardRemove, ReplyParameters, BufferedInputFile, BotCommand,
+    InputMediaPhoto,
     KeyboardButton as _AiKeyboardButton,
     ReplyKeyboardMarkup as _AiReplyKeyboardMarkup,
     InlineKeyboardButton as _AiInlineKeyboardButton,
@@ -6713,6 +6714,78 @@ def purge_user(uid):
         return False
 
 
+# Буфер для сборки альбомов (несколько фото) при рассылке: key=(uid, media_group_id)
+BCAST_ALBUMS = {}
+
+
+def _is_dead_account(err):
+    """True, если ошибка доставки означает мёртвый аккаунт (не временный сбой)."""
+    s = str(err).lower()
+    keys = ("blocked", "deactivated", "chat not found", "user not found",
+            "bot can't initiate", "bot was blocked", "user is deactivated",
+            "peer_id_invalid", "forbidden")
+    return any(k in s for k in keys)
+
+
+def safe_purge_dead(uid):
+    """Удаляет недоступного пользователя ТОЛЬКО если аккаунт «пустой»
+    (без VIP/коинов/покупок) — чтобы случайно не стереть платящего юзера."""
+    if not user_is_disposable(uid):
+        return False
+    return purge_user(uid)
+
+
+async def _flush_bcast_album(context, key):
+    """Отправляет собранный альбом всем получателям одним сообщением (после дебаунса)."""
+    try:
+        await asyncio.sleep(1.5)  # ждём, пока придут все фото альбома
+    except asyncio.CancelledError:
+        return
+    buf = BCAST_ALBUMS.pop(key, None)
+    if not buf or not buf["file_ids"]:
+        return
+    uid = key[0]
+    back_kb = admin_menu_kb() if buf["is_admin"] else moder_menu_kb()
+    aud = buf["aud"]
+    if aud == "all":
+        rows = conn.execute("SELECT tg_id FROM users").fetchall()
+    else:
+        rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
+    prefix_text = "Админ:\n\n"
+    caption = prefix_text + (buf["caption"] or "")
+    file_ids = buf["file_ids"][:10]  # Telegram: максимум 10 в альбоме
+    sent, failed, removed = 0, 0, 0
+    for r in rows:
+        try:
+            media = [
+                InputMediaPhoto(media=fid, caption=caption if i == 0 else None)
+                for i, fid in enumerate(file_ids)
+            ]
+            await context.bot.send_media_group(r["tg_id"], media)
+            sent += 1
+        except TelegramForbiddenError:
+            failed += 1
+            if safe_purge_dead(r["tg_id"]):
+                removed += 1
+        except TelegramError as e:
+            failed += 1
+            if _is_dead_account(e) and safe_purge_dead(r["tg_id"]):
+                removed += 1
+        await asyncio.sleep(0.03)  # мягкий троттлинг от флуд-лимитов
+    UD[uid]["state"] = "admin" if buf["is_admin"] else "moder"
+    try:
+        await context.bot.send_message(
+            uid,
+            f"📢 Рассылка завершена (альбом из {len(file_ids)} фото).\n"
+            f"✅ Доставлено: {sent}\n"
+            f"❌ Не удалось: {failed}\n"
+            f"🧹 Удалено недоступных: {removed}",
+            reply_markup=back_kb,
+        )
+    except TelegramError:
+        pass
+
+
 async def process_bcast_content(update, context):
     uid = update.effective_user.id
     back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
@@ -6720,13 +6793,34 @@ async def process_bcast_content(update, context):
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
         await update.message.reply_text("Отменено.", reply_markup=back_kb)
         return
+    msg = update.message
+    # Несколько фото = альбом: Telegram шлёт их отдельными сообщениями с общим media_group_id.
+    # Собираем все фото группы и отправляем ОДНИМ альбомом (а не по отдельности).
+    if msg.photo and msg.media_group_id:
+        key = (uid, msg.media_group_id)
+        buf = BCAST_ALBUMS.get(key)
+        if buf is None:
+            buf = {"file_ids": [], "caption": None, "task": None,
+                   "aud": context.user_data.get("bcast_aud", "all"),
+                   "is_admin": is_admin(uid)}
+            BCAST_ALBUMS[key] = buf
+        buf["file_ids"].append(msg.photo[-1].file_id)
+        if msg.caption and not buf["caption"]:
+            buf["caption"] = msg.caption
+        # дебаунс: ждём, пока придут все фото альбома, затем шлём один раз
+        if buf["task"]:
+            buf["task"].cancel()
+        buf["task"] = asyncio.create_task(_flush_bcast_album(context, key))
+        # ВАЖНО: состояние НЕ сбрасываем здесь — иначе следующие фото альбома
+        # не попадут в сборщик. Его сбросит _flush_bcast_album после отправки.
+        return
     aud = context.user_data["bcast_aud"]
     if aud == "all":
         rows = conn.execute("SELECT tg_id FROM users").fetchall()
     else:
         rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
     sent, failed = 0, 0
-    blocked_ids = []
+    dead_ids = []
     prefix_text = "Админ:\n\n"
     for r in rows:
         try:
@@ -6740,15 +6834,17 @@ async def process_bcast_content(update, context):
                 await context.bot.send_voice(r["tg_id"], update.message.voice.file_id)
             sent += 1
         except TelegramForbiddenError:
-            # Пользователь заблокировал бота или не запускал его — кандидат на удаление
+            # Заблокировал/не запускал бота — мёртвый аккаунт
             failed += 1
-            blocked_ids.append(r["tg_id"])
-        except TelegramError:
+            dead_ids.append(r["tg_id"])
+        except TelegramError as e:
             failed += 1
-    # Чистим тех, кто заблокировал/удалил бота (мёртвые аккаунты из старой БД)
+            if _is_dead_account(e):  # «chat not found», «user deactivated» и т.п.
+                dead_ids.append(r["tg_id"])
+    # Сразу чистим недоступных (только «пустые» аккаунты — VIP/коины/покупки не трогаем)
     removed = 0
-    for bid in blocked_ids:
-        if purge_user(bid):
+    for bid in dead_ids:
+        if safe_purge_dead(bid):
             removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
     await update.message.reply_text(
