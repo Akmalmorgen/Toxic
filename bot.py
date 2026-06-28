@@ -1958,7 +1958,8 @@ T = {
             "🚩 <b>Жалобы</b> — список жалоб, бан/отклонение\n"
             "🔨 <b>Бан / Разбан</b> — блок/разблок по ID\n"
             "📊 <b>Статистика</b> — цифры по боту\n"
-            "📤 <b>Выгрузить пользователей</b> — список в .txt"
+            "📤 <b>Выгрузить пользователей</b> — список в .txt\n"
+            "📢 <b>Обязательные каналы</b> — каналы для удаления сообщений: добавить/удалить (вкл/выкл подписки на вход — только у админа)"
             "</blockquote>\n"
             "<b>Скрытые команды</b> (просто напиши в чат):\n"
             "<blockquote>"
@@ -1978,7 +1979,8 @@ T = {
             "🚩 <b>Shikoyatlar</b> — shikoyatlar ro'yxati\n"
             "🔨 <b>Ban / Unban</b> — ID bo'yicha blok/blokdan chiqarish\n"
             "📊 <b>Statistika</b> — bot raqamlari\n"
-            "📤 <b>Foydalanuvchilarni yuklash</b> — .txt ro'yxat"
+            "📤 <b>Foydalanuvchilarni yuklash</b> — .txt ro'yxat\n"
+            "📢 <b>Majburiy kanallar</b> — xabarni o'chirish uchun kanallar: qo'shish/o'chirish"
             "</blockquote>\n"
             "<b>Maxfiy buyruqlar</b> (chatga yozing):\n"
             "<blockquote>"
@@ -1995,7 +1997,8 @@ T = {
             "🚩 <b>Reports</b> — review reports\n"
             "🔨 <b>Ban / Unban</b> — by ID\n"
             "📊 <b>Statistics</b> — bot numbers\n"
-            "📤 <b>Export users</b> — .txt list"
+            "📤 <b>Export users</b> — .txt list\n"
+            "📢 <b>Required channels</b> — channels for message deletion: add/remove"
             "</blockquote>\n"
             "<b>Hidden commands</b> (type in chat):\n"
             "<blockquote>"
@@ -2263,11 +2266,11 @@ T = {
             "<blockquote>"
             "🔗 <b>Моя ссылка</b> — твоя личная ссылка. Кинь её в сторис или другу — и тебе будут писать анонимные сообщения. Ты не узнаешь кто (если не откроешь за ⭐).\n\n"
             "🎲 <b>Чат-рулетка</b> — нажми, выбери кого ищешь (парня/девушку) и бот соединит тебя со случайным собеседником. Не понравился — жми «Далее».\n\n"
-            "👤 <b>Профиль</b> — тут твои данные: пол, возраст, коины 💎, статус VIP, сколько друзей пригласил.\n\n"
+            "👤 <b>Профиль</b> — тут твои данные: пол, возраст, коины 💎, статус VIP, сколько друзей пригласил. Здесь же 🎁 <b>Подарить коины</b> — перевести коины другу по его ID.\n\n"
             "🛒 <b>Магазин</b> — здесь тратишь коины 💎 на VIP и другие штуки.\n\n"
-            "👥 <b>Пригласить</b> — зови друзей по ссылке. За каждого друга <b>+20</b> 💎 (а если ты VIP — <b>+50</b> 💎).\n\n"
+            "👥 <b>Пригласить</b> — зови друзей по ссылке. За каждого друга <b>+20</b> 💎 (а если ты VIP — <b>+50</b> 💎). Внизу 🏆 <b>Топ пригласивших</b>.\n\n"
             "💎 <b>Купить коины</b> — пополнить баланс коинов через Telegram Stars ⭐.\n\n"
-            "🔞 <b>18+</b> — зона для взрослых. Откроется <b>только если тебе есть 18</b>. Возраст указываешь при входе в бота.\n\n"
+            "🔞 <b>18+</b> — зона для взрослых (откроется <b>только если тебе есть 18</b>). Внутри: 🔞 рулетка с поиском по возрасту, 🛒 18+ магазин (купить доступ за коины) и 🎁 <b>Подарить 18+</b> — подарить другу доступ по его ID.\n\n"
             "🌐 <b>Язык</b> — поменять язык: русский, узбекский, английский."
             "</blockquote>\n"
             "💎 <b>Что такое коины?</b>\n"
@@ -2292,11 +2295,11 @@ T = {
             "<blockquote>"
             "🔗 <b>Havolam</b> — shaxsiy havolangiz. Uni storis yoki do'stga tashlang — sizga anonim xabar yozishadi. Kimligini bilmaysiz (⭐ evaziga ochmasangiz).\n\n"
             "🎲 <b>Chat-ruletka</b> — bosing, kimni qidirayotganingizni tanlang (yigit/qiz) va bot sizni tasodifiy suhbatdosh bilan bog'laydi. Yoqmasa — «Keyingi».\n\n"
-            "👤 <b>Profil</b> — ma'lumotlaringiz: jins, yosh, coinlar 💎, VIP holati, nechta do'st taklif qilgansiz.\n\n"
+            "👤 <b>Profil</b> — ma'lumotlaringiz: jins, yosh, coinlar 💎, VIP holati, nechta do'st taklif qilgansiz. Shu yerda 🎁 <b>Coin sovg'a qilish</b> — do'stga ID bo'yicha coin o'tkazish.\n\n"
             "🛒 <b>Do'kon</b> — bu yerda coinlarni 💎 VIP va boshqa narsalarga sarflaysiz.\n\n"
-            "👥 <b>Taklif qilish</b> — do'stlarni havola orqali chaqiring. Har bir do'st uchun <b>+20</b> 💎 (VIP bo'lsangiz — <b>+50</b> 💎).\n\n"
+            "👥 <b>Taklif qilish</b> — do'stlarni havola orqali chaqiring. Har bir do'st uchun <b>+20</b> 💎 (VIP bo'lsangiz — <b>+50</b> 💎). Pastda 🏆 <b>Top taklif qilganlar</b>.\n\n"
             "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali coin balansini to'ldirish.\n\n"
-            "🔞 <b>18+</b> — kattalar zonasi. Faqat <b>18 yoshdan</b> ochiladi. Yoshni botga kirishda kiritasiz.\n\n"
+            "🔞 <b>18+</b> — kattalar zonasi (faqat <b>18 yoshdan</b> ochiladi). Ichida: 🔞 yosh bo'yicha ruletka, 🛒 18+ do'kon (coinga kirish sotib olish) va 🎁 <b>18+ sovg'a qilish</b> — do'stga ID bo'yicha kirish sovg'a qilish.\n\n"
             "🌐 <b>Til</b> — tilni o'zgartirish: rus, o'zbek, ingliz."
             "</blockquote>\n"
             "💎 <b>Coin nima?</b>\n"
@@ -2321,11 +2324,11 @@ T = {
             "<blockquote>"
             "🔗 <b>My link</b> — your personal link. Post it in stories or send to a friend — people will message you anonymously. You won't know who (unless you reveal for ⭐).\n\n"
             "🎲 <b>Chat roulette</b> — tap it, choose who you want (a guy/a girl) and the bot connects you with a random partner. Don't like them — tap «Next».\n\n"
-            "👤 <b>Profile</b> — your info: gender, age, coins 💎, VIP status, how many friends you invited.\n\n"
+            "👤 <b>Profile</b> — your info: gender, age, coins 💎, VIP status, how many friends you invited. Also 🎁 <b>Gift coins</b> — send coins to a friend by their ID.\n\n"
             "🛒 <b>Shop</b> — spend your coins 💎 on VIP and other items here.\n\n"
-            "👥 <b>Invite</b> — invite friends via your link. <b>+20</b> 💎 per friend (VIP gets <b>+50</b> 💎).\n\n"
+            "👥 <b>Invite</b> — invite friends via your link. <b>+20</b> 💎 per friend (VIP gets <b>+50</b> 💎). Below: 🏆 <b>Top inviters</b>.\n\n"
             "💎 <b>Buy coins</b> — top up your coin balance with Telegram Stars ⭐.\n\n"
-            "🔞 <b>18+</b> — an adult zone. Opens <b>only if you're 18+</b>. You set your age when you enter the bot.\n\n"
+            "🔞 <b>18+</b> — an adult zone (opens <b>only if you're 18+</b>). Inside: 🔞 roulette with age search, 🛒 18+ shop (buy access with coins) and 🎁 <b>Gift 18+</b> — gift a friend access by their ID.\n\n"
             "🌐 <b>Language</b> — change language: Russian, Uzbek, English."
             "</blockquote>\n"
             "💎 <b>What are coins?</b>\n"
@@ -3267,6 +3270,35 @@ async def notify_admins_new_user(context, tg_user):
         f"🕒 Время: {when} (UTC)\n"
         f"📊 Всего в боте: <b>{total}</b>"
     )
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(admin_id, text, parse_mode="HTML")
+        except TelegramError:
+            pass
+
+
+async def notify_admins_user_event(context, tg_user, kind, extra=None):
+    """Уведомляет админов о событии пользователя (заблокировал/вернулся и т.п.)."""
+    uid = getattr(tg_user, "id", tg_user)
+    uname = f"@{tg_user.username}" if getattr(tg_user, "username", None) else "—"
+    name = html.escape(getattr(tg_user, "first_name", None) or "—")
+    when = now_dt().strftime("%d.%m.%Y %H:%M")
+    heads = {
+        "blocked": "🚫 <b>Пользователь заблокировал/остановил бота</b>",
+        "unblocked": "✅ <b>Пользователь разблокировал бота (вернулся)</b>",
+        "banned": "⛔ <b>Пользователь забанен</b>",
+    }
+    head = heads.get(kind, "ℹ️ <b>Событие пользователя</b>")
+    text = (
+        f"{head}\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 Имя: <b>{name}</b>\n"
+        f"🆔 ID: <code>{uid}</code>\n"
+        f"🔗 Username: {uname}\n"
+        f"🕒 Время: {when} (UTC)"
+    )
+    if extra:
+        text += f"\n{extra}"
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(admin_id, text, parse_mode="HTML")
@@ -7476,6 +7508,10 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cm or cm.chat.type != "private":
         return
     new_status = cm.new_chat_member.status
+    try:
+        old_status = cm.old_chat_member.status
+    except AttributeError:
+        old_status = None
     uid = cm.from_user.id
     if new_status in ("kicked", "banned"):
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=1", (uid,)).fetchone()
@@ -7495,15 +7531,23 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except TelegramError:
                 pass
         # Авто-очистка: если заблокировавший — «пустой» аккаунт, сразу удаляем из базы
+        purged = False
         if user_is_disposable(uid):
             if purge_user(uid):
+                purged = True
                 log.info("auto-purge: пользователь %s заблокировал бота и удалён (пустой аккаунт)", uid)
+        # Уведомление админам, что пользователь заблокировал/остановил бота
+        extra = "🧹 Пустой аккаунт удалён из базы." if purged else None
+        await notify_admins_user_event(context, cm.from_user, "blocked", extra=extra)
     elif new_status == "member":
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=0", (uid,)).fetchone()
         if ref:
             conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (ref["coins_awarded"], ref["referrer_id"]))
             conn.execute("UPDATE referrals SET active=1 WHERE id=?", (ref["id"],))
             conn.commit()
+        # Уведомляем админов только о реальной разблокировке (а не о первом старте)
+        if old_status in ("kicked", "banned"):
+            await notify_admins_user_event(context, cm.from_user, "unblocked")
 
 
 async def show_help(update, context):
