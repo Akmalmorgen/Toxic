@@ -230,6 +230,8 @@ BAN_DAYS = 7
 ROULETTE_BAN_DAYS = 30           # бан по жалобе из рулетки — на месяц
 ANON_BAN_FOREVER = "9999-12-31T23:59:59"  # бан по жалобе из анонимки — навсегда (попарно)
 ROULETTE_TICK_SECONDS = 3
+SEARCH_TIMEOUT_MIN = 30     # авто-стоп поиска в рулетке, минут
+SEARCH_REMIND_MIN = 5       # как часто напоминать «всё ещё ищем», минут
 LINK_CHANGE_COOLDOWN_DAYS = 7
 VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
 VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
@@ -2521,6 +2523,16 @@ T = {
         "ru": "Идёт поиск собеседника… ⏳",
         "uz": "Suhbatdosh qidirilmoqda… ⏳",
         "en": "Searching for a partner… ⏳",
+    },
+    "search_still": {
+        "ru": "🔎 Всё ещё ищем тебе собеседника… ⏳\nТы в поиске уже <b>{min}</b> мин. Подожди или нажми «⛔ Отменить поиск».",
+        "uz": "🔎 Hali ham suhbatdosh qidirilmoqda… ⏳\nSiz <b>{min}</b> daqiqadan beri qidiruvdasiz. Kuting yoki «⛔ Qidiruvni bekor qilish».",
+        "en": "🔎 Still looking for a partner… ⏳\nYou've been searching for <b>{min}</b> min. Wait or tap «⛔ Stop search».",
+    },
+    "search_timeout": {
+        "ru": "🔍 <b>Поиск остановлен</b> — за {min} мин подходящий собеседник не нашёлся 😕\nПопробуй ещё раз чуть позже!",
+        "uz": "🔍 <b>Qidiruv to'xtatildi</b> — {min} daqiqada mos suhbatdosh topilmadi 😕\nBiroz keyin yana urinib ko'ring!",
+        "en": "🔍 <b>Search stopped</b> — no match found in {min} min 😕\nTry again a bit later!",
     },
     "roulette_found": {
         "ru": (
@@ -5128,6 +5140,95 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     return session
 
 
+async def force_end_session(context, session_id):
+    """Принудительно завершает сессию (бан/блокировка/зависшая) и уведомляет участников."""
+    s = conn.execute("SELECT * FROM roulette_sessions WHERE id=? AND active=1", (session_id,)).fetchone()
+    if not s:
+        return
+    try:
+        smode = s["mode"] or "normal"
+    except (KeyError, IndexError, TypeError):
+        smode = "normal"
+    conn.execute("UPDATE roulette_sessions SET active=0, ended_at=? WHERE id=?", (now_iso(), session_id))
+    conn.commit()
+    # Перекинуть наблюдателей /tg на другую сессию
+    await handle_spectators_on_end(context, session_id)
+    # Уведомить участников, которые ещё «в чате»
+    for uid in (s["user1_id"], s["user2_id"]):
+        st = (UD.get(uid) or {}).get("state")
+        if st in ("rchat", "18plus_rchat"):
+            UD[uid]["state"] = "rleft"
+            UD[uid]["last_session"] = session_id
+            UD[uid]["last_mode"] = smode
+            try:
+                _sl = cur_lang(); set_cur_lang(get_lang(uid))
+                await context.bot.send_message(uid, t("roulette_left"), reply_markup=left_chat_kb())
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+
+
+async def end_dead_sessions(context):
+    """Завершает зависшие сессии: участник удалил бота и был удалён из БД."""
+    rows = conn.execute("SELECT * FROM roulette_sessions WHERE active=1").fetchall()
+    ended = 0
+    for s in rows:
+        if get_user(s["user1_id"]) is None or get_user(s["user2_id"]) is None:
+            await force_end_session(context, s["id"])
+            ended += 1
+    if ended:
+        log.info("end_dead_sessions: завершено зависших сессий=%d", ended)
+
+
+# Память для напоминаний о поиске: user_id -> datetime последнего напоминания
+_QUEUE_REMIND = {}
+
+
+async def queue_maintenance(context):
+    """Авто-стоп долгого поиска + напоминания «всё ещё ищем»."""
+    now = now_dt()
+    rows = conn.execute("SELECT * FROM roulette_queue").fetchall()
+    alive_ids = set()
+    for r in rows:
+        uid = r["user_id"]
+        alive_ids.add(uid)
+        try:
+            joined = datetime.fromisoformat(r["joined_at"])
+        except (ValueError, TypeError):
+            continue
+        mins = (now - joined).total_seconds() / 60.0
+        if mins >= SEARCH_TIMEOUT_MIN:
+            # Авто-стоп поиска
+            conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+            conn.commit()
+            _QUEUE_REMIND.pop(uid, None)
+            if UD.get(uid):
+                UD[uid]["state"] = None
+            try:
+                _sl = cur_lang(); set_cur_lang(get_lang(uid))
+                await context.bot.send_message(
+                    uid, t("search_timeout", min=SEARCH_TIMEOUT_MIN),
+                    parse_mode="HTML", reply_markup=main_menu_kb(uid))
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+        else:
+            last = _QUEUE_REMIND.get(uid, joined)
+            if (now - last).total_seconds() / 60.0 >= SEARCH_REMIND_MIN:
+                _QUEUE_REMIND[uid] = now
+                try:
+                    _sl = cur_lang(); set_cur_lang(get_lang(uid))
+                    await context.bot.send_message(
+                        uid, t("search_still", min=int(mins)), parse_mode="HTML",
+                        reply_markup=searching_kb())
+                    set_cur_lang(_sl)
+                except TelegramError:
+                    pass
+    # подчищаем память от тех, кого уже нет в очереди
+    for gone in [k for k in _QUEUE_REMIND if k not in alive_ids]:
+        _QUEUE_REMIND.pop(gone, None)
+
+
 async def _requeue_and_search(context, uid, mode="normal"):
     """Ставит пользователя в очередь с его прежними настройками и показывает экран поиска."""
     user = get_user(uid)
@@ -5417,8 +5518,8 @@ async def process_tg_pick(update, context):
 
 async def on_tg_ban(update, context):
     query = update.callback_query
-    await query.answer()
     if not is_staff(query.from_user.id):
+        await query.answer(t("staff_only"), show_alert=True)
         return
     _, sid, which = query.data.split(":")
     session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (int(sid),)).fetchone()
@@ -5432,13 +5533,15 @@ async def on_tg_ban(update, context):
     conn.execute("UPDATE users SET is_banned=1 WHERE tg_id=?", (target,))
     conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
     conn.commit()
+    # Завершаем сессию, чтобы она не «висела» в /tg и не крутилась у второго участника
+    await force_end_session(context, session["id"])
     try:
         await context.bot.send_message(target, "🚫 Вы заблокированы в боте.")
     except TelegramError:
         pass
-    await query.answer(f"Пользователь {target} забанен ✅", show_alert=True)
+    await query.answer(f"Пользователь {target} забанен ✅, сессия завершена", show_alert=True)
     try:
-        await context.bot.send_message(query.from_user.id, f"🚫 Забанен {which}️⃣ (ID <code>{target}</code>).", parse_mode="HTML")
+        await context.bot.send_message(query.from_user.id, f"🚫 Забанен {which}️⃣ (ID <code>{target}</code>). Сессия завершена.", parse_mode="HTML")
     except TelegramError:
         pass
 
@@ -6834,6 +6937,11 @@ def purge_user(uid):
         conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+        # Завершаем активные сессии удаляемого, чтобы они не «висели» в рулетке/у модера
+        conn.execute(
+            "UPDATE roulette_sessions SET active=0, ended_at=? WHERE active=1 AND (user1_id=? OR user2_id=?)",
+            (now_iso(), uid, uid),
+        )
         conn.commit()
         return True
     except Exception as e:  # noqa
@@ -7644,6 +7752,16 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
         old_status = None
     uid = cm.from_user.id
     if new_status in ("kicked", "banned"):
+        # Завершаем активную сессию рулетки заблокировавшего, чтобы партнёр не завис
+        try:
+            sess = get_active_session(uid)
+            if sess:
+                await force_end_session(context, sess["id"])
+        except Exception as e:  # noqa
+            log.warning("end session on block %s: %s", uid, e)
+        # Убираем из очереди поиска
+        conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+        conn.commit()
         ref = conn.execute("SELECT * FROM referrals WHERE referred_id=? AND active=1", (uid,)).fetchone()
         if ref:
             conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (ref["coins_awarded"], ref["referrer_id"]))
@@ -8259,7 +8377,7 @@ def run_safe_cleanup():
     """Безопасная очистка мусора. Пользователей и их данные НЕ трогает."""
     try:
         six_h = (now_dt() - timedelta(hours=6)).isoformat()
-        ten_min = (now_dt() - timedelta(minutes=10)).isoformat()
+        ten_min = (now_dt() - timedelta(minutes=120)).isoformat()  # очередь: страховочная зачистка (основное — queue_maintenance каждые ~60с)
         old_sessions = (now_dt() - timedelta(days=90)).isoformat()
         old_anon = (now_dt() - timedelta(days=180)).isoformat()
         del_anon = (now_dt() - timedelta(days=7)).isoformat()
@@ -8394,12 +8512,21 @@ async def _janitor_loop():
 async def _matchmaker_loop():
     """Аналог job_queue.run_repeating: периодически сводит пары в рулетке."""
     ctx = Ctx(0)
+    tick = 0
     while True:
         await asyncio.sleep(ROULETTE_TICK_SECONDS)
         try:
             await roulette_matchmaker(ctx)
         except Exception as e:  # noqa
             log.error("matchmaker: %s", e)
+        tick += 1
+        # Раз в ~60с: авто-стоп долгого поиска, напоминания и зачистка зависших сессий
+        if tick % 20 == 0:
+            try:
+                await queue_maintenance(ctx)
+                await end_dead_sessions(ctx)
+            except Exception as e:  # noqa
+                log.error("queue_maintenance: %s", e)
 
 
 async def _run():
