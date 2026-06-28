@@ -240,8 +240,10 @@ GIFT_18PLUS_PRICE_VIP = 456      # цена подарка 18+ для VIP (со 
 GIFT_18PLUS_DAYS = 30            # на сколько дней открывается 18+ доступ другу
 
 # === Реферальные награды и бонусы за активность по ссылке ===
-REF_REWARD_NORMAL = 20      # коинов за приглашённого друга (обычный)
-REF_REWARD_VIP = 50         # коинов за приглашённого друга (VIP)
+REF_REWARD_NORMAL = 50      # коинов пригласившему за друга (обычный)
+REF_REWARD_VIP = 100        # коинов пригласившему за друга (VIP)
+REF_INVITED_BONUS = 100     # коинов приглашённому другу (пригласил обычный)
+REF_INVITED_BONUS_VIP = 200 # коинов приглашённому другу (пригласил VIP)
 REF_VIP_THRESHOLD = 5       # друзей для бесплатного VIP
 REF_VIP_DAYS = 7            # на сколько дней бесплатный VIP
 REF_MODER_THRESHOLD = 10    # друзей для бесплатной модерки
@@ -1825,6 +1827,21 @@ T = {
         "uz": "🎉 Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> 💎 qo'shildi",
         "en": "🎉 A friend joined via your link! You earned <b>+{reward}</b> 💎",
     },
+    "ref_welcome_bonus": {
+        "ru": "🎁 <b>Добро пожаловать!</b> Ты пришёл по ссылке друга — лови подарок <b>+{n}</b> 💎",
+        "uz": "🎁 <b>Xush kelibsiz!</b> Do'st havolasi orqali keldingiz — sovg'a <b>+{n}</b> 💎",
+        "en": "🎁 <b>Welcome!</b> You joined via a friend's link — here's a gift <b>+{n}</b> 💎",
+    },
+    "ref_progress_title": {
+        "ru": "📊 <b>Прогресс до наград:</b>",
+        "uz": "📊 <b>Mukofotlargacha progress:</b>",
+        "en": "📊 <b>Progress to rewards:</b>",
+    },
+    "ref_friends_word": {
+        "ru": "друзей",
+        "uz": "do'st",
+        "en": "friends",
+    },
     "referral_screen": {
         "ru": (
             "👥 <b>Приглашай друзей — зарабатывай коины!</b>\n"
@@ -1863,9 +1880,9 @@ T = {
         "en": " 👑 (VIP bonus)",
     },
     "referral_bonus_normal": {
-        "ru": " (у VIP — 50 💎)",
-        "uz": " (VIP uchun — 50 💎)",
-        "en": " (VIP gets 50 💎)",
+        "ru": " (у VIP — 100 💎)",
+        "uz": " (VIP uchun — 100 💎)",
+        "en": " (VIP gets 100 💎)",
     },
     "ref_rewards_title": {
         "ru": (
@@ -2269,7 +2286,7 @@ T = {
             "🎲 <b>Чат-рулетка</b> — нажми, выбери кого ищешь (парня/девушку) и бот соединит тебя со случайным собеседником. Не понравился — жми «Далее».\n\n"
             "👤 <b>Профиль</b> — тут твои данные: пол, возраст, коины 💎, статус VIP, сколько друзей пригласил. Здесь же 🎁 <b>Подарить коины</b> — перевести коины другу по его ID.\n\n"
             "🛒 <b>Магазин</b> — здесь тратишь коины 💎 на VIP и другие штуки.\n\n"
-            "👥 <b>Пригласить</b> — зови друзей по ссылке. За каждого друга <b>+20</b> 💎 (а если ты VIP — <b>+50</b> 💎). Внизу 🏆 <b>Топ пригласивших</b>.\n\n"
+            "👥 <b>Пригласить</b> — зови друзей по ссылке. За каждого друга <b>+50</b> 💎 (а если ты VIP — <b>+100</b> 💎). Твой друг тоже получит <b>+100</b> 💎 за вход (а по ссылке VIP — <b>+200</b> 💎). Внизу 🏆 <b>Топ пригласивших</b>.\n\n"
             "💎 <b>Купить коины</b> — пополнить баланс коинов через Telegram Stars ⭐.\n\n"
             "🔞 <b>18+</b> — зона для взрослых (откроется <b>только если тебе есть 18</b>). Внутри: 🔞 рулетка с поиском по возрасту, 🛒 18+ магазин (купить доступ за коины) и 🎁 <b>Подарить 18+</b> — подарить другу доступ по его ID.\n\n"
             "🌐 <b>Язык</b> — поменять язык: русский, узбекский, английский."
@@ -2298,7 +2315,7 @@ T = {
             "🎲 <b>Chat-ruletka</b> — bosing, kimni qidirayotganingizni tanlang (yigit/qiz) va bot sizni tasodifiy suhbatdosh bilan bog'laydi. Yoqmasa — «Keyingi».\n\n"
             "👤 <b>Profil</b> — ma'lumotlaringiz: jins, yosh, coinlar 💎, VIP holati, nechta do'st taklif qilgansiz. Shu yerda 🎁 <b>Coin sovg'a qilish</b> — do'stga ID bo'yicha coin o'tkazish.\n\n"
             "🛒 <b>Do'kon</b> — bu yerda coinlarni 💎 VIP va boshqa narsalarga sarflaysiz.\n\n"
-            "👥 <b>Taklif qilish</b> — do'stlarni havola orqali chaqiring. Har bir do'st uchun <b>+20</b> 💎 (VIP bo'lsangiz — <b>+50</b> 💎). Pastda 🏆 <b>Top taklif qilganlar</b>.\n\n"
+            "👥 <b>Taklif qilish</b> — do'stlarni havola orqali chaqiring. Har bir do'st uchun <b>+50</b> 💎 (VIP bo'lsangiz — <b>+100</b> 💎). Do'stingiz ham kirgani uchun <b>+100</b> 💎 oladi (VIP havola orqali — <b>+200</b> 💎). Pastda 🏆 <b>Top taklif qilganlar</b>.\n\n"
             "💎 <b>Coin sotib olish</b> — Telegram Stars ⭐ orqali coin balansini to'ldirish.\n\n"
             "🔞 <b>18+</b> — kattalar zonasi (faqat <b>18 yoshdan</b> ochiladi). Ichida: 🔞 yosh bo'yicha ruletka, 🛒 18+ do'kon (coinga kirish sotib olish) va 🎁 <b>18+ sovg'a qilish</b> — do'stga ID bo'yicha kirish sovg'a qilish.\n\n"
             "🌐 <b>Til</b> — tilni o'zgartirish: rus, o'zbek, ingliz."
@@ -2327,7 +2344,7 @@ T = {
             "🎲 <b>Chat roulette</b> — tap it, choose who you want (a guy/a girl) and the bot connects you with a random partner. Don't like them — tap «Next».\n\n"
             "👤 <b>Profile</b> — your info: gender, age, coins 💎, VIP status, how many friends you invited. Also 🎁 <b>Gift coins</b> — send coins to a friend by their ID.\n\n"
             "🛒 <b>Shop</b> — spend your coins 💎 on VIP and other items here.\n\n"
-            "👥 <b>Invite</b> — invite friends via your link. <b>+20</b> 💎 per friend (VIP gets <b>+50</b> 💎). Below: 🏆 <b>Top inviters</b>.\n\n"
+            "👥 <b>Invite</b> — invite friends via your link. <b>+50</b> 💎 per friend (VIP gets <b>+100</b> 💎). Your friend also gets <b>+100</b> 💎 for joining (via a VIP link — <b>+200</b> 💎). Below: 🏆 <b>Top inviters</b>.\n\n"
             "💎 <b>Buy coins</b> — top up your coin balance with Telegram Stars ⭐.\n\n"
             "🔞 <b>18+</b> — an adult zone (opens <b>only if you're 18+</b>). Inside: 🔞 roulette with age search, 🛒 18+ shop (buy access with coins) and 🎁 <b>Gift 18+</b> — gift a friend access by their ID.\n\n"
             "🌐 <b>Language</b> — change language: Russian, Uzbek, English."
@@ -7222,18 +7239,34 @@ async def handle_referral(update, context, code, existed):
     if conn.execute("SELECT 1 FROM referrals WHERE referred_id=?", (uid,)).fetchone():
         return
     reward = REF_REWARD_VIP if is_vip(inviter) else REF_REWARD_NORMAL
+    invited_bonus = REF_INVITED_BONUS_VIP if is_vip(inviter) else REF_INVITED_BONUS
     conn.execute(
         "INSERT INTO referrals (referrer_id, referred_id, coins_awarded, active, created_at) VALUES (?, ?, ?, 1, ?)",
         (inviter_id, uid, reward, now_iso()),
     )
     conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (reward, inviter_id))
+    # Бонус самому приглашённому другу (за вход по ссылке)
+    conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (invited_bonus, uid))
     conn.commit()
+    # Уведомляем пригласившего
     try:
         _sl = cur_lang()
         set_cur_lang(get_lang(inviter_id))
         await context.bot.send_message(
             inviter_id,
             t("ref_friend_joined", reward=reward),
+            parse_mode="HTML",
+        )
+        set_cur_lang(_sl)
+    except TelegramError:
+        pass
+    # Уведомляем приглашённого о приветственном бонусе
+    try:
+        _sl = cur_lang()
+        set_cur_lang(get_lang(uid))
+        await context.bot.send_message(
+            uid,
+            t("ref_welcome_bonus", n=invited_bonus),
             parse_mode="HTML",
         )
         set_cur_lang(_sl)
@@ -7373,6 +7406,14 @@ async def on_ref_info(update, context):
     await query.answer(t("ref_info_alert", n=REF_REWARD_NORMAL, v=REF_REWARD_VIP), show_alert=True)
 
 
+def progress_bar(cur, target, slots=10):
+    """Текстовый прогресс-бар: 🟩 заполнено, ⬜ осталось."""
+    if target <= 0:
+        return ""
+    filled = max(0, min(slots, round(slots * cur / target)))
+    return "🟩" * filled + "⬜" * (slots - filled)
+
+
 async def show_referral(update, context):
     uid = update.effective_user.id
     await clean_screen(update, context)
@@ -7383,8 +7424,20 @@ async def show_referral(update, context):
     vip = is_vip(get_user(uid))
     reward = REF_REWARD_VIP if vip else REF_REWARD_NORMAL
     bonus = t("referral_bonus_vip") if vip else t("referral_bonus_normal")
+    # Прогресс-бар до наград (VIP / модерка)
+    fw = t("ref_friends_word")
+    vip_thr = cfg_vip_threshold()
+    mod_thr = cfg_moder_threshold()
+    prog_lines = [t("ref_progress_title")]
+    if vip_thr > 0:
+        prog_lines.append(f"👑 VIP: {progress_bar(total, vip_thr)} {min(total, vip_thr)}/{vip_thr} {fw}")
+    if mod_thr > 0:
+        prog_lines.append(f"🛡 Moder: {progress_bar(total, mod_thr)} {min(total, mod_thr)}/{mod_thr} {fw}")
+    progress_block = "\n".join(prog_lines)
     caption = (
         t("referral_screen", reward=reward, bonus=bonus, total=total, earned=earned, link=html.escape(link))
+        + "\n\n"
+        + progress_block
         + "\n\n"
         + t("ref_rewards_title", vip_n=cfg_vip_threshold(), mod_n=cfg_moder_threshold(),
             vip_d=cfg_vip_days(), mod_d=cfg_moder_days())
