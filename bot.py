@@ -6597,7 +6597,8 @@ async def adm_channels_router(update, context):
         # Защита: модер может удалить только то, что добавил сам
         if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
             await update.message.reply_text(
-                "⛔ Этот канал добавил админ — удалить его может только админ.",
+                "⛔ Удалять можно только те каналы, которые добавил ты сам. "
+                "Каналы админа (или другого модератора) удалить нельзя.",
                 reply_markup=adm_channels_kb(uid))
             context.user_data.pop("del_map", None)
             await adm_channels_msg(update, context)
