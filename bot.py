@@ -650,6 +650,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN age_consent INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN eighteenplus_until TEXT",
         "ALTER TABLE mandatory_channels ADD COLUMN title TEXT",
+        "ALTER TABLE mandatory_channels ADD COLUMN added_by INTEGER",
         "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
         "ALTER TABLE roulette_queue ADD COLUMN actual_age INTEGER",
         "ALTER TABLE roulette_queue ADD COLUMN age_min INTEGER",
@@ -4304,6 +4305,23 @@ async def get_mandatory_channels():
     return conn.execute("SELECT * FROM mandatory_channels").fetchall()
 
 
+def _ch_added_by(c):
+    """Кто добавил канал (id), либо None для старых записей."""
+    try:
+        return c["added_by"]
+    except (KeyError, IndexError, TypeError):
+        return None
+
+
+def channels_deletable_by(uid):
+    """Какие обязательные каналы пользователь вправе удалять:
+    админ — любые; модер — только те, что добавил сам."""
+    chans = conn.execute("SELECT * FROM mandatory_channels").fetchall()
+    if is_admin(uid):
+        return chans
+    return [c for c in chans if _ch_added_by(c) == uid]
+
+
 def channel_url(raw):
     """Строит кликабельную ссылку из @username / t.me/... / полной ссылки."""
     raw = (raw or "").strip()
@@ -6503,15 +6521,28 @@ async def adm_channels_router(update, context):
                 parse_mode="HTML", reply_markup=cancel_reply_kb())
             return
         if ctext == "🗑 Удалить канал":
-            channels = await get_mandatory_channels()
+            channels = channels_deletable_by(uid)
             if not channels:
-                await update.message.reply_text("Каналов нет.", reply_markup=adm_channels_kb(uid))
+                msg = ("Каналов нет." if is_admin(uid)
+                       else "У тебя нет каналов для удаления. Удалять можно только те каналы, которые добавил ты сам "
+                            "(каналы админа удалить нельзя).")
+                await update.message.reply_text(msg, reply_markup=adm_channels_kb(uid))
                 return
-            rows = [[KeyboardButton(f"{i+1}. {channel_title(c)}")] for i, c in enumerate(channels)]
+            rows, del_map = [], {}
+            for i, c in enumerate(channels):
+                tag = ""
+                if is_admin(uid):
+                    ab = _ch_added_by(c)
+                    tag = " 👑" if (ab is None or is_admin(ab)) else " 🛡"
+                label = f"{i+1}. {channel_title(c)}{tag}"
+                rows.append([KeyboardButton(label)])
+                del_map[label] = c["id"]
             rows.append([KeyboardButton("⬅️ Назад")])
-            context.user_data["del_map"] = {f"{i+1}. {channel_title(c)}": c["id"] for i, c in enumerate(channels)}
+            context.user_data["del_map"] = del_map
             context.user_data["state"] = "adm_ch_delete"
-            await update.message.reply_text("Выбери канал для удаления 👇", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
+            hint = ("Выбери канал для удаления 👇\n👑 — добавил админ, 🛡 — добавил модератор"
+                    if is_admin(uid) else "Выбери свой канал для удаления 👇")
+            await update.message.reply_text(hint, reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
             return
         await update.message.reply_text("Выбери действие 👇", reply_markup=adm_channels_kb(uid))
         return
@@ -6544,8 +6575,8 @@ async def adm_channels_router(update, context):
     if state == "adm_ch_confirm":
         if ctext == "✅ Сохранить" or canon(text) == "✅ Да":
             nc = context.user_data.get("new_channel", {})
-            conn.execute("INSERT INTO mandatory_channels (chat_username, title) VALUES (?, ?)",
-                         (nc.get("link", ""), nc.get("title")))
+            conn.execute("INSERT INTO mandatory_channels (chat_username, title, added_by) VALUES (?, ?, ?)",
+                         (nc.get("link", ""), nc.get("title"), uid))
             conn.commit()
             context.user_data.pop("new_channel", None)
             await update.message.reply_text("✅ Канал добавлен!", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
@@ -6561,6 +6592,15 @@ async def adm_channels_router(update, context):
         cid = context.user_data.get("del_map", {}).get(text)
         if cid is None:
             await update.message.reply_text("Выбери канал на клавиатуре 👇")
+            return
+        ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
+        # Защита: модер может удалить только то, что добавил сам
+        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
+            await update.message.reply_text(
+                "⛔ Этот канал добавил админ — удалить его может только админ.",
+                reply_markup=adm_channels_kb(uid))
+            context.user_data.pop("del_map", None)
+            await adm_channels_msg(update, context)
             return
         conn.execute("DELETE FROM mandatory_channels WHERE id=?", (cid,))
         conn.commit()
