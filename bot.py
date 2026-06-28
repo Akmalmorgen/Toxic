@@ -4398,6 +4398,14 @@ def channel_url(raw):
     return "https://t.me/" + raw.lstrip("@")
 
 
+def is_valid_btn_url(url):
+    """Проверяет, годится ли URL для инлайн-кнопки Telegram (без пробелов, http/https/tg)."""
+    if not url or any(ch.isspace() for ch in url):
+        return False
+    low = url.lower()
+    return low.startswith("https://") or low.startswith("http://") or low.startswith("tg://")
+
+
 def channel_title(ch):
     """Название кнопки канала: кастомное или из ссылки."""
     try:
@@ -4434,14 +4442,20 @@ def subscribe_kb(msg_id, channels):
     """Инлайн-кнопки: каждый канал — кнопка-ссылка (со стрелкой) + кнопка «Проверить»."""
     rows = []
     for c in channels:
-        rows.append([InlineKeyboardButton(channel_title(c), url=channel_url(c["chat_username"]))])
+        url = channel_url(c["chat_username"])
+        if is_valid_btn_url(url):  # кривые ссылки пропускаем, чтобы не сломать всю клавиатуру
+            rows.append([InlineKeyboardButton(channel_title(c), url=url)])
     rows.append([InlineKeyboardButton(t("btn_check_sub"), callback_data=f"subcheck:{msg_id}")])
     return InlineKeyboardMarkup(rows)
 
 
 def subscribe_gate_kb(channels):
     """Инлайн-кнопки подписки для входа в бота (+ «Проверить» с callback subgate)."""
-    rows = [[InlineKeyboardButton(channel_title(c), url=channel_url(c["chat_username"]))] for c in channels]
+    rows = []
+    for c in channels:
+        url = channel_url(c["chat_username"])
+        if is_valid_btn_url(url):
+            rows.append([InlineKeyboardButton(channel_title(c), url=url)])
     rows.append([InlineKeyboardButton(t("btn_check_sub"), callback_data="subgate")])
     return InlineKeyboardMarkup(rows)
 
@@ -6713,20 +6727,35 @@ async def adm_channels_router(update, context):
         return
 
     if state == "adm_ch_link":
-        context.user_data["new_channel"]["link"] = text
+        link = text.strip()
+        url = channel_url(link)
+        if not is_valid_btn_url(url):
+            await update.message.reply_text(
+                "⚠️ Ссылка выглядит неправильно. Пришли <b>@username</b> канала/чата/бота "
+                "или ссылку вида <code>https://t.me/...</code> (без пробелов):",
+                parse_mode="HTML", reply_markup=cancel_reply_kb())
+            return
+        context.user_data["new_channel"]["link"] = link
         title = context.user_data["new_channel"]["title"]
-        # Предпросмотр — как будет выглядеть кнопка
-        preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=channel_url(text))]])
         context.user_data["state"] = "adm_ch_confirm"
-        await update.message.reply_text(
-            "👀 <b>Предпросмотр кнопки:</b>\n"
-            f"Название: <b>{html.escape(title)}</b>\n"
-            f"Ссылка: {html.escape(channel_url(text))}\n\n"
-            "Так будет выглядеть кнопка 👇\nВсё верно?",
-            parse_mode="HTML", reply_markup=preview_kb)
-        await update.message.reply_text(
-            "Сохранить?",
-            reply_markup=tr_kb(ReplyKeyboardMarkup([[KeyboardButton("✅ Сохранить")], [KeyboardButton("❌ Отмена")]], resize_keyboard=True)))
+        save_kb = tr_kb(ReplyKeyboardMarkup(
+            [[KeyboardButton("✅ Сохранить")], [KeyboardButton("❌ Отмена")]], resize_keyboard=True))
+        # Предпросмотр кнопки — но кривая ссылка НЕ должна ломать показ кнопки «Сохранить»
+        try:
+            preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=url)]])
+            await update.message.reply_text(
+                "👀 <b>Предпросмотр кнопки:</b>\n"
+                f"Название: <b>{html.escape(title)}</b>\n"
+                f"Ссылка: {html.escape(url)}\n\n"
+                "Так будет выглядеть кнопка 👇\nВсё верно?",
+                parse_mode="HTML", reply_markup=preview_kb)
+        except TelegramError:
+            await update.message.reply_text(
+                "👀 <b>Предпросмотр:</b>\n"
+                f"Название: <b>{html.escape(title)}</b>\n"
+                f"Ссылка: {html.escape(url)}",
+                parse_mode="HTML")
+        await update.message.reply_text("Сохранить канал?", reply_markup=save_kb)
         return
 
     if state == "adm_ch_confirm":
@@ -7827,7 +7856,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "18plus_rchat",
         "shop_add_title", "shop_edit_name", "adm_ad_text", "adm_ad_button_text",
         "adm_ad_button_url", "adm_bcast_content",
-        "adm_ch_name", "adm_ch_link",
+        "adm_ch_name", "adm_ch_link", "adm_ch_confirm",
     }
     _NAV = {
         "🔗 Моя ссылка": show_link_menu, "🎲 Чат-рулетка": show_roulette_entry,
