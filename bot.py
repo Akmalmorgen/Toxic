@@ -672,7 +672,11 @@ def migrate():
             conn.execute(sql)
             conn.commit()
         except Exception:
-            pass  # колонка уже существует (sqlite или postgres)
+            # колонка уже существует (sqlite или postgres) — откатываем возможную «битую» транзакцию
+            try:
+                conn.rollback()
+            except Exception:
+                pass
     conn.commit()
 
 
@@ -6761,11 +6765,40 @@ async def adm_channels_router(update, context):
     if state == "adm_ch_confirm":
         if ctext == "✅ Сохранить" or canon(text) == "✅ Да":
             nc = context.user_data.get("new_channel", {})
-            conn.execute("INSERT INTO mandatory_channels (chat_username, title, added_by) VALUES (?, ?, ?)",
-                         (nc.get("link", ""), nc.get("title"), uid))
-            conn.commit()
+            link = nc.get("link") or ""
+            if not link:
+                # Данные потерялись (например, бот перезапускался) — просим начать заново
+                context.user_data["state"] = "adm_channels_menu"
+                await update.message.reply_text(
+                    "⚠️ Данные канала потерялись. Начни добавление заново.",
+                    reply_markup=adm_channels_kb(uid))
+                return
+            saved = False
+            try:
+                conn.execute(
+                    "INSERT INTO mandatory_channels (chat_username, title, added_by) VALUES (?, ?, ?)",
+                    (link, nc.get("title"), uid))
+                conn.commit()
+                saved = True
+            except Exception as e:  # noqa — напр. колонки added_by нет на старой БД
+                log.warning("save channel (with added_by) failed: %s; пробуем без added_by", e)
+                try:
+                    conn.execute(
+                        "INSERT INTO mandatory_channels (chat_username, title) VALUES (?, ?)",
+                        (link, nc.get("title")))
+                    conn.commit()
+                    saved = True
+                except Exception as e2:  # noqa
+                    log.error("save channel failed: %s", e2)
             context.user_data.pop("new_channel", None)
-            await update.message.reply_text("✅ Канал добавлен!", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+            if saved:
+                await update.message.reply_text(
+                    "✅ Канал добавлен!",
+                    reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+            else:
+                await update.message.reply_text(
+                    "⚠️ Не удалось сохранить канал. Попробуй ещё раз позже.",
+                    reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
             await adm_channels_msg(update, context)
             return
         await update.message.reply_text("Нажми «✅ Сохранить» или «❌ Отмена».")
