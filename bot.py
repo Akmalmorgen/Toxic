@@ -412,6 +412,7 @@ def init_db():
         age TEXT,
         age_consent INTEGER NOT NULL DEFAULT 0,
         eighteenplus_until TEXT,
+        ref_code TEXT,
         created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS anon_messages (
@@ -607,6 +608,7 @@ def ensure_indexes():
         "CREATE INDEX IF NOT EXISTS idx_starpur_user ON star_purchases(user_id)",
         # Пользователи: поиск по @username и сканы джанитора по активности
         "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+        "CREATE INDEX IF NOT EXISTS idx_users_refcode ON users(ref_code)",
         "CREATE INDEX IF NOT EXISTS idx_users_lastactive ON users(last_active)",
         # Очереди заявок
         "CREATE INDEX IF NOT EXISTS idx_ageverif_status ON age_verification_requests(status)",
@@ -651,6 +653,7 @@ def migrate():
         "ALTER TABLE users ADD COLUMN age TEXT",
         "ALTER TABLE users ADD COLUMN age_consent INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE users ADD COLUMN eighteenplus_until TEXT",
+        "ALTER TABLE users ADD COLUMN ref_code TEXT",
         "ALTER TABLE mandatory_channels ADD COLUMN title TEXT",
         "ALTER TABLE mandatory_channels ADD COLUMN added_by INTEGER",
         "ALTER TABLE roulette_queue ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
@@ -4322,6 +4325,40 @@ async def get_mandatory_channels():
     return conn.execute("SELECT * FROM mandatory_channels").fetchall()
 
 
+# Символы для короткого реф-кода (без похожих 0/o/1/l, чтобы не путать)
+REF_CODE_CHARS = "abcdefghijkmnpqrstuvwxyz23456789"
+
+
+def get_or_create_ref_code(uid):
+    """Возвращает короткий (5 символов) уникальный реф-код пользователя, создаёт при отсутствии."""
+    u = get_user(uid)
+    if u:
+        try:
+            if u["ref_code"]:
+                return u["ref_code"]
+        except (KeyError, IndexError, TypeError):
+            pass
+    for _ in range(50):
+        code = "".join(random.choice(REF_CODE_CHARS) for _ in range(5))
+        if not conn.execute("SELECT 1 FROM users WHERE ref_code=?", (code,)).fetchone():
+            conn.execute("UPDATE users SET ref_code=? WHERE tg_id=?", (code, uid))
+            conn.commit()
+            return code
+    return str(uid)  # крайне маловероятный фолбэк
+
+
+def resolve_ref_code(code):
+    """Находит пригласившего по короткому коду. Поддерживает и старые ссылки ref_<id>."""
+    row = conn.execute("SELECT tg_id FROM users WHERE ref_code=?", (code,)).fetchone()
+    if row:
+        return row["tg_id"]
+    if code.isdigit():  # обратная совместимость со старым форматом ref_<tg_id>
+        old = conn.execute("SELECT tg_id FROM users WHERE tg_id=?", (int(code),)).fetchone()
+        if old:
+            return old["tg_id"]
+    return None
+
+
 def _ch_added_by(c):
     """Кто добавил канал (id), либо None для старых записей."""
     try:
@@ -7226,9 +7263,8 @@ async def handle_referral(update, context, code, existed):
     """Начисляет коины пригласившему за нового пользователя."""
     if existed:
         return  # пользователь уже был — не считается за приглашение
-    try:
-        inviter_id = int(code[4:])
-    except ValueError:
+    inviter_id = resolve_ref_code(code[4:])
+    if inviter_id is None:
         return
     uid = update.effective_user.id
     if inviter_id == uid:
@@ -7335,7 +7371,7 @@ async def refresh_ref_rewards(update, context):
     """Перерисовывает инлайн-кнопки наград (после клейма прогресс меняется)."""
     query = update.callback_query
     try:
-        link = await build_start_link(context, f"ref_{query.from_user.id}")
+        link = await build_start_link(context, f"ref_{get_or_create_ref_code(query.from_user.id)}")
         await query.edit_message_reply_markup(reply_markup=ref_rewards_kb(query.from_user.id, link))
     except TelegramError:
         pass
@@ -7418,7 +7454,7 @@ async def show_referral(update, context):
     uid = update.effective_user.id
     await clean_screen(update, context)
     context.user_data.pop("top_msg_id", None)
-    link = await build_start_link(context, f"ref_{uid}")
+    link = await build_start_link(context, f"ref_{get_or_create_ref_code(uid)}")
     total = conn.execute("SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["c"]
     earned = conn.execute("SELECT COALESCE(SUM(coins_awarded),0) s FROM referrals WHERE referrer_id=? AND active=1", (uid,)).fetchone()["s"]
     vip = is_vip(get_user(uid))
