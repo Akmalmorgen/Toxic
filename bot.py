@@ -17,6 +17,7 @@ import asyncio
 import threading
 import contextvars
 from collections import defaultdict
+from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 
@@ -916,6 +917,58 @@ def is_unlimited(user_row):
         return is_admin(user_row["tg_id"]) or is_moder(user_row)
     except (KeyError, TypeError):
         return False
+
+
+# ====================== ОБЩИЕ УТИЛИТЫ (refactored) ======================
+
+@contextmanager
+def user_lang(uid):
+    """Временно переключает язык на язык пользователя uid и восстанавливает исходный."""
+    saved = cur_lang()
+    set_cur_lang(get_lang(uid))
+    try:
+        yield
+    finally:
+        set_cur_lang(saved)
+
+
+def safe_get(row, key, default=None):
+    """Безопасно достаёт поле из строки БД (sqlite Row / dict)."""
+    try:
+        v = row[key]
+        return v if v is not None else default
+    except (KeyError, IndexError, TypeError):
+        return default
+
+
+def get_session_mode(session):
+    """Извлекает режим сессии рулетки ('normal' / '18plus')."""
+    return safe_get(session, "mode", "normal") or "normal"
+
+
+def enqueue_roulette(uid, gender, pref, vip_flag, mode="normal",
+                     actual_age=None, age_min=None, age_max=None):
+    """Ставит пользователя в очередь рулетки (INSERT … ON CONFLICT UPDATE)."""
+    if mode == "18plus" and actual_age is not None:
+        conn.execute(
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
+            "VALUES (?, ?, ?, ?, '18plus', ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
+            "mode=excluded.mode, actual_age=excluded.actual_age, age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
+            (uid, gender, pref, 1 if vip_flag else 0, actual_age, age_min or 18, age_max or 200, now_iso()),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+            (uid, gender, pref, 1 if vip_flag else 0, mode, now_iso()),
+        )
+    conn.commit()
+
+
+def staff_kb(uid):
+    """Возвращает клавиатуру админа или модератора в зависимости от роли."""
+    return admin_menu_kb() if is_admin(uid) else moder_menu_kb()
 
 
 # Условный «бесконечный» баланс для отображения у админа/модера
@@ -3581,10 +3634,9 @@ async def gift_18plus_router(update, context):
         context.user_data.pop("gift18_target", None)
         # Уведомляем получателя
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(target))
-            await context.bot.send_message(target, t("gift18_received", days=GIFT_18PLUS_DAYS),
-                                           parse_mode="HTML", reply_markup=main_menu_kb(target))
-            set_cur_lang(_sl)
+            with user_lang(target):
+                await context.bot.send_message(target, t("gift18_received", days=GIFT_18PLUS_DAYS),
+                                               parse_mode="HTML", reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
         await nav(update, context, t("gift18_sent", id=target, days=GIFT_18PLUS_DAYS),
@@ -3659,14 +3711,8 @@ async def eighteen_plus_age_search_router(update, context):
     user = get_user(update.effective_user.id)
     pref = context.user_data.get("18plus_pref_gender", "any")
     my_age = user_age_int(user) or 18
-    conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
-        "VALUES (?, ?, ?, ?, '18plus', ?, ?, ?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
-        "mode=excluded.mode, actual_age=excluded.actual_age, age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
-        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, my_age, age_min, age_max, now_iso()),
-    )
-    conn.commit()
+    enqueue_roulette(user["tg_id"], user["gender"], pref, is_vip(user),
+                     mode="18plus", actual_age=my_age, age_min=age_min, age_max=age_max)
     context.user_data["state"] = None
     await clean_screen(update, context)
     await context.bot.send_message(update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb())
@@ -4141,54 +4187,49 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     mid = cur.lastrowid
 
     # Сообщение для получателя рендерим на ЕГО языке
-    _saved_lang = cur_lang()
-    set_cur_lang(get_lang(recipient_id))
+    sent = None
+    with user_lang(recipient_id):
+        # Цитата родительского сообщения — чтобы не путаться, на что отвечают
+        quote = ""
+        if parent_id:
+            parent = conn.execute("SELECT * FROM anon_messages WHERE id=?", (parent_id,)).fetchone()
+            prev = anon_preview(parent)
+            if prev:
+                quote = f"{t('anon_quote_reply')}\n<blockquote>{html.escape(prev)}</blockquote>\n"
 
-    # Цитата родительского сообщения — чтобы не путаться, на что отвечают
-    quote = ""
-    if parent_id:
-        parent = conn.execute("SELECT * FROM anon_messages WHERE id=?", (parent_id,)).fetchone()
-        prev = anon_preview(parent)
-        if prev:
-            quote = f"{t('anon_quote_reply')}\n<blockquote>{html.escape(prev)}</blockquote>\n"
+        badge = "👑 " if vip_badge else ""
+        header = badge + anon_header(msg_type)
+        buttons = [[
+            InlineKeyboardButton(t("btn_reply"), callback_data=f"reply:{mid}"),
+            InlineKeyboardButton(t("btn_report"), callback_data=f"report_anon:{mid}"),
+        ]]
+        # Кнопка раскрытия отправителя за 1 Star (только для первого сообщения, не для ответов)
+        if msg_type != "reply":
+            buttons.append([InlineKeyboardButton(t("btn_reveal"), callback_data=f"reveal:{mid}")])
+        kb = InlineKeyboardMarkup(buttons)
 
-    badge = "👑 " if vip_badge else ""
-    header = badge + anon_header(msg_type)
-    buttons = [[
-        InlineKeyboardButton(t("btn_reply"), callback_data=f"reply:{mid}"),
-        InlineKeyboardButton(t("btn_report"), callback_data=f"report_anon:{mid}"),
-    ]]
-    # Кнопка раскрытия отправителя за 1 Star (только для первого сообщения, не для ответов)
-    if msg_type != "reply":
-        buttons.append([InlineKeyboardButton(t("btn_reveal"), callback_data=f"reveal:{mid}")])
-    kb = InlineKeyboardMarkup(buttons)
-
-    try:
-        if content_type == "text":
-            sent = await context.bot.send_message(
-                recipient_id,
-                f"{quote}{header}:\n<blockquote>{html.escape(text or '')}</blockquote>",
-                parse_mode="HTML", reply_markup=kb,
-            )
-        elif content_type == "voice":
-            sent = await context.bot.send_voice(
-                recipient_id, voice_file_id,
-                caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
-            )
-        else:  # media (VIP) — копируем исходное сообщение с медиа одним сообщением
-            sent = await context.bot.copy_message(
-                recipient_id, src_chat_id, src_message_id,
-                caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
-            )
-    except TelegramError:
-        set_cur_lang(_saved_lang)
-        return None
+        try:
+            if content_type == "text":
+                sent = await context.bot.send_message(
+                    recipient_id,
+                    f"{quote}{header}:\n<blockquote>{html.escape(text or '')}</blockquote>",
+                    parse_mode="HTML", reply_markup=kb,
+                )
+            elif content_type == "voice":
+                sent = await context.bot.send_voice(
+                    recipient_id, voice_file_id,
+                    caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
+                )
+            else:  # media (VIP) — копируем исходное сообщение с медиа одним сообщением
+                sent = await context.bot.copy_message(
+                    recipient_id, src_chat_id, src_message_id,
+                    caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
+                )
+        except TelegramError:
+            return None
 
     conn.execute("UPDATE anon_messages SET owner_chat_message_id=? WHERE id=?", (sent.message_id, mid))
     conn.commit()
-
-    # Возвращаем язык автора для подтверждения
-    set_cur_lang(_saved_lang)
 
     # Подтверждение автору + кнопка удаления (сотрёт обе копии)
     del_kb = InlineKeyboardMarkup([[InlineKeyboardButton(t("btn_delete"), callback_data=f"del:{mid}")]])
@@ -4476,9 +4517,8 @@ async def deliver_start_menu(context, uid, greet=True):
     greet=False — для уже зарегистрированных показываем просто главное меню без «С возвращением»
     (например, после отправки/отмены анонимки — чтобы не спамить приветствием)."""
     user = get_user(uid)
-    _sl = cur_lang(); set_cur_lang(get_lang(uid))
-    name = html.escape(user["first_name"] or "друг")
-    try:
+    with user_lang(uid):
+        name = html.escape(user["first_name"] or "друг")
         if not user["gender"]:
             UD[uid]["state"] = "set_gender_first"
             await context.bot.send_message(uid, t("welcome", name=name), parse_mode="HTML", reply_markup=gender_kb())
@@ -4490,8 +4530,6 @@ async def deliver_start_menu(context, uid, greet=True):
         else:
             UD[uid]["state"] = None
             await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
-    finally:
-        set_cur_lang(_sl)
 
 
 async def on_subgate_check(update, context):
@@ -4589,10 +4627,8 @@ async def do_delete_message(query, context, msg_id):
     # Уведомляем получателя, что отправитель удалил своё сообщение (на его языке)
     if deleted_recipient:
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(row["to_id"]))
-            await context.bot.send_message(row["to_id"], t("anon_deleted_notice"))
-            set_cur_lang(_sl)
+            with user_lang(row["to_id"]):
+                await context.bot.send_message(row["to_id"], t("anon_deleted_notice"))
         except TelegramError:
             pass
     try:
@@ -4719,24 +4755,20 @@ async def on_report_admin_decision(update, context):
         conn.commit()
         # Уведомляем жалобщика (на его языке)
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(report["reporter_id"]))
-            await context.bot.send_message(
-                report["reporter_id"],
-                t("report_confirmed_forever") if is_anon else t("report_confirmed_user", days=ROULETTE_BAN_DAYS),
-            )
-            set_cur_lang(_sl)
+            with user_lang(report["reporter_id"]):
+                await context.bot.send_message(
+                    report["reporter_id"],
+                    t("report_confirmed_forever") if is_anon else t("report_confirmed_user", days=ROULETTE_BAN_DAYS),
+                )
         except TelegramError:
             pass
         # Уведомляем самого заблокированного пользователя (на его языке)
         try:
-            _sl2 = cur_lang()
-            set_cur_lang(get_lang(report["reported_id"]))
-            await context.bot.send_message(
-                report["reported_id"],
-                t("you_were_banned_forever") if is_anon else t("you_were_banned", days=ROULETTE_BAN_DAYS),
-            )
-            set_cur_lang(_sl2)
+            with user_lang(report["reported_id"]):
+                await context.bot.send_message(
+                    report["reported_id"],
+                    t("you_were_banned_forever") if is_anon else t("you_were_banned", days=ROULETTE_BAN_DAYS),
+                )
         except TelegramError:
             pass
         await query.edit_message_text(t("report_confirmed_staff"))
@@ -4744,10 +4776,8 @@ async def on_report_admin_decision(update, context):
         conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
         conn.commit()
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(report["reporter_id"]))
-            await context.bot.send_message(report["reporter_id"], t("report_rejected_user"))
-            set_cur_lang(_sl)
+            with user_lang(report["reporter_id"]):
+                await context.bot.send_message(report["reporter_id"], t("report_rejected_user"))
         except TelegramError:
             pass
         await query.edit_message_text(t("report_rejected_staff"))
@@ -4792,10 +4822,7 @@ async def show_profile(update, context):
             dur = max(0, (end - start).total_seconds())
         except (ValueError, TypeError):
             continue
-        try:
-            smode = s["mode"] or "normal"
-        except (KeyError, IndexError, TypeError):
-            smode = "normal"
+        smode = get_session_mode(s)
         if smode == "18plus":
             secs_18 += dur
         else:
@@ -4925,10 +4952,9 @@ async def gift_coins_router(update, context):
         context.user_data.pop("giftcoins_target", None)
         # Уведомляем получателя
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(target))
-            await context.bot.send_message(target, t("giftcoins_received", amount=amount),
-                                           parse_mode="HTML", reply_markup=main_menu_kb(target))
-            set_cur_lang(_sl)
+            with user_lang(target):
+                await context.bot.send_message(target, t("giftcoins_received", amount=amount),
+                                               parse_mode="HTML", reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
         await nav(update, context, t("giftcoins_sent", id=target, amount=amount),
@@ -5013,12 +5039,8 @@ async def roulette_pref_router(update, context):
         return
     user = get_user(update.effective_user.id)
     conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
-    conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, joined_at=excluded.joined_at",
-        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
-    )
     conn.commit()
+    enqueue_roulette(user["tg_id"], user["gender"], pref, is_vip(user))
     context.user_data["state"] = None
     await clean_screen(update, context)
     await context.bot.send_message(update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb())
@@ -5087,14 +5109,13 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
         is_18 = (a_mode == "18plus")
         for uid in (a["user_id"], b["user_id"]):
             try:
-                _sl = cur_lang(); set_cur_lang(get_lang(uid))
-                if is_18:
-                    await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
-                    UD[uid]["state"] = "18plus_rchat"
-                else:
-                    await context.bot.send_message(uid, t("roulette_found"), parse_mode="HTML", reply_markup=in_chat_kb())
-                    UD[uid]["state"] = "rchat"
-                set_cur_lang(_sl)
+                with user_lang(uid):
+                    if is_18:
+                        await context.bot.send_message(uid, t("roulette_found_18plus"), parse_mode="HTML", reply_markup=in_chat_kb())
+                        UD[uid]["state"] = "18plus_rchat"
+                    else:
+                        await context.bot.send_message(uid, t("roulette_found"), parse_mode="HTML", reply_markup=in_chat_kb())
+                        UD[uid]["state"] = "rchat"
             except TelegramError:
                 pass
 
@@ -5134,34 +5155,20 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     # Уведомить модераторов-наблюдателей и перекинуть их на другую сессию
     await handle_spectators_on_end(context, session["id"])
     # Второму участнику: сообщение «собеседник ушёл» + reply-клавиатура снизу (на его языке)
-    _smode = "normal"
-    try:
-        _smode = session["mode"] or "normal"
-    except (KeyError, IndexError, TypeError):
-        _smode = "normal"
+    _smode = get_session_mode(session)
     UD[other_id]["state"] = "rleft"
     UD[other_id]["last_session"] = session["id"]
     UD[other_id]["last_mode"] = _smode
-    _sl = cur_lang()
-    set_cur_lang(get_lang(other_id))
     try:
-        await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
+        with user_lang(other_id):
+            await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
     except TelegramError:
         pass
-    set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
-        sess_mode = "normal"
-        try:
-            sess_mode = session["mode"] or "normal"
-        except (KeyError, IndexError, TypeError):
-            sess_mode = "normal"
-        conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-            (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, sess_mode, now_iso()),
-        )
-        conn.commit()
+        sess_mode = get_session_mode(session)
+        enqueue_roulette(ender_id, user["gender"], user["search_pref"] or "any",
+                         is_vip(user), mode=sess_mode)
     return session
 
 
@@ -5170,10 +5177,7 @@ async def force_end_session(context, session_id):
     s = conn.execute("SELECT * FROM roulette_sessions WHERE id=? AND active=1", (session_id,)).fetchone()
     if not s:
         return
-    try:
-        smode = s["mode"] or "normal"
-    except (KeyError, IndexError, TypeError):
-        smode = "normal"
+    smode = get_session_mode(s)
     conn.execute("UPDATE roulette_sessions SET active=0, ended_at=? WHERE id=?", (now_iso(), session_id))
     conn.commit()
     # Перекинуть наблюдателей /tg на другую сессию
@@ -5186,9 +5190,8 @@ async def force_end_session(context, session_id):
             UD[uid]["last_session"] = session_id
             UD[uid]["last_mode"] = smode
             try:
-                _sl = cur_lang(); set_cur_lang(get_lang(uid))
-                await context.bot.send_message(uid, t("roulette_left"), reply_markup=left_chat_kb())
-                set_cur_lang(_sl)
+                with user_lang(uid):
+                    await context.bot.send_message(uid, t("roulette_left"), reply_markup=left_chat_kb())
             except TelegramError:
                 pass
 
@@ -5230,11 +5233,10 @@ async def queue_maintenance(context):
             if UD.get(uid):
                 UD[uid]["state"] = None
             try:
-                _sl = cur_lang(); set_cur_lang(get_lang(uid))
-                await context.bot.send_message(
-                    uid, t("search_timeout", min=SEARCH_TIMEOUT_MIN),
-                    parse_mode="HTML", reply_markup=main_menu_kb(uid))
-                set_cur_lang(_sl)
+                with user_lang(uid):
+                    await context.bot.send_message(
+                        uid, t("search_timeout", min=SEARCH_TIMEOUT_MIN),
+                        parse_mode="HTML", reply_markup=main_menu_kb(uid))
             except TelegramError:
                 pass
         else:
@@ -5242,11 +5244,10 @@ async def queue_maintenance(context):
             if (now - last).total_seconds() / 60.0 >= SEARCH_REMIND_MIN:
                 _QUEUE_REMIND[uid] = now
                 try:
-                    _sl = cur_lang(); set_cur_lang(get_lang(uid))
-                    await context.bot.send_message(
-                        uid, t("search_still", min=int(mins)), parse_mode="HTML",
-                        reply_markup=searching_kb())
-                    set_cur_lang(_sl)
+                    with user_lang(uid):
+                        await context.bot.send_message(
+                            uid, t("search_still", min=int(mins)), parse_mode="HTML",
+                            reply_markup=searching_kb())
                 except TelegramError:
                     pass
     # подчищаем память от тех, кого уже нет в очереди
@@ -5259,20 +5260,11 @@ async def _requeue_and_search(context, uid, mode="normal"):
     user = get_user(uid)
     if mode == "18plus":
         my_age = user_age_int(user) or 18
-        conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
-            "VALUES (?, ?, ?, ?, '18plus', ?, 18, 200, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
-            "mode=excluded.mode, actual_age=excluded.actual_age, age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
-            (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, my_age, now_iso()),
-        )
+        enqueue_roulette(uid, user["gender"], user["search_pref"] or "any",
+                         is_vip(user), mode="18plus", actual_age=my_age)
     else:
-        conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-            (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, mode, now_iso()),
-        )
-    conn.commit()
+        enqueue_roulette(uid, user["gender"], user["search_pref"] or "any",
+                         is_vip(user), mode=mode)
     UD[uid]["state"] = None
     await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
 
@@ -5283,12 +5275,7 @@ async def rchat_next(update, context):
     """Кнопка «Далее»: завершить чат и искать нового с теми же настройками."""
     uid = update.effective_user.id
     sess = get_active_session(uid)
-    sess_mode = "normal"
-    if sess:
-        try:
-            sess_mode = sess["mode"] or "normal"
-        except (KeyError, IndexError, TypeError):
-            sess_mode = "normal"
+    sess_mode = get_session_mode(sess) if sess else "normal"
     await end_roulette_session(context, uid, requeue_ender=False)
     context.user_data["state"] = None
     await _requeue_and_search(context, uid, mode=sess_mode)
@@ -5298,12 +5285,7 @@ async def rchat_stop(update, context):
     """Кнопка «Стоп»: завершить чат и вернуться к выбору, кого искать."""
     uid = update.effective_user.id
     sess = get_active_session(uid)
-    sess_mode = "normal"
-    if sess:
-        try:
-            sess_mode = sess["mode"] or "normal"
-        except (KeyError, IndexError, TypeError):
-            sess_mode = "normal"
+    sess_mode = get_session_mode(sess) if sess else "normal"
     await end_roulette_session(context, uid, requeue_ender=False)
     if sess_mode == "18plus":
         context.user_data["state"] = "18plus_pref"
@@ -5353,10 +5335,7 @@ async def relay_roulette_message(update, context):
         return False
     other_id = session["user2_id"] if session["user1_id"] == update.effective_user.id else session["user1_id"]
     # Режим сессии: в 18+ чате разрешено отправлять всё (фильтр не применяется)
-    try:
-        sess_mode = session["mode"] or "normal"
-    except (KeyError, IndexError, TypeError):
-        sess_mode = "normal"
+    sess_mode = get_session_mode(session)
     # Анти-спам: блокируем контакты/ссылки/соцсети в обычной рулетке (кроме персонала и 18+ чата)
     txt = update.message.text if update.message else None
     if (sess_mode != "18plus" and txt and not is_staff(update.effective_user.id)
@@ -5438,10 +5417,7 @@ async def attach_spectator(context, mod_id, session, auto=False):
     SESSION_SPECTATORS[session["id"]].add(mod_id)
     UD[mod_id]["state"] = "tg_watch"
     u1 = get_user(session["user1_id"]); u2 = get_user(session["user2_id"])
-    try:
-        smode = session["mode"] or "normal"
-    except (KeyError, IndexError, TypeError):
-        smode = "normal"
+    smode = get_session_mode(session)
     mlabel = "🔞 18+ чат" if smode == "18plus" else "🎲 Обычный чат"
     head = "🔄 <b>Новая сессия для наблюдения</b>" if auto else "👁 <b>Вы наблюдаете за сессией</b>"
     info = (f"{head}  ({mlabel})\n1️⃣ {user_mention(u1)}\n2️⃣ {user_mention(u2)}\n\n"
@@ -5499,10 +5475,7 @@ def active_sessions_list_text():
         u1 = get_user(s["user1_id"]); u2 = get_user(s["user2_id"])
         g1 = gender_label(u1["gender"]) if u1 and u1["gender"] else "—"
         g2 = gender_label(u2["gender"]) if u2 and u2["gender"] else "—"
-        try:
-            smode = s["mode"] or "normal"
-        except (KeyError, IndexError, TypeError):
-            smode = "normal"
+        smode = get_session_mode(s)
         micon = "🔞" if smode == "18plus" else "🎲"
         lines.append(
             f"{micon} #{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) ↔ 2️⃣ <code>{s['user2_id']}</code> ({g2})"
@@ -5609,11 +5582,10 @@ async def process_modmsg_text(update, context):
     moder_name = (moder["first_name"] if moder else None) or "Модератор"
     ok = False
     try:
-        _sl = cur_lang(); set_cur_lang(get_lang(target))
-        await context.bot.send_message(
-            target, t("mod_message", name=html.escape(moder_name), text=html.escape(raw)),
-            parse_mode="HTML")
-        set_cur_lang(_sl)
+        with user_lang(target):
+            await context.bot.send_message(
+                target, t("mod_message", name=html.escape(moder_name), text=html.escape(raw)),
+                parse_mode="HTML")
         ok = True
     except TelegramError:
         pass
@@ -5624,10 +5596,13 @@ async def process_modmsg_text(update, context):
         reply_markup=main_menu_kb(uid))
 
 
-async def show_shop(update, context):
-    items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=0").fetchall()
+async def _show_shop_view(update, context, is_18plus=False):
+    """Общая логика отображения магазина (обычного или 18+)."""
+    items = conn.execute(
+        "SELECT * FROM shop_items WHERE active=1 AND is_18plus=?", (1 if is_18plus else 0,)
+    ).fetchall()
     context.user_data["state"] = "shop"
-    context.user_data["shop_is_18plus"] = False
+    context.user_data["shop_is_18plus"] = is_18plus
     viewer = get_user(update.effective_user.id)
     shop_map = {}
     rows = []
@@ -5639,34 +5614,25 @@ async def show_shop(update, context):
     context.user_data["shop_map"] = shop_map
     if is_admin(update.effective_user.id):
         rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
-    rows.append([KeyboardButton("⬅️ Назад")])
-    base = t("shop_title") if items else t("shop_empty")
+    if is_18plus:
+        rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
+    else:
+        rows.append([KeyboardButton("⬅️ Назад")])
+    title_key = "18plus_shop_title" if is_18plus else "shop_title"
+    empty_key = "18plus_shop_empty" if is_18plus else "shop_empty"
+    base = t(title_key) if items else t(empty_key)
     if items and is_vip(viewer) and not is_admin(update.effective_user.id):
         base += "\n" + t("shop_vip_note")
     await nav(update, context, base, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+
+
+async def show_shop(update, context):
+    await _show_shop_view(update, context, is_18plus=False)
 
 
 async def show_eighteen_plus_shop(update, context):
-    """Магазин 18+ товаров (та же таблица shop_items, но is_18plus=1)."""
-    items = conn.execute("SELECT * FROM shop_items WHERE active=1 AND is_18plus=1").fetchall()
-    context.user_data["state"] = "shop"
-    context.user_data["shop_is_18plus"] = True
-    viewer = get_user(update.effective_user.id)
-    shop_map = {}
-    rows = []
-    for it in items:
-        disp = effective_price(it["price"], viewer)
-        label = f"{item_title(it)} — {disp} 💎"
-        shop_map[label] = it["id"]
-        rows.append([KeyboardButton(label)])
-    context.user_data["shop_map"] = shop_map
-    if is_admin(update.effective_user.id):
-        rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
-    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
-    base = t("18plus_shop_title") if items else t("18plus_shop_empty")
-    if items and is_vip(viewer) and not is_admin(update.effective_user.id):
-        base += "\n" + t("shop_vip_note")
-    await nav(update, context, base, tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)), parse_mode="HTML")
+    """Магазин 18+ товаров."""
+    await _show_shop_view(update, context, is_18plus=True)
 
 
 async def back_to_shop(update, context):
@@ -5904,15 +5870,13 @@ async def on_moder_app_decision(update, context):
         conn.execute("UPDATE moder_apps SET status='approved' WHERE id=?", (app_id,))
         conn.commit()
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(buyer_id))
-            await context.bot.send_message(
-                buyer_id,
-                t("moder_granted_shop"),
-                parse_mode="HTML",
-                reply_markup=main_menu_kb(buyer_id),
-            )
-            set_cur_lang(_sl)
+            with user_lang(buyer_id):
+                await context.bot.send_message(
+                    buyer_id,
+                    t("moder_granted_shop"),
+                    parse_mode="HTML",
+                    reply_markup=main_menu_kb(buyer_id),
+                )
         except TelegramError:
             pass
         await query.edit_message_text(t("moder_granted_staff"))
@@ -5921,13 +5885,11 @@ async def on_moder_app_decision(update, context):
         conn.execute("UPDATE moder_apps SET status='rejected' WHERE id=?", (app_id,))
         conn.commit()
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(buyer_id))
-            await context.bot.send_message(
-                buyer_id,
-                t("moder_rejected_user", coins=app['price_paid']),
-            )
-            set_cur_lang(_sl)
+            with user_lang(buyer_id):
+                await context.bot.send_message(
+                    buyer_id,
+                    t("moder_rejected_user", coins=app['price_paid']),
+                )
         except TelegramError:
             pass
         await query.edit_message_text(t("moder_rejected_staff"))
@@ -5960,10 +5922,9 @@ async def on_age_verify_decision(update, context):
                      (now_iso(), req["id"]))
         conn.commit()
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(uid))
-            await context.bot.send_message(uid, t("age_verification_approved"), parse_mode="HTML",
-                                           reply_markup=main_menu_kb(uid))
-            set_cur_lang(_sl)
+            with user_lang(uid):
+                await context.bot.send_message(uid, t("age_verification_approved"), parse_mode="HTML",
+                                               reply_markup=main_menu_kb(uid))
         except TelegramError:
             pass
         try:
@@ -5975,9 +5936,8 @@ async def on_age_verify_decision(update, context):
                      (now_iso(), req["id"]))
         conn.commit()
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(uid))
-            await context.bot.send_message(uid, t("age_verification_rejected", reason=""), parse_mode="HTML")
-            set_cur_lang(_sl)
+            with user_lang(uid):
+                await context.bot.send_message(uid, t("age_verification_rejected", reason=""), parse_mode="HTML")
         except TelegramError:
             pass
         try:
@@ -6329,10 +6289,8 @@ async def process_moder_give_take(update, context):
         conn.execute("UPDATE users SET is_moder=1 WHERE tg_id=?", (target,))
         conn.commit()
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(target))
-            await context.bot.send_message(target, t("moder_granted_user"), reply_markup=main_menu_kb(target))
-            set_cur_lang(_sl)
+            with user_lang(target):
+                await context.bot.send_message(target, t("moder_granted_user"), reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
         await update.message.reply_text(f"✅ Модерка выдана пользователю {target}.", reply_markup=admin_moder_kb())
@@ -6340,10 +6298,8 @@ async def process_moder_give_take(update, context):
         conn.execute("UPDATE users SET is_moder=0 WHERE tg_id=?", (target,))
         conn.commit()
         try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(target))
-            await context.bot.send_message(target, t("moder_taken_user"), reply_markup=main_menu_kb(target))
-            set_cur_lang(_sl)
+            with user_lang(target):
+                await context.bot.send_message(target, t("moder_taken_user"), reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
         await update.message.reply_text(f"✅ Модерка снята у пользователя {target}.", reply_markup=admin_moder_kb())
@@ -6430,7 +6386,7 @@ async def moder_panel_router(update, context):
 
 async def show_pending_reports(update, context):
     reports = conn.execute("SELECT * FROM reports WHERE status='pending' ORDER BY id DESC LIMIT 20").fetchall()
-    back_kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
+    back_kb = staff_kb(update.effective_user.id)
     if not reports:
         await update.message.reply_text("Нет необработанных жалоб ✅", reply_markup=back_kb)
         return
@@ -6483,7 +6439,7 @@ async def adm_stats_msg(update, context):
         a = str(r["age"]).strip()
         if a.isdigit() and int(a) >= 18:
             adults += 1
-    kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
+    kb = staff_kb(update.effective_user.id)
     await update.message.reply_text(
         "📊 <b>Статистика бота</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -6543,9 +6499,8 @@ async def admin_vip_router(update, context):
             conn.execute("UPDATE users SET vip_until=NULL WHERE tg_id=?", (target,))
             conn.commit()
             try:
-                _sl = cur_lang(); set_cur_lang(get_lang(target))
-                await context.bot.send_message(target, t("vip_taken_user"), parse_mode="HTML")
-                set_cur_lang(_sl)
+                with user_lang(target):
+                    await context.bot.send_message(target, t("vip_taken_user"), parse_mode="HTML")
             except TelegramError:
                 pass
             context.user_data["state"] = "admin_vip"
@@ -6573,9 +6528,8 @@ async def admin_vip_router(update, context):
         conn.execute("UPDATE users SET vip_until=? WHERE tg_id=?", (new_until, target))
         conn.commit()
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(target))
-            await context.bot.send_message(target, t("vip_granted_user", days=days), parse_mode="HTML")
-            set_cur_lang(_sl)
+            with user_lang(target):
+                await context.bot.send_message(target, t("vip_granted_user", days=days), parse_mode="HTML")
         except TelegramError:
             pass
         context.user_data["state"] = "admin_vip"
@@ -6801,11 +6755,11 @@ async def adm_channels_router(update, context):
             if saved:
                 await update.message.reply_text(
                     "✅ Канал добавлен!",
-                    reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+                    reply_markup=staff_kb(uid))
             else:
                 await update.message.reply_text(
                     "⚠️ Не удалось сохранить канал. Попробуй ещё раз позже.",
-                    reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+                    reply_markup=staff_kb(uid))
             await adm_channels_msg(update, context)
             return
         await update.message.reply_text("Нажми «✅ Сохранить» или «❌ Отмена».")
@@ -6832,7 +6786,7 @@ async def adm_channels_router(update, context):
         conn.execute("DELETE FROM mandatory_channels WHERE id=?", (cid,))
         conn.commit()
         context.user_data.pop("del_map", None)
-        await update.message.reply_text("🗑 Канал удалён.", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+        await update.message.reply_text("🗑 Канал удалён.", reply_markup=staff_kb(uid))
         await adm_channels_msg(update, context)
         return
 
@@ -6842,7 +6796,7 @@ async def process_bcast_audience_text(update, context):
     uid = update.effective_user.id
     if text == "❌ Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
-        await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb())
+        await update.message.reply_text("Отменено.", reply_markup=staff_kb(uid))
         return
     mp = {"👥 Всем": "all", "👨 Мужчинам": "m", "👩 Женщинам": "f"}
     aud = mp.get(text)
@@ -7092,7 +7046,7 @@ async def _flush_bcast_album(context, key):
 
 async def process_bcast_content(update, context):
     uid = update.effective_user.id
-    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    back_kb = staff_kb(uid)
     if canon(update.message.text) == "❌ Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
         await update.message.reply_text("Отменено.", reply_markup=back_kb)
@@ -7463,26 +7417,22 @@ async def handle_referral(update, context, code, existed):
     conn.commit()
     # Уведомляем пригласившего
     try:
-        _sl = cur_lang()
-        set_cur_lang(get_lang(inviter_id))
-        await context.bot.send_message(
-            inviter_id,
-            t("ref_friend_joined", reward=reward),
-            parse_mode="HTML",
-        )
-        set_cur_lang(_sl)
+        with user_lang(inviter_id):
+            await context.bot.send_message(
+                inviter_id,
+                t("ref_friend_joined", reward=reward),
+                parse_mode="HTML",
+            )
     except TelegramError:
         pass
     # Уведомляем приглашённого о приветственном бонусе
     try:
-        _sl = cur_lang()
-        set_cur_lang(get_lang(uid))
-        await context.bot.send_message(
-            uid,
-            t("ref_welcome_bonus", n=invited_bonus),
-            parse_mode="HTML",
-        )
-        set_cur_lang(_sl)
+        with user_lang(uid):
+            await context.bot.send_message(
+                uid,
+                t("ref_welcome_bonus", n=invited_bonus),
+                parse_mode="HTML",
+            )
     except TelegramError:
         pass
 
@@ -7517,9 +7467,8 @@ async def reward_link_activity(context, uid, kind):
         )
         conn.commit()
         try:
-            _sl = cur_lang(); set_cur_lang(get_lang(uid))
-            await context.bot.send_message(uid, t("link_reward", coins=reward, n=total), parse_mode="HTML")
-            set_cur_lang(_sl)
+            with user_lang(uid):
+                await context.bot.send_message(uid, t("link_reward", coins=reward, n=total), parse_mode="HTML")
         except TelegramError:
             pass
     else:
@@ -7837,14 +7786,12 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.execute("UPDATE referrals SET active=0 WHERE id=?", (ref["id"],))
             conn.commit()
             try:
-                _sl = cur_lang()
-                set_cur_lang(get_lang(ref["referrer_id"]))
-                await context.bot.send_message(
-                    ref["referrer_id"],
-                    t("ref_coins_refunded", n=ref['coins_awarded']),
-                    parse_mode="HTML",
-                )
-                set_cur_lang(_sl)
+                with user_lang(ref["referrer_id"]):
+                    await context.bot.send_message(
+                        ref["referrer_id"],
+                        t("ref_coins_refunded", n=ref['coins_awarded']),
+                        parse_mode="HTML",
+                    )
             except TelegramError:
                 pass
         # Авто-очистка: если заблокировавший — «пустой» аккаунт, сразу удаляем из базы
@@ -8488,9 +8435,8 @@ async def _nudge_user(u):
                     return False
             except (ValueError, TypeError):
                 pass
-        _sl = cur_lang(); set_cur_lang(get_lang(uid))
-        await BOTP.send_message(uid, t("inactive_nudge"), parse_mode="HTML")
-        set_cur_lang(_sl)
+        with user_lang(uid):
+            await BOTP.send_message(uid, t("inactive_nudge"), parse_mode="HTML")
         conn.execute("UPDATE users SET nudged_at=? WHERE tg_id=?", (now_iso(), uid))
         conn.commit()
         await asyncio.sleep(0.05)  # мягкий троттлинг рассылки
