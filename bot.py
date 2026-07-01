@@ -3120,10 +3120,9 @@ def admin_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
-        [KeyboardButton("✉️ Рассылка"), KeyboardButton("🛡 Модеры")],
-        [KeyboardButton("🔨 Бан / Разбан"), KeyboardButton("⭐ Коины за Stars")],
-        [KeyboardButton(toggle_label)],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка")],
+        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -8149,23 +8148,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "📢 Обязательные каналы":
             await adm_channels_msg(update, context)
-            return
-        if text == "📣 Реклама":
-            existing_ad = conn.execute("SELECT * FROM ad_config WHERE id=1").fetchone()
-            if existing_ad and existing_ad["text"]:
-                context.user_data["state"] = "adm_ad_menu"
-                await update.message.reply_text(
-                    f"📣 Текущая реклама:\n\n{existing_ad['text']}\n\nВыберите действие:",
-                    reply_markup=ReplyKeyboardMarkup([
-                        [KeyboardButton("📝 Создать новую")],
-                        [KeyboardButton("🗑 Удалить рекламу")],
-                        [KeyboardButton("❌ Отмена")],
-                    ], resize_keyboard=True),
-                )
-            else:
-                context.user_data["state"] = "adm_ad_text"
-                context.user_data["ad"] = {}
-                await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
             return
         if text == "✉️ Рассылка":
             context.user_data["state"] = "adm_bcast_audience"
