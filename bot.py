@@ -3255,7 +3255,7 @@ def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
+        [KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -4499,16 +4499,15 @@ def _ch_added_by(c):
 
 def channels_deletable_by(uid):
     """Какие обязательные каналы пользователь вправе удалять:
-    админ — любые; модер — те, что добавил сам, плюс «ничейные» (added_by пуст —
-    старые записи или сохранённые до появления колонки). Каналы, добавленные именно
-    админом, модер удалить НЕ может."""
+    админ — любые; модер — ТОЛЬКО те, что добавил сам (added_by == uid).
+    Каналы, добавленные админом или другим модером — модер удалить НЕ может."""
     chans = conn.execute("SELECT * FROM mandatory_channels").fetchall()
     if is_admin(uid):
         return chans
     out = []
     for c in chans:
         ab = _ch_added_by(c)
-        if ab == uid or ab is None:  # свои + ничейные (legacy/NULL)
+        if ab == uid:  # только свои
             out.append(c)
     return out
 
@@ -6620,10 +6619,6 @@ async def moder_panel_router(update, context):
     if text == "📢 Обязательные каналы":
         await adm_channels_msg(update, context)
         return
-    if text == "📣 Реклама":
-        context.user_data["state"] = "adm_ad_menu"
-        await update.message.reply_text("📣 <b>Управление рекламой</b>", parse_mode="HTML", reply_markup=ad_menu_kb())
-        return
     if text == "ℹ️ Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
@@ -7026,10 +7021,9 @@ async def adm_channels_router(update, context):
             return
         ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
         # Защита: модер может удалить только то, что добавил сам
-        if ch is not None and not is_admin(uid) and _ch_added_by(ch) not in (uid, None):
+        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
             await update.message.reply_text(
-                "⛔ Удалять можно только те каналы, которые добавил ты сам. "
-                "Каналы админа (или другого модератора) удалить нельзя.",
+                "⛔ Удалять можно только те каналы, которые добавил ты сам.",
                 reply_markup=adm_channels_kb(uid))
             context.user_data.pop("del_map", None)
             await adm_channels_msg(update, context)
