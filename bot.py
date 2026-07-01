@@ -4385,16 +4385,16 @@ def _ch_added_by(c):
 
 def channels_deletable_by(uid):
     """Какие обязательные каналы пользователь вправе удалять:
-    админ — любые; модер — те, что добавил сам, плюс «ничейные» (added_by пуст —
-    старые записи или сохранённые до появления колонки). Каналы, добавленные именно
-    админом, модер удалить НЕ может."""
+    админ — любые; модер — ТОЛЬКО те, что добавил ОН САМ (added_by == uid).
+    Каналы админа, другого модера, или без автора (NULL) — модер НЕ может удалить."""
     chans = conn.execute("SELECT * FROM mandatory_channels").fetchall()
     if is_admin(uid):
         return chans
     out = []
     for c in chans:
         ab = _ch_added_by(c)
-        if ab == uid or ab is None:  # свои + ничейные (legacy/NULL)
+        # Модер видит ТОЛЬКО свои каналы (строго added_by == uid)
+        if ab == uid:
             out.append(c)
     return out
 
@@ -6820,11 +6820,12 @@ async def adm_channels_router(update, context):
             await update.message.reply_text("Выбери канал на клавиатуре 👇")
             return
         ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
-        # Защита: модер может удалить только то, что добавил сам
-        if ch is not None and not is_admin(uid) and _ch_added_by(ch) not in (uid, None):
+        # Защита: модер может удалить ТОЛЬКО то, что добавил сам (added_by == uid).
+        # Каналы с added_by=NULL (старые), добавленные админом или другим модером — нельзя.
+        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
             await update.message.reply_text(
-                "⛔ Удалять можно только те каналы, которые добавил ты сам. "
-                "Каналы админа (или другого модератора) удалить нельзя.",
+                "⛔ Удалять можно только те каналы, которые добавил ты сам.\n"
+                "Каналы админа или другого модератора удалить нельзя.",
                 reply_markup=adm_channels_kb(uid))
             context.user_data.pop("del_map", None)
             await adm_channels_msg(update, context)
