@@ -19,6 +19,7 @@ import contextvars
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
+import time
 
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher, F
@@ -112,7 +113,6 @@ class _BotProxy:
     Большинство методов проксируются как есть; переопределяем только то, где
     сигнатуры/типы aiogram отличаются:
       * send_message(..., reply_to_message_id=) -> reply_parameters
-      * send_document(..., document=<файловый объект>) -> BufferedInputFile
     """
 
     def __init__(self, real_bot):
@@ -126,15 +126,6 @@ class _BotProxy:
             kw["reply_parameters"] = ReplyParameters(message_id=reply_to_message_id)
         return await self._bot.send_message(chat_id, text, **kw)
 
-    async def send_document(self, chat_id, document=None, **kw):
-        if hasattr(document, "read"):
-            raw = document.read()
-            if isinstance(raw, str):
-                raw = raw.encode("utf-8")
-            fname = os.path.basename(getattr(document, "name", "") or "file.txt")
-            document = BufferedInputFile(raw, filename=fname)
-        return await self._bot.send_document(chat_id, document, **kw)
-
 
 BOTP = _BotProxy(bot)
 
@@ -145,6 +136,42 @@ UD = defaultdict(dict)
 
 def ud(uid):
     return UD[uid]
+
+
+# ========================= АНТИФЛУД (rate-limit) =========================
+# Защита от спама кнопками и сообщениями в рулетке.
+# _THROTTLE_CB: callback_query — 1 нажатие в секунду на пользователя.
+# _THROTTLE_MSG: сообщения в рулетке — макс 30 за 60 секунд.
+_THROTTLE_CB = {}       # uid -> last_callback_time (float)
+_THROTTLE_MSG = defaultdict(list)  # uid -> [timestamp, timestamp, ...]
+ROULETTE_MSG_LIMIT = 30   # макс сообщений
+ROULETTE_MSG_WINDOW = 60  # за сколько секунд
+
+CB_COOLDOWN = 1.0  # секунд между callback_query
+
+
+def throttle_callback(uid):
+    """Возвращает True если нужно заблокировать (слишком частые нажатия)."""
+    now = time.time()
+    last = _THROTTLE_CB.get(uid, 0)
+    if now - last < CB_COOLDOWN:
+        return True
+    _THROTTLE_CB[uid] = now
+    return False
+
+
+def throttle_roulette_msg(uid):
+    """Возвращает True если пользователь превысил лимит сообщений в рулетке."""
+    now = time.time()
+    ts_list = _THROTTLE_MSG[uid]
+    # Удаляем старые записи (старше окна)
+    cutoff = now - ROULETTE_MSG_WINDOW
+    while ts_list and ts_list[0] < cutoff:
+        ts_list.pop(0)
+    if len(ts_list) >= ROULETTE_MSG_LIMIT:
+        return True
+    ts_list.append(now)
+    return False
 
 
 class _Msg:
@@ -587,6 +614,15 @@ def init_db():
         key TEXT PRIMARY KEY,
         value TEXT
     );
+    -- Аудит-лог действий модераторов/админов
+    CREATE TABLE IF NOT EXISTS moder_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        moder_id INTEGER NOT NULL,
+        action TEXT NOT NULL,
+        target_id INTEGER,
+        details TEXT,
+        created_at TEXT NOT NULL
+    );
     """)
     conn.commit()
     migrate()
@@ -626,6 +662,9 @@ def ensure_indexes():
         "CREATE INDEX IF NOT EXISTS idx_moderapps_status ON moder_apps(status)",
         # Очередь рулетки по режиму
         "CREATE INDEX IF NOT EXISTS idx_queue_mode ON roulette_queue(mode)",
+        # Аудит-лог модераторов
+        "CREATE INDEX IF NOT EXISTS idx_moderlog_moder ON moder_log(moder_id)",
+        "CREATE INDEX IF NOT EXISTS idx_moderlog_target ON moder_log(target_id)",
     ]
     created = 0
     for q in indexes:
@@ -719,6 +758,21 @@ def set_setting(key, value):
     conn.commit()
 
 
+def audit_log(moder_id, action, target_id=None, details=None):
+    """Записывает действие модератора/админа в аудит-лог.
+    action: 'ban', 'unban', 'report_confirm', 'report_reject', 'vip_grant',
+            'vip_revoke', 'moder_grant', 'moder_revoke', 'tg_ban', 'broadcast' и т.д."""
+    try:
+        conn.execute(
+            "INSERT INTO moder_log (moder_id, action, target_id, details, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (moder_id, action, target_id, details, now_iso()),
+        )
+        conn.commit()
+    except Exception as e:  # noqa
+        log.warning("audit_log: %s", e)
+
+
 # Динамические значения реферальных наград (с откатом к константам по умолчанию)
 def cfg_vip_days():        return get_setting_int("ref_vip_days", REF_VIP_DAYS)
 def cfg_vip_threshold():   return max(1, get_setting_int("ref_vip_threshold", REF_VIP_THRESHOLD))
@@ -741,13 +795,32 @@ def touch_user(uid):
                 pass
         conn.execute("UPDATE users SET last_active=? WHERE tg_id=?", (now_iso(), uid))
         conn.commit()
+        _cache_invalidate(uid)
     except Exception:
         pass
 
 
+# ========================= TTL-КЭШ get_user() =========================
+# Каждый вызов get_user() = SQL SELECT. На 10k+ юзеров при каждом апдейте
+# это 3-5 запросов (is_vip, is_adult, is_moder — все зовут get_user).
+# Кэш на 5 сек снижает нагрузку на БД в ~4 раза без ощутимой задержки.
+_USER_CACHE = {}       # tg_id -> (row, expire_time)
+_USER_CACHE_TTL = 5.0  # секунд
+
+
+def _cache_invalidate(tg_id):
+    """Инвалидирует кэш пользователя (вызывать при любой записи в users)."""
+    _USER_CACHE.pop(tg_id, None)
+
 
 def get_user(tg_id):
-    return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
+    now = time.time()
+    cached = _USER_CACHE.get(tg_id)
+    if cached and cached[1] > now:
+        return cached[0]
+    row = conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
+    _USER_CACHE[tg_id] = (row, now + _USER_CACHE_TTL)
+    return row
 
 
 def resolve_user_ref(text):
@@ -775,14 +848,20 @@ def ensure_user(tg_id, username, first_name=None):
             (tg_id, username, first_name, now_iso()),
         )
         conn.commit()
+        _cache_invalidate(tg_id)
         u = get_user(tg_id)
     else:
+        changed = False
         if u["username"] != username:
             conn.execute("UPDATE users SET username=? WHERE tg_id=?", (username, tg_id))
+            changed = True
         if first_name and u["first_name"] != first_name:
             conn.execute("UPDATE users SET first_name=? WHERE tg_id=?", (first_name, tg_id))
-        conn.commit()
-        u = get_user(tg_id)
+            changed = True
+        if changed:
+            conn.commit()
+            _cache_invalidate(tg_id)
+            u = get_user(tg_id)
     return u
 
 
@@ -3129,9 +3208,9 @@ def admin_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
-        [KeyboardButton("✉️ Рассылка"), KeyboardButton("🛡 Модеры")],
-        [KeyboardButton("🔨 Бан / Разбан"), KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка")],
+        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -4740,6 +4819,8 @@ async def on_report_admin_decision(update, context):
         )
         conn.execute("UPDATE reports SET status='confirmed' WHERE id=?", (report_id,))
         conn.commit()
+        audit_log(query.from_user.id, "report_confirm", report["reported_id"],
+                  f"report={report_id}, context={report['context']}, until={until}")
         # Уведомляем жалобщика (на его языке)
         try:
             _sl = cur_lang()
@@ -4766,6 +4847,7 @@ async def on_report_admin_decision(update, context):
     else:
         conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
         conn.commit()
+        audit_log(query.from_user.id, "report_reject", report["reported_id"], f"report={report_id}")
         try:
             _sl = cur_lang()
             set_cur_lang(get_lang(report["reporter_id"]))
@@ -5403,6 +5485,13 @@ async def relay_roulette_message(update, context):
     session = get_active_session(update.effective_user.id)
     if not session:
         return False
+    # Антифлуд: макс 30 сообщений в минуту в рулетке
+    if throttle_roulette_msg(update.effective_user.id):
+        try:
+            await update.message.reply_text("⏳ Слишком много сообщений. Подожди немного.")
+        except TelegramError:
+            pass
+        return True
     other_id = session["user2_id"] if session["user1_id"] == update.effective_user.id else session["user1_id"]
     # Режим сессии: в 18+ чате разрешено отправлять всё (фильтр не применяется)
     try:
@@ -5612,6 +5701,7 @@ async def on_tg_ban(update, context):
     # может сразу попасть в новую сессию, пока force_end_session ещё работает.
     conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
     conn.commit()
+    audit_log(query.from_user.id, "tg_ban", target, f"session={session['id']}")
     # Завершаем сессию, чтобы она не «висела» в /tg и не крутилась у второго участника
     await force_end_session(context, session["id"])
     try:
@@ -6390,6 +6480,7 @@ async def process_moder_give_take(update, context):
     if state == "moder_give_id":
         conn.execute("UPDATE users SET is_moder=1 WHERE tg_id=?", (target,))
         conn.commit()
+        audit_log(update.effective_user.id, "moder_grant", target)
         try:
             _sl = cur_lang()
             set_cur_lang(get_lang(target))
@@ -6401,6 +6492,7 @@ async def process_moder_give_take(update, context):
     else:
         conn.execute("UPDATE users SET is_moder=0 WHERE tg_id=?", (target,))
         conn.commit()
+        audit_log(update.effective_user.id, "moder_revoke", target)
         try:
             _sl = cur_lang()
             set_cur_lang(get_lang(target))
@@ -6445,6 +6537,7 @@ async def process_ban(update, context):
     new_val = 0 if u["is_banned"] else 1
     conn.execute("UPDATE users SET is_banned=? WHERE tg_id=?", (new_val, target))
     conn.commit()
+    audit_log(update.effective_user.id, "ban" if new_val else "unban", target)
     if new_val:
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
         conn.commit()
@@ -6604,6 +6697,7 @@ async def admin_vip_router(update, context):
         if state == "vip_take_id":
             conn.execute("UPDATE users SET vip_until=NULL WHERE tg_id=?", (target,))
             conn.commit()
+            audit_log(uid, "vip_revoke", target)
             try:
                 _sl = cur_lang(); set_cur_lang(get_lang(target))
                 await context.bot.send_message(target, t("vip_taken_user"), parse_mode="HTML")
@@ -6634,6 +6728,7 @@ async def admin_vip_router(update, context):
         new_until = (base + timedelta(days=days)).isoformat()
         conn.execute("UPDATE users SET vip_until=? WHERE tg_id=?", (new_until, target))
         conn.commit()
+        audit_log(uid, "vip_grant", target, f"days={days}")
         try:
             _sl = cur_lang(); set_cur_lang(get_lang(target))
             await context.bot.send_message(target, t("vip_granted_user", days=days), parse_mode="HTML")
@@ -6679,12 +6774,10 @@ async def janitor_unreachable_sweep():
 
 async def adm_export_msg(update, context):
     rows = conn.execute("SELECT tg_id, username, gender FROM users").fetchall()
-    path = os.path.join(os.path.dirname(__file__), "users_export.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        for r in rows:
-            f.write(f"id={r['tg_id']} | username=@{r['username']} | gender={r['gender']}\n")
-    with open(path, "rb") as f:
-        await context.bot.send_document(update.effective_user.id, document=f)
+    lines = [f"id={r['tg_id']} | username=@{r['username']} | gender={r['gender']}" for r in rows]
+    content = "\n".join(lines).encode("utf-8")
+    doc = BufferedInputFile(content, filename="users_export.txt")
+    await context.bot.send_document(update.effective_user.id, doc)
 
 
 async def adm_channels_msg(update, context):
@@ -6957,28 +7050,9 @@ async def process_adm_coins_wizard(update, context):
 
 
 async def process_adm_ad_wizard(update, context):
-    state = context.user_data["state"]
-    text = canon(update.message.text.strip())
-    ad = context.user_data["ad"]
-    if text == "❌ Отмена":
-        context.user_data["state"] = None
-        await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
-        return
-    if state == "adm_ad_text":
-        ad["text"] = text
-        context.user_data["state"] = "adm_ad_button_text"
-        await update.message.reply_text("Текст кнопки (или «-» если без кнопки):", reply_markup=cancel_reply_kb())
-
-    elif state == "adm_ad_button_text":
-        ad["button_text"] = None if text == "-" else text
-        if ad["button_text"]:
-            context.user_data["state"] = "adm_ad_button_url"
-            await update.message.reply_text("Ссылка для кнопки:", reply_markup=cancel_reply_kb())
-        else:
-            await ad_preview_and_offer(update, context)
-    elif state == "adm_ad_button_url":
-        ad["button_url"] = text
-        await ad_preview_and_offer(update, context)
+    """DEPRECATED: реклама объединена с рассылкой. Перенаправляем."""
+    context.user_data["state"] = "adm_bcast_audience"
+    await update.message.reply_text("Кому отправить рассылку?", reply_markup=bcast_audience_kb())
 
 
 def ad_markup(ad):
@@ -6988,55 +7062,15 @@ def ad_markup(ad):
 
 
 async def ad_preview_and_offer(update, context):
-    ad = context.user_data["ad"]
-    save_ad(ad)
-    context.user_data["state"] = "adm_ad_send"
-    await update.message.reply_text("👀 Так реклама будет выглядеть у пользователей:")
-    await update.message.reply_text(ad["text"], reply_markup=ad_markup(ad))
-    await update.message.reply_text(
-        "Разослать рекламу всем пользователям?",
-        reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("📤 Отправить всем")], [KeyboardButton("❌ Отмена")]],
-            resize_keyboard=True,
-        )),
-    )
+    pass  # DEPRECATED: реклама объединена с рассылкой
 
 
 async def process_ad_send(update, context):
-    text = canon(update.message.text)
-    if text == "❌ Отмена":
-        context.user_data["state"] = None
-        await update.message.reply_text("Реклама сохранена, рассылка отменена.", reply_markup=admin_menu_kb())
-        return
-    if text != "📤 Отправить всем":
-        await update.message.reply_text("Выберите действие на клавиатуре 👇")
-        return
-    ad = conn.execute("SELECT * FROM ad_config WHERE id=1").fetchone()
-    markup = None
-    if ad and ad["button_text"] and ad["button_url"]:
-        markup = InlineKeyboardMarkup([[InlineKeyboardButton(ad["button_text"], url=ad["button_url"])]])
-    rows = conn.execute("SELECT tg_id FROM users").fetchall()
-    sent, failed = 0, 0
-    for r in rows:
-        try:
-            await context.bot.send_message(r["tg_id"], ad["text"], reply_markup=markup)
-            sent += 1
-        except TelegramError:
-            failed += 1
-    context.user_data["state"] = None
-    await update.message.reply_text(
-        f"📣 Реклама разослана. Доставлено: {sent}, не удалось: {failed}",
-        reply_markup=admin_menu_kb(),
-    )
+    pass  # DEPRECATED: реклама объединена с рассылкой
 
 
 def save_ad(ad):
-    conn.execute(
-        "INSERT INTO ad_config (id, text, button_text, button_url) VALUES (1, ?, ?, ?) "
-        "ON CONFLICT(id) DO UPDATE SET text=excluded.text, button_text=excluded.button_text, button_url=excluded.button_url",
-        (ad.get("text"), ad.get("button_text"), ad.get("button_url")),
-    )
-    conn.commit()
+    pass  # DEPRECATED: реклама объединена с рассылкой
 
 
 def user_is_disposable(uid):
@@ -7079,6 +7113,10 @@ def purge_user(uid):
         conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+        # Чистим анонимные сообщения (призраки от удалённого пользователя)
+        conn.execute("DELETE FROM anon_messages WHERE from_id=? AND deleted=1", (uid,))
+        # Парные баны с участием удалённого — больше не нужны
+        conn.execute("DELETE FROM bans WHERE owner_id=? OR banned_id=?", (uid, uid))
         # Завершаем неактивные сессии (ended), чтобы не ссылались на удалённого
         conn.execute(
             "UPDATE roulette_sessions SET active=0, ended_at=COALESCE(ended_at, ?) "
@@ -7086,6 +7124,7 @@ def purge_user(uid):
             (now_iso(), uid, uid),
         )
         conn.commit()
+        _cache_invalidate(uid)
         return True
     except Exception as e:  # noqa
         log.warning("purge_user %s: %s", uid, e)
@@ -7172,8 +7211,14 @@ async def process_bcast_content(update, context):
         await update.message.reply_text("Отменено.", reply_markup=back_kb)
         return
     msg = update.message
-    # Несколько фото = альбом: Telegram шлёт их отдельными сообщениями с общим media_group_id.
-    # Собираем все фото группы и отправляем ОДНИМ альбомом (а не по отдельности).
+    # Сохраняем контент для рассылки (текст/фото/голос)
+    bcast = context.user_data.setdefault("bcast_data", {})
+    bcast["text"] = msg.text
+    bcast["photo_id"] = msg.photo[-1].file_id if msg.photo else None
+    bcast["voice_id"] = msg.voice.file_id if msg.voice else None
+    bcast["caption"] = msg.caption
+    bcast["media_group_id"] = msg.media_group_id if msg.photo else None
+    # Альбом — обрабатывается отдельно (собирается через дебаунс)
     if msg.photo and msg.media_group_id:
         key = (uid, msg.media_group_id)
         buf = BCAST_ALBUMS.get(key)
@@ -7185,51 +7230,112 @@ async def process_bcast_content(update, context):
         buf["file_ids"].append(msg.photo[-1].file_id)
         if msg.caption and not buf["caption"]:
             buf["caption"] = msg.caption
-        # дебаунс: ждём, пока придут все фото альбома, затем шлём один раз
         if buf["task"]:
             buf["task"].cancel()
         buf["task"] = asyncio.create_task(_flush_bcast_album(context, key))
-        # ВАЖНО: состояние НЕ сбрасываем здесь — иначе следующие фото альбома
-        # не попадут в сборщик. Его сбросит _flush_bcast_album после отправки.
         return
-    aud = context.user_data["bcast_aud"]
+    # Спрашиваем, нужна ли инлайн-кнопка (реклама)
+    context.user_data["state"] = "adm_bcast_button_ask"
+    await update.message.reply_text(
+        "🔗 Прикрепить инлайн-кнопку к рассылке?\n"
+        "Напиши <b>текст кнопки</b> (как её увидит пользователь) или «-» чтобы отправить без кнопки.",
+        parse_mode="HTML", reply_markup=cancel_reply_kb(),
+    )
+
+
+async def _bcast_button_ask_router(update, context):
+    """Обработка ответа на вопрос о кнопке: текст кнопки или '-'."""
+    uid = update.effective_user.id
+    text = (update.message.text or "").strip()
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    if canon(text) == "❌ Отмена":
+        context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+        context.user_data.pop("bcast_data", None)
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+    if text == "-":
+        # Без кнопки — сразу рассылаем
+        await _execute_broadcast(update, context, btn_text=None, btn_url=None)
+        return
+    # Текст кнопки задан — спрашиваем URL
+    context.user_data.setdefault("bcast_data", {})["btn_text"] = text
+    context.user_data["state"] = "adm_bcast_button_url"
+    await update.message.reply_text(
+        "🔗 Введите URL для кнопки (https://...):",
+        reply_markup=cancel_reply_kb(),
+    )
+
+
+async def _bcast_button_url_router(update, context):
+    """Обработка URL для инлайн-кнопки рассылки."""
+    uid = update.effective_user.id
+    text = (update.message.text or "").strip()
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    if canon(text) == "❌ Отмена":
+        context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+        context.user_data.pop("bcast_data", None)
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+    if not is_valid_btn_url(text):
+        await update.message.reply_text(
+            "⚠️ URL невалидный. Нужен https://... или tg://... Попробуйте снова:",
+            reply_markup=cancel_reply_kb(),
+        )
+        return
+    btn_text = context.user_data.get("bcast_data", {}).get("btn_text")
+    await _execute_broadcast(update, context, btn_text=btn_text, btn_url=text)
+
+
+async def _execute_broadcast(update, context, btn_text=None, btn_url=None):
+    """Выполняет рассылку сохранённого контента всем/мужчинам/женщинам."""
+    uid = update.effective_user.id
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    bcast = context.user_data.get("bcast_data", {})
+    aud = context.user_data.get("bcast_aud", "all")
     if aud == "all":
         rows = conn.execute("SELECT tg_id FROM users").fetchall()
     else:
         rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
+    # Инлайн-кнопка (опционально)
+    markup = None
+    if btn_text and btn_url:
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton(btn_text, url=btn_url)]])
     sent, failed = 0, 0
     dead_ids = []
-    prefix_text = "Админ:\n\n"
+    content_text = bcast.get("text")
+    photo_id = bcast.get("photo_id")
+    voice_id = bcast.get("voice_id")
+    caption = bcast.get("caption")
     for r in rows:
         try:
-            if update.message.text:
-                await context.bot.send_message(r["tg_id"], prefix_text + update.message.text)
-            elif update.message.photo:
-                caption = (prefix_text + update.message.caption) if update.message.caption else prefix_text
-                await context.bot.send_photo(r["tg_id"], update.message.photo[-1].file_id, caption=caption)
-            elif update.message.voice:
-                await context.bot.send_message(r["tg_id"], prefix_text)
-                await context.bot.send_voice(r["tg_id"], update.message.voice.file_id)
+            if content_text:
+                await context.bot.send_message(r["tg_id"], content_text, reply_markup=markup)
+            elif photo_id:
+                await context.bot.send_photo(r["tg_id"], photo_id,
+                                             caption=caption or None, reply_markup=markup)
+            elif voice_id:
+                await context.bot.send_voice(r["tg_id"], voice_id, reply_markup=markup)
             sent += 1
         except TelegramForbiddenError:
-            # Заблокировал/не запускал бота — мёртвый аккаунт
             failed += 1
             dead_ids.append(r["tg_id"])
         except TelegramError as e:
             failed += 1
-            if _is_dead_account(e):  # «chat not found», «user deactivated» и т.п.
+            if _is_dead_account(e):
                 dead_ids.append(r["tg_id"])
-    # Сразу чистим недоступных (только «пустые» аккаунты — VIP/коины/покупки не трогаем)
+        await asyncio.sleep(0.03)
     removed = 0
     for bid in dead_ids:
         if safe_purge_dead(bid):
             removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+    context.user_data.pop("bcast_data", None)
+    audit_log(uid, "broadcast", details=f"aud={aud}, sent={sent}, failed={failed}")
     await update.message.reply_text(
         f"📢 Рассылка завершена.\n"
         f"✅ Доставлено: {sent}\n"
         f"❌ Не удалось: {failed}\n"
-        f"🧹 Удалено недоступных (заблокировали/не запускали бота): {removed}",
+        f"🧹 Удалено недоступных: {removed}",
         reply_markup=back_kb,
     )
 
@@ -7978,15 +8084,23 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
         "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
         "🔞 18+": eighteen_plus_menu,
+        "🛠 Админка": show_admin_menu, "🛡 Модерка": show_moder_menu,
+        "18+ рулетка": show_eighteen_plus_roulette,
+        "18+ магазин": show_eighteen_plus_shop,
         "🏠 Меню": go_home,
     }
     if (text in _NAV and state not in _NO_NAV
             and not (state and state.startswith("moder_q_"))
             and not (state == "moder" and text == "ℹ️ Помощь")):
-        if text == "🛒 Магазин":
+        if text == "🛒 Магазин" or text == "18+ магазин":
             context.user_data["state"] = None
-        await _NAV[text](update, context)
-        return
+        if text == "🛠 Админка" and not is_admin(update.effective_user.id):
+            pass  # не перехватываем — упадёт в not_understood
+        elif text == "🛡 Модерка" and not is_moder(get_user(update.effective_user.id)):
+            pass
+        else:
+            await _NAV[text](update, context)
+            return
     if state == "rchat":
         if text == "➡️ Далее":
             await rchat_next(update, context)
@@ -8111,6 +8225,12 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "adm_bcast_content":
         await process_bcast_content(update, context)
         return
+    if state == "adm_bcast_button_ask":
+        await _bcast_button_ask_router(update, context)
+        return
+    if state == "adm_bcast_button_url":
+        await _bcast_button_url_router(update, context)
+        return
     if await relay_roulette_message(update, context):
         return
     if text == "⛔ Отменить поиск":
@@ -8134,8 +8254,10 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await adm_channels_msg(update, context)
             return
         if text == "📣 Реклама":
-            context.user_data["state"] = "adm_ad_text"
-            context.user_data["ad"] = {}
+            # Устаревшая кнопка — перенаправляем в рассылку (объединено)
+            context.user_data["state"] = "adm_bcast_audience"
+            await update.message.reply_text("Кому отправить рассылку?", reply_markup=bcast_audience_kb())
+            return
             await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
             return
         if text == "✉️ Рассылка":
@@ -8163,46 +8285,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML", reply_markup=admin_menu_kb(),
             )
             return
-    # Главное меню — навигация доступна из любого раздела
-    if text == "🔗 Моя ссылка":
-        await show_link_menu(update, context)
-        return
-    if text == "🎲 Чат-рулетка":
-        await show_roulette_entry(update, context)
-        return
-    if text == "18+ рулетка":
-        await show_eighteen_plus_roulette(update, context)
-        return
-    if text == "👤 Профиль":
-        await show_profile(update, context)
-        return
-    if text == "🛒 Магазин":
-        context.user_data["state"] = None
-        await show_shop(update, context)
-        return
-    if text == "🔞 18+ магазин":
-        context.user_data["state"] = None
-        await show_eighteen_plus_shop(update, context)
-        return
-    if text == "💎 Купить коины":
-        await show_star_shop(update, context)
-        return
-    if text == "👥 Пригласить":
-        await show_referral(update, context)
-        return
-    if text == "ℹ️ Помощь" and state != "moder":
-        await show_help(update, context)
-        return
-    if text == "🌐 Язык":
-        await show_language_menu(update, context)
-        return
-    if text == "🛠 Админка":
-        context.user_data["state"] = None
-        await show_admin_menu(update, context)
-        return
-    if text == "🛡 Модерка":
-        await show_moder_menu(update, context)
-        return
     # Под-меню разделов (reply-клавиатуры)
     if state == "moder":
         await moder_panel_router(update, context)
@@ -8464,6 +8546,39 @@ async def _h_cmd_next(message: Message):
     await modmsg_start(_mu(message), Ctx(message.from_user.id))
 
 
+async def _h_cmd_me(message: Message):
+    """Быстрый профиль: /me — ID, баланс, VIP, возраст. Без навигации по меню."""
+    uid = message.from_user.id
+    user = ensure_user(uid, message.from_user.username, message.from_user.first_name)
+    if not user:
+        await message.answer("Профиль не найден. Нажми /start")
+        return
+    coins = "∞" if is_unlimited(user) else str(user["coins"] or 0)
+    if is_unlimited(user):
+        vip_s = "навсегда 👑"
+    elif is_vip(user):
+        vip_s = f"до {user['vip_until'][:10]} 👑"
+    else:
+        vip_s = "—"
+    age_s = str(user_age_int(user)) if user_age_int(user) else "—"
+    gender_s = {"m": "♂", "f": "♀"}.get(user["gender"], "—")
+    text = (
+        f"<b>⚡ Быстрый профиль</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━\n"
+        f"🆔 <code>{uid}</code>\n"
+        f"🚻 {gender_s}  🎂 {age_s}\n"
+        f"💎 {coins}  👑 {vip_s}\n"
+    )
+    # 18+ доступ
+    if is_eighteenplus_active(user):
+        try:
+            ep = user["eighteenplus_until"][:10] if user["eighteenplus_until"] and user["eighteenplus_until"] != "9999-12-31T23:59:59" else "∞"
+        except (TypeError, IndexError):
+            ep = "∞"
+        text += f"🔞 18+: до {ep}\n"
+    await message.answer(text, parse_mode="HTML")
+
+
 # Карта callback-хендлеров: (ключ, функция, точное_совпадение)
 _CALLBACKS = [
     ("back_main", on_back_main, True),
@@ -8488,6 +8603,13 @@ _CALLBACKS = [
 
 def _make_cb_handler(fn):
     async def _handler(cq: CallbackQuery):
+        # Антифлуд: 1 callback в секунду на пользователя
+        if throttle_callback(cq.from_user.id):
+            try:
+                await cq.answer("⏳", show_alert=False)
+            except TelegramError:
+                pass
+            return
         await fn(_cu(cq), Ctx(cq.from_user.id))
     return _handler
 
@@ -8500,6 +8622,7 @@ def register_handlers():
     # Скрытые команды модерации (в меню не показываются — set_my_commands содержит только /start)
     dp.message.register(_h_cmd_tg, Command("tg"))
     dp.message.register(_h_cmd_next, Command("next"))
+    dp.message.register(_h_cmd_me, Command("me"))
     dp.pre_checkout_query.register(_h_precheckout)
     dp.message.register(_h_payment, F.successful_payment)
     dp.my_chat_member.register(_h_my_chat_member)
@@ -8539,6 +8662,11 @@ def run_safe_cleanup():
         conn.execute("DELETE FROM anon_messages WHERE created_at < ?", (old_anon,))
         # обработанные жалобы старше 30 дней
         conn.execute("DELETE FROM reports WHERE status <> 'pending' AND created_at < ?", (old_reports,))
+        # Старые записи аудит-лога (>90 дней) — чтобы не разрасталась
+        conn.execute("DELETE FROM moder_log WHERE created_at < ?", (old_sessions,))
+        # Старые VIP-уведомления (ключи vip_notified_*) — после истечения VIP бесполезны
+        conn.execute("DELETE FROM settings WHERE key LIKE 'vip_notified_%' AND value < ?",
+                     ((now_dt() - timedelta(days=3)).isoformat(),))
         conn.commit()
         # SQLite: подрезаем WAL-файл, чтобы он не рос бесконечно при активной записи
         if not DATABASE_URL:
@@ -8640,6 +8768,8 @@ async def _janitor_loop():
     while True:
         try:
             run_safe_cleanup()
+            # Уведомления VIP (за день до истечения) — каждый цикл (раз в JANITOR_WAKE_HOURS)
+            await _notify_vip_expiring()
             last = get_setting("janitor_last")
             do_heavy = True
             if last:
@@ -8662,6 +8792,39 @@ async def _janitor_loop():
         except Exception as e:  # noqa
             log.error("janitor_loop: %s", e)
         await asyncio.sleep(JANITOR_WAKE_HOURS * 3600)
+
+
+async def _notify_vip_expiring():
+    """Уведомляет пользователей, у которых VIP истекает завтра (±2 часа).
+    Отправляем 1 раз — помечаем через setting vip_notified_<uid>."""
+    tomorrow_start = now_dt() + timedelta(hours=22)
+    tomorrow_end = now_dt() + timedelta(hours=26)
+    rows = conn.execute(
+        "SELECT * FROM users WHERE vip_until IS NOT NULL AND vip_until > ? AND vip_until < ?",
+        (tomorrow_start.isoformat(), tomorrow_end.isoformat()),
+    ).fetchall()
+    for u in rows:
+        uid = u["tg_id"]
+        if is_admin(uid) or is_moder(u):
+            continue  # у них VIP бессрочный
+        # Проверяем, уведомляли ли уже
+        key = f"vip_notified_{uid}"
+        if get_setting(key):
+            continue
+        try:
+            _sl = cur_lang(); set_cur_lang(get_lang(uid))
+            await BOTP.send_message(
+                uid,
+                "⏳ <b>Твой VIP истекает завтра!</b>\n"
+                "Продли его в 🛒 Магазине, чтобы не потерять привилегии 👑",
+                parse_mode="HTML",
+            )
+            set_cur_lang(_sl)
+            set_setting(key, now_iso())
+        except TelegramError:
+            pass
+        except Exception as e:  # noqa
+            log.warning("vip_notify %s: %s", uid, e)
 
 
 async def _matchmaker_loop():
@@ -8688,7 +8851,10 @@ async def _run():
     init_db()
     register_handlers()
     try:
-        await bot.set_my_commands([BotCommand(command="start", description="Запустить бота")])
+        await bot.set_my_commands([
+            BotCommand(command="start", description="Запустить бота"),
+            BotCommand(command="me", description="Быстрый профиль"),
+        ])
     except Exception as e:  # noqa
         log.warning("set_my_commands: %s", e)
     # На случай, если ранее был установлен вебхук — иначе поллинг конфликтует.
