@@ -266,8 +266,9 @@ BAN_DAYS = 7
 ROULETTE_BAN_DAYS = 30           # бан по жалобе из рулетки — на месяц
 ANON_BAN_FOREVER = "9999-12-31T23:59:59"  # бан по жалобе из анонимки — навсегда (попарно)
 ROULETTE_TICK_SECONDS = 3
-SEARCH_TIMEOUT_MIN = 30     # авто-стоп поиска в рулетке, минут
-SEARCH_REMIND_MIN = 5       # как часто напоминать «всё ещё ищем», минут
+SEARCH_TIMEOUT_MIN = 1       # авто-стоп поиска в рулетке, минут (нет собеседника — выкинуть)
+SEARCH_REMIND_MIN = 0.5      # как часто напоминать «всё ещё ищем», минут (30 сек)
+CHAT_INACTIVE_TIMEOUT_SEC = 120  # авто-закрытие чата без сообщений, секунд (2 минуты)
 LINK_CHANGE_COOLDOWN_DAYS = 7
 VIP_DISCOUNT_PERCENT = 20   # скидка VIP в магазине, %
 VIP_DAILY_BONUS = 5         # ежедневный бонус VIP, коинов
@@ -623,6 +624,16 @@ def init_db():
         details TEXT,
         created_at TEXT NOT NULL
     );
+    -- Рекламные объявления (добавляют модеры/админы, рассылаются всем)
+    CREATE TABLE IF NOT EXISTS ad_posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        text TEXT NOT NULL,
+        button_text TEXT,
+        button_url TEXT,
+        added_by INTEGER NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+    );
     """)
     conn.commit()
     migrate()
@@ -711,6 +722,7 @@ def migrate():
         "ALTER TABLE roulette_queue ADD COLUMN age_min INTEGER",
         "ALTER TABLE roulette_queue ADD COLUMN age_max INTEGER",
         "ALTER TABLE roulette_sessions ADD COLUMN mode TEXT NOT NULL DEFAULT 'normal'",
+        "ALTER TABLE roulette_sessions ADD COLUMN last_message_at TEXT",
         "ALTER TABLE shop_items ADD COLUMN is_18plus INTEGER NOT NULL DEFAULT 0",
         "ALTER TABLE star_packages ADD COLUMN title_uz TEXT",
         "ALTER TABLE star_packages ADD COLUMN title_en TEXT",
@@ -3208,9 +3220,9 @@ def admin_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка")],
-        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
+        [KeyboardButton("✉️ Рассылка"), KeyboardButton("🛡 Модеры")],
+        [KeyboardButton("🔨 Бан / Разбан"), KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -3243,7 +3255,7 @@ def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("📢 Обязательные каналы")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
         [KeyboardButton("ℹ️ Помощь")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -5184,8 +5196,8 @@ async def roulette_matchmaker(context: ContextTypes.DEFAULT_TYPE):
     async def _pair(a, b, a_mode):
         conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
         conn.execute(
-            "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) VALUES (?, ?, 1, ?, ?)",
-            (a["user_id"], b["user_id"], a_mode, now_iso()),
+            "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at, last_message_at) VALUES (?, ?, 1, ?, ?, ?)",
+            (a["user_id"], b["user_id"], a_mode, now_iso(), now_iso()),
         )
         conn.commit()
         matched_ids.add(a["user_id"]); matched_ids.add(b["user_id"])
@@ -5330,6 +5342,31 @@ async def end_dead_sessions(context):
             ended += 1
     if ended:
         log.info("end_dead_sessions: завершено зависших сессий=%d", ended)
+
+
+async def end_inactive_sessions(context):
+    """Завершает чаты, в которых нет сообщений дольше CHAT_INACTIVE_TIMEOUT_SEC (2 мин).
+    Оба участника получают уведомление «Собеседник покинул чат» и кнопки нового поиска."""
+    cutoff = (now_dt() - timedelta(seconds=CHAT_INACTIVE_TIMEOUT_SEC)).isoformat()
+    rows = conn.execute(
+        "SELECT * FROM roulette_sessions WHERE active=1 AND last_message_at IS NOT NULL AND last_message_at < ?",
+        (cutoff,),
+    ).fetchall()
+    ended = 0
+    for s in rows:
+        await force_end_session(context, s["id"])
+        ended += 1
+    # Также закрываем сессии, где last_message_at = NULL (пара нашлась, но никто не написал)
+    # и прошло больше CHAT_INACTIVE_TIMEOUT_SEC с момента started_at.
+    rows2 = conn.execute(
+        "SELECT * FROM roulette_sessions WHERE active=1 AND last_message_at IS NULL AND started_at < ?",
+        (cutoff,),
+    ).fetchall()
+    for s in rows2:
+        await force_end_session(context, s["id"])
+        ended += 1
+    if ended:
+        log.info("end_inactive_sessions: завершено неактивных чатов=%d", ended)
 
 
 # Память для напоминаний о поиске: user_id -> datetime последнего напоминания
@@ -5510,6 +5547,12 @@ async def relay_roulette_message(update, context):
     try:
         await context.bot.copy_message(other_id, update.effective_chat.id, update.message.message_id)
     except TelegramError:
+        pass
+    # Обновляем метку последнего сообщения (для авто-закрытия неактивных чатов)
+    try:
+        conn.execute("UPDATE roulette_sessions SET last_message_at=? WHERE id=?", (now_iso(), session["id"]))
+        conn.commit()
+    except Exception:
         pass
     # Трансляция модераторам-наблюдателям (/tg), если они есть
     await relay_to_spectators(context, session, update.effective_user.id,
@@ -6577,6 +6620,10 @@ async def moder_panel_router(update, context):
     if text == "📢 Обязательные каналы":
         await adm_channels_msg(update, context)
         return
+    if text == "📣 Реклама":
+        context.user_data["state"] = "adm_ad_menu"
+        await update.message.reply_text("📣 <b>Управление рекламой</b>", parse_mode="HTML", reply_markup=ad_menu_kb())
+        return
     if text == "ℹ️ Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
@@ -7050,9 +7097,215 @@ async def process_adm_coins_wizard(update, context):
 
 
 async def process_adm_ad_wizard(update, context):
-    """DEPRECATED: реклама объединена с рассылкой. Перенаправляем."""
-    context.user_data["state"] = "adm_bcast_audience"
-    await update.message.reply_text("Кому отправить рассылку?", reply_markup=bcast_audience_kb())
+    """Управление рекламными объявлениями: добавление, просмотр, удаление, рассылка."""
+    state = context.user_data.get("state")
+    text = (update.message.text or "").strip()
+    ctext = canon(text)
+    uid = update.effective_user.id
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+
+    if ctext in ("❌ Отмена", "⬅️ Назад"):
+        context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+        context.user_data.pop("new_ad", None)
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+
+    # === Меню рекламы ===
+    if state == "adm_ad_menu":
+        if ctext == "➕ Добавить рекламу":
+            context.user_data["new_ad"] = {}
+            context.user_data["state"] = "adm_ad_text"
+            await update.message.reply_text(
+                "📝 Введите <b>текст рекламы</b> (его увидят все пользователи):",
+                parse_mode="HTML", reply_markup=cancel_reply_kb())
+            return
+        if ctext == "🗑 Удалить рекламу":
+            await _show_ad_delete_list(update, context)
+            return
+        if ctext == "📋 Список реклам":
+            await _show_ad_list(update, context)
+            return
+        if ctext == "📤 Разослать рекламу":
+            await _show_ad_send_list(update, context)
+            return
+        await update.message.reply_text("Выберите действие 👇", reply_markup=ad_menu_kb())
+        return
+
+    # === Добавление рекламы: текст ===
+    if state == "adm_ad_text":
+        context.user_data.setdefault("new_ad", {})["text"] = text
+        context.user_data["state"] = "adm_ad_button_text"
+        await update.message.reply_text(
+            "🔗 Текст кнопки (как видит пользователь).\nИли «<b>-</b>» если без кнопки:",
+            parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+
+    # === Добавление рекламы: текст кнопки ===
+    if state == "adm_ad_button_text":
+        ad = context.user_data.setdefault("new_ad", {})
+        if text == "-":
+            ad["button_text"] = None
+            ad["button_url"] = None
+            await _save_ad_post(update, context)
+        else:
+            ad["button_text"] = text
+            context.user_data["state"] = "adm_ad_button_url"
+            await update.message.reply_text(
+                "🔗 Введите <b>URL кнопки</b> (https://...):",
+                parse_mode="HTML", reply_markup=cancel_reply_kb())
+        return
+
+    # === Добавление рекламы: URL кнопки ===
+    if state == "adm_ad_button_url":
+        if not is_valid_btn_url(text):
+            await update.message.reply_text(
+                "⚠️ Невалидный URL. Нужен https://... или tg://... Попробуйте снова:",
+                reply_markup=cancel_reply_kb())
+            return
+        context.user_data.setdefault("new_ad", {})["button_url"] = text
+        await _save_ad_post(update, context)
+        return
+
+    # === Удаление рекламы: выбор ===
+    if state == "adm_ad_delete":
+        ad_id = context.user_data.get("ad_del_map", {}).get(text)
+        if ad_id is None:
+            await update.message.reply_text("Выберите рекламу на клавиатуре 👇")
+            return
+        ad = conn.execute("SELECT * FROM ad_posts WHERE id=?", (ad_id,)).fetchone()
+        # Права: модер удаляет только свою, админ — любую
+        if ad and not is_admin(uid) and ad["added_by"] != uid:
+            await update.message.reply_text(
+                "⛔ Удалять можно только свою рекламу. Чужую удалить нельзя.",
+                reply_markup=ad_menu_kb())
+            context.user_data["state"] = "adm_ad_menu"
+            return
+        conn.execute("UPDATE ad_posts SET active=0 WHERE id=?", (ad_id,))
+        conn.commit()
+        audit_log(uid, "ad_delete", details=f"ad_id={ad_id}")
+        context.user_data["state"] = "adm_ad_menu"
+        await update.message.reply_text("🗑 Реклама удалена.", reply_markup=ad_menu_kb())
+        return
+
+    # === Рассылка рекламы: выбор ===
+    if state == "adm_ad_send_pick":
+        ad_id = context.user_data.get("ad_send_map", {}).get(text)
+        if ad_id is None:
+            await update.message.reply_text("Выберите рекламу на клавиатуре 👇")
+            return
+        await _send_ad_to_all(update, context, ad_id)
+        return
+
+
+async def _save_ad_post(update, context):
+    """Сохраняет новую рекламу в БД."""
+    uid = update.effective_user.id
+    ad = context.user_data.get("new_ad", {})
+    conn.execute(
+        "INSERT INTO ad_posts (text, button_text, button_url, added_by, created_at) VALUES (?, ?, ?, ?, ?)",
+        (ad.get("text"), ad.get("button_text"), ad.get("button_url"), uid, now_iso()),
+    )
+    conn.commit()
+    audit_log(uid, "ad_create", details=f"text={ad.get('text', '')[:50]}")
+    context.user_data["state"] = "adm_ad_menu"
+    context.user_data.pop("new_ad", None)
+    await update.message.reply_text("✅ Реклама добавлена!", reply_markup=ad_menu_kb())
+
+
+async def _show_ad_list(update, context):
+    """Показывает список всех активных реклам."""
+    ads = conn.execute("SELECT * FROM ad_posts WHERE active=1 ORDER BY id DESC").fetchall()
+    if not ads:
+        await update.message.reply_text("📋 Реклам нет.", reply_markup=ad_menu_kb())
+        return
+    lines = ["📋 <b>Активные рекламы</b>", "━━━━━━━━━━━━━━━━━━━━"]
+    for a in ads:
+        who = get_user(a["added_by"])
+        who_name = (who["first_name"] if who else "?") or str(a["added_by"])
+        btn = f" 🔗 [{a['button_text']}]" if a["button_text"] else ""
+        lines.append(f"#{a['id']} от {html.escape(who_name)}{btn}\n  <i>{html.escape((a['text'] or '')[:60])}</i>")
+    await update.message.reply_text("\n".join(lines), parse_mode="HTML", reply_markup=ad_menu_kb())
+
+
+async def _show_ad_delete_list(update, context):
+    """Показывает список реклам для удаления (модер — только свои, админ — все)."""
+    uid = update.effective_user.id
+    if is_admin(uid):
+        ads = conn.execute("SELECT * FROM ad_posts WHERE active=1 ORDER BY id DESC").fetchall()
+    else:
+        ads = conn.execute("SELECT * FROM ad_posts WHERE active=1 AND added_by=? ORDER BY id DESC", (uid,)).fetchall()
+    if not ads:
+        msg = "Нет реклам для удаления." if is_admin(uid) else "У тебя нет своих реклам для удаления."
+        await update.message.reply_text(msg, reply_markup=ad_menu_kb())
+        context.user_data["state"] = "adm_ad_menu"
+        return
+    del_map = {}
+    rows = []
+    for a in ads:
+        label = f"#{a['id']}: {(a['text'] or '')[:30]}"
+        del_map[label] = a["id"]
+        rows.append([KeyboardButton(label)])
+    rows.append([KeyboardButton("⬅️ Назад")])
+    context.user_data["ad_del_map"] = del_map
+    context.user_data["state"] = "adm_ad_delete"
+    hint = "Выбери рекламу для удаления 👇" if is_admin(uid) else "Выбери СВОЮ рекламу для удаления 👇"
+    await update.message.reply_text(hint, reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
+
+
+async def _show_ad_send_list(update, context):
+    """Показывает список реклам для рассылки."""
+    ads = conn.execute("SELECT * FROM ad_posts WHERE active=1 ORDER BY id DESC").fetchall()
+    if not ads:
+        await update.message.reply_text("Нет реклам для рассылки. Сначала добавьте.", reply_markup=ad_menu_kb())
+        context.user_data["state"] = "adm_ad_menu"
+        return
+    send_map = {}
+    rows = []
+    for a in ads:
+        label = f"#{a['id']}: {(a['text'] or '')[:30]}"
+        send_map[label] = a["id"]
+        rows.append([KeyboardButton(label)])
+    rows.append([KeyboardButton("⬅️ Назад")])
+    context.user_data["ad_send_map"] = send_map
+    context.user_data["state"] = "adm_ad_send_pick"
+    await update.message.reply_text("Выбери рекламу для рассылки 👇", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
+
+
+async def _send_ad_to_all(update, context, ad_id):
+    """Рассылает выбранную рекламу всем пользователям."""
+    uid = update.effective_user.id
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    ad = conn.execute("SELECT * FROM ad_posts WHERE id=? AND active=1", (ad_id,)).fetchone()
+    if not ad:
+        await update.message.reply_text("Реклама не найдена.", reply_markup=ad_menu_kb())
+        context.user_data["state"] = "adm_ad_menu"
+        return
+    markup = None
+    if ad["button_text"] and ad["button_url"]:
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton(ad["button_text"], url=ad["button_url"])]])
+    rows = conn.execute("SELECT tg_id FROM users").fetchall()
+    sent, failed = 0, 0
+    for r in rows:
+        try:
+            await context.bot.send_message(r["tg_id"], ad["text"], reply_markup=markup)
+            sent += 1
+        except TelegramError:
+            failed += 1
+        await asyncio.sleep(0.03)
+    audit_log(uid, "ad_broadcast", details=f"ad_id={ad_id}, sent={sent}, failed={failed}")
+    context.user_data["state"] = "adm_ad_menu"
+    await update.message.reply_text(
+        f"📣 Реклама разослана.\n✅ Доставлено: {sent}\n❌ Не удалось: {failed}",
+        reply_markup=ad_menu_kb())
+
+
+def ad_menu_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("➕ Добавить рекламу")],
+        [KeyboardButton("📋 Список реклам"), KeyboardButton("🗑 Удалить рекламу")],
+        [KeyboardButton("📤 Разослать рекламу")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+    ], resize_keyboard=True))
 
 
 def ad_markup(ad):
@@ -7062,15 +7315,15 @@ def ad_markup(ad):
 
 
 async def ad_preview_and_offer(update, context):
-    pass  # DEPRECATED: реклама объединена с рассылкой
+    pass  # DEPRECATED
 
 
 async def process_ad_send(update, context):
-    pass  # DEPRECATED: реклама объединена с рассылкой
+    pass  # DEPRECATED
 
 
 def save_ad(ad):
-    pass  # DEPRECATED: реклама объединена с рассылкой
+    pass  # DEPRECATED
 
 
 def user_is_disposable(uid):
@@ -8254,9 +8507,8 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await adm_channels_msg(update, context)
             return
         if text == "📣 Реклама":
-            # Устаревшая кнопка — перенаправляем в рассылку (объединено)
-            context.user_data["state"] = "adm_bcast_audience"
-            await update.message.reply_text("Кому отправить рассылку?", reply_markup=bcast_audience_kb())
+            context.user_data["state"] = "adm_ad_menu"
+            await update.message.reply_text("📣 <b>Управление рекламой</b>", parse_mode="HTML", reply_markup=ad_menu_kb())
             return
             await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
             return
@@ -8546,39 +8798,6 @@ async def _h_cmd_next(message: Message):
     await modmsg_start(_mu(message), Ctx(message.from_user.id))
 
 
-async def _h_cmd_me(message: Message):
-    """Быстрый профиль: /me — ID, баланс, VIP, возраст. Без навигации по меню."""
-    uid = message.from_user.id
-    user = ensure_user(uid, message.from_user.username, message.from_user.first_name)
-    if not user:
-        await message.answer("Профиль не найден. Нажми /start")
-        return
-    coins = "∞" if is_unlimited(user) else str(user["coins"] or 0)
-    if is_unlimited(user):
-        vip_s = "навсегда 👑"
-    elif is_vip(user):
-        vip_s = f"до {user['vip_until'][:10]} 👑"
-    else:
-        vip_s = "—"
-    age_s = str(user_age_int(user)) if user_age_int(user) else "—"
-    gender_s = {"m": "♂", "f": "♀"}.get(user["gender"], "—")
-    text = (
-        f"<b>⚡ Быстрый профиль</b>\n"
-        f"━━━━━━━━━━━━━━━━━━━━\n"
-        f"🆔 <code>{uid}</code>\n"
-        f"🚻 {gender_s}  🎂 {age_s}\n"
-        f"💎 {coins}  👑 {vip_s}\n"
-    )
-    # 18+ доступ
-    if is_eighteenplus_active(user):
-        try:
-            ep = user["eighteenplus_until"][:10] if user["eighteenplus_until"] and user["eighteenplus_until"] != "9999-12-31T23:59:59" else "∞"
-        except (TypeError, IndexError):
-            ep = "∞"
-        text += f"🔞 18+: до {ep}\n"
-    await message.answer(text, parse_mode="HTML")
-
-
 # Карта callback-хендлеров: (ключ, функция, точное_совпадение)
 _CALLBACKS = [
     ("back_main", on_back_main, True),
@@ -8622,7 +8841,6 @@ def register_handlers():
     # Скрытые команды модерации (в меню не показываются — set_my_commands содержит только /start)
     dp.message.register(_h_cmd_tg, Command("tg"))
     dp.message.register(_h_cmd_next, Command("next"))
-    dp.message.register(_h_cmd_me, Command("me"))
     dp.pre_checkout_query.register(_h_precheckout)
     dp.message.register(_h_payment, F.successful_payment)
     dp.my_chat_member.register(_h_my_chat_member)
@@ -8843,6 +9061,7 @@ async def _matchmaker_loop():
             try:
                 await queue_maintenance(ctx)
                 await end_dead_sessions(ctx)
+                await end_inactive_sessions(ctx)
             except Exception as e:  # noqa
                 log.error("queue_maintenance: %s", e)
 
@@ -8853,7 +9072,6 @@ async def _run():
     try:
         await bot.set_my_commands([
             BotCommand(command="start", description="Запустить бота"),
-            BotCommand(command="me", description="Быстрый профиль"),
         ])
     except Exception as e:  # noqa
         log.warning("set_my_commands: %s", e)
