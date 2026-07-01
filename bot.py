@@ -215,10 +215,19 @@ class ContextTypes:
 
 
 class Ctx:
-    """Аналог PTB context: .bot, .user_data, .args, .error."""
+    """Аналог PTB context: .bot, .user_data, .args, .error.
+
+    user_data — это ПРЯМАЯ ссылка на UD[uid], поэтому любые записи
+    через context.user_data["key"] = val сразу отражаются в глобальном
+    словаре UD и не теряются между вызовами хендлеров.
+    """
 
     def __init__(self, uid, args=None, error=None):
         self.bot = BOTP
+        self._uid = uid
+        # Намеренно используем UD[uid] — defaultdict сам создаст запись.
+        # Это гарантирует, что все хендлеры одного пользователя работают
+        # с одним и тем же объектом dict, а не с копиями.
         self.user_data = UD[uid]
         self.args = args or []
         self.error = error
@@ -3461,16 +3470,19 @@ async def eighteen_plus_age_router(update, context):
         await nav(update, context, t("age_under_18_deny"), eighteen_plus_verify_kb(), parse_mode="HTML")
         return
     age_ranges = {
-        "18/20": "18-20",
-        "20/22": "20-22",
-        "22/25": "22-25",
-        "25/30": "25-30",
-        "30+": "30+",
+        "18/20": "19",
+        "20/22": "21",
+        "22/25": "23",
+        "25/30": "27",
+        "30+": "35",
     }
     age = age_ranges.get(text)
     if not age:
         await update.message.reply_text(t("pick_on_kb"), reply_markup=eighteen_plus_age_kb())
         return
+    # Сохраняем числовой возраст (среднее из диапазона) — is_adult() проверяет age >= 18.
+    # Если хранить "18-20" как строку, user_age_int() вернёт None, и доступ к 18+ рулетке
+    # будет закрыт несмотря на то, что пользователь выбрал 18+.
     conn.execute("UPDATE users SET age=? WHERE tg_id=?", (age, update.effective_user.id))
     conn.commit()
     # Возраст подтверждён (18+) — показываем экран согласия
@@ -4132,6 +4144,14 @@ def anon_preview(row):
 async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
                        text=None, voice_file_id=None, src_chat_id=None, src_message_id=None,
                        parent_id=None, allow_report=True, vip_badge=False):
+    # Проверяем парный бан перед доставкой: отправитель мог быть заблокирован
+    # пользователем уже после начала флоу (например, через жалобу из рулетки).
+    ban = conn.execute(
+        "SELECT 1 FROM bans WHERE owner_id=? AND banned_id=? AND until>?",
+        (recipient_id, author_id, now_iso()),
+    ).fetchone()
+    if ban:
+        return None  # тихо отклоняем — caller покажет t("anon_banned")
     cur = conn.execute(
         "INSERT INTO anon_messages (from_id, to_id, msg_type, content_type, text, voice_file_id, parent_id, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -4230,8 +4250,11 @@ async def process_anon_content(update, context):
     is_v = is_vip(sender_row)
     if not is_v:
         since = (now_dt() - timedelta(days=1)).isoformat()
+        # Считаем ТОЛЬКО первичные анонимки (question/valentine), а не ответы (reply).
+        # Иначе пользователь с активной перепиской упирался в лимит уже через 20 ответов.
         count = conn.execute(
-            "SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND created_at>?",
+            "SELECT COUNT(*) c FROM anon_messages "
+            "WHERE from_id=? AND msg_type IN ('question','valentine') AND created_at>?",
             (sender.id, since),
         ).fetchone()["c"]
         if count >= DAILY_LIMIT:
@@ -5151,16 +5174,35 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
+        if not user or not user["gender"]:
+            # Пол не задан — в очередь не ставим, иначе matchmaker зависнет навсегда
+            return session
         sess_mode = "normal"
         try:
             sess_mode = session["mode"] or "normal"
         except (KeyError, IndexError, TypeError):
             sess_mode = "normal"
-        conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) VALUES (?, ?, ?, ?, ?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-            (ender_id, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, sess_mode, now_iso()),
-        )
+        pref = user["search_pref"] or "any"
+        if sess_mode == "18plus":
+            my_age = user_age_int(user) or 18
+            conn.execute(
+                "INSERT INTO roulette_queue "
+                "(user_id, gender, pref, is_vip, mode, actual_age, age_min, age_max, joined_at) "
+                "VALUES (?, ?, ?, ?, '18plus', ?, 18, 200, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET "
+                "gender=excluded.gender, pref=excluded.pref, is_vip=excluded.is_vip, "
+                "mode=excluded.mode, actual_age=excluded.actual_age, "
+                "age_min=excluded.age_min, age_max=excluded.age_max, joined_at=excluded.joined_at",
+                (ender_id, user["gender"], pref, 1 if is_vip(user) else 0, my_age, now_iso()),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
+                "VALUES (?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
+                "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+                (ender_id, user["gender"], pref, 1 if is_vip(user) else 0, sess_mode, now_iso()),
+            )
         conn.commit()
     return session
 
@@ -5175,6 +5217,9 @@ async def force_end_session(context, session_id):
     except (KeyError, IndexError, TypeError):
         smode = "normal"
     conn.execute("UPDATE roulette_sessions SET active=0, ended_at=? WHERE id=?", (now_iso(), session_id))
+    # Убираем обоих участников из очереди поиска — иначе после бана они могут
+    # немедленно попасть в новую сессию ещё до того, как их уведомят о завершении.
+    conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (s["user1_id"], s["user2_id"]))
     conn.commit()
     # Перекинуть наблюдателей /tg на другую сессию
     await handle_spectators_on_end(context, session_id)
@@ -5291,6 +5336,13 @@ async def rchat_next(update, context):
             sess_mode = "normal"
     await end_roulette_session(context, uid, requeue_ender=False)
     context.user_data["state"] = None
+    # Перед постановкой в очередь проверяем, что у пользователя задан пол —
+    # без него matchmaker никогда не сведёт пару, и человек будет ждать вечно.
+    user = get_user(uid)
+    if not user or not user["gender"]:
+        # Пол не задан — отправляем в главное меню с предложением его указать
+        await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
+        return
     await _requeue_and_search(context, uid, mode=sess_mode)
 
 
@@ -5556,6 +5608,8 @@ async def on_tg_ban(update, context):
         await query.answer("Нельзя забанить персонал", show_alert=True)
         return
     conn.execute("UPDATE users SET is_banned=1 WHERE tg_id=?", (target,))
+    # Удаляем из ВСЕХ очередей (normal + 18plus) — иначе забаненный
+    # может сразу попасть в новую сессию, пока force_end_session ещё работает.
     conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
     conn.commit()
     # Завершаем сессию, чтобы она не «висела» в /tg и не крутилась у второго участника
@@ -5781,7 +5835,15 @@ async def do_purchase(update, context, item):
         await nav(update, context, t("purchase_coins", amt=amt), main_menu_kb(uid), parse_mode="HTML")
     elif rt == "vip":
         days = item["reward_amount"] or item["duration_days"] or 30
-        base = max(now_dt(), datetime.fromisoformat(user["vip_until"])) if user["vip_until"] else now_dt()
+        # Перечитываем user из БД — к этому моменту списание коинов уже закоммичено,
+        # и нам нужен актуальный vip_until (не тот, что был до вызова do_purchase).
+        user = get_user(uid)
+        base = now_dt()
+        try:
+            if user["vip_until"] and datetime.fromisoformat(user["vip_until"]) > now_dt():
+                base = datetime.fromisoformat(user["vip_until"])
+        except (ValueError, TypeError):
+            base = now_dt()
         new_until = base + timedelta(days=days)
         conn.execute("UPDATE users SET vip_until=? WHERE tg_id=?", (new_until.isoformat(), uid))
         conn.commit()
@@ -6598,7 +6660,8 @@ async def janitor_unreachable_sweep():
             continue
         checked += 1
         try:
-            # «typing» не виден пользователю, но падает с Forbidden, если бот недоступен
+            # «typing» не виден пользователю, но падает с Forbidden, если бот недоступен.
+            # Это asyncio-функция — обязательно await.
             await bot.send_chat_action(tid, "typing")
         except TelegramForbiddenError:
             # Заблокировал/не запускал бота — удаляем, только если аккаунт «пустой» (ничего не вкладывал)
@@ -6606,7 +6669,9 @@ async def janitor_unreachable_sweep():
                 removed += 1
         except TelegramError:
             pass  # флуд/сеть — пропускаем
-        await asyncio.sleep(0.05)  # мягкий троттлинг, чтобы не словить лимиты Telegram
+        # Мягкий троттлинг, чтобы не словить лимиты Telegram.
+        # Между проверками ждём 0.1 сек (а не 0.05) — на больших базах 0.05 слишком агрессивно.
+        await asyncio.sleep(0.1)
     if removed:
         log.info("janitor: автоочистка недоступных — проверено=%d, удалено=%d", checked, removed)
     return checked, removed
@@ -7002,13 +7067,22 @@ def purge_user(uid):
         u = get_user(uid)
         if u and is_moder(u):
             return False
+        # Не удаляем пользователя, если у него есть активная сессия рулетки —
+        # иначе его партнёр «зависнет» навсегда без уведомления.
+        active_sess = conn.execute(
+            "SELECT 1 FROM roulette_sessions WHERE active=1 AND (user1_id=? OR user2_id=?) LIMIT 1",
+            (uid, uid),
+        ).fetchone()
+        if active_sess:
+            return False
         conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
         conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
-        # Завершаем активные сессии удаляемого, чтобы они не «висели» в рулетке/у модера
+        # Завершаем неактивные сессии (ended), чтобы не ссылались на удалённого
         conn.execute(
-            "UPDATE roulette_sessions SET active=0, ended_at=? WHERE active=1 AND (user1_id=? OR user2_id=?)",
+            "UPDATE roulette_sessions SET active=0, ended_at=COALESCE(ended_at, ?) "
+            "WHERE active=1 AND (user1_id=? OR user2_id=?)",
             (now_iso(), uid, uid),
         )
         conn.commit()
@@ -8519,18 +8593,30 @@ async def janitor_heavy():
         has_stars = conn.execute("SELECT 1 FROM star_purchases WHERE user_id=? LIMIT 1", (uid,)).fetchone()
         has_ref = conn.execute("SELECT 1 FROM referrals WHERE referrer_id=? AND active=1 LIMIT 1", (uid,)).fetchone()
         invested = (u["coins"] or 0) > 0 or is_vip(u) or bool(has_stars)
-        # Ценный (вложился) или часть графа (рефералы/ссылка) — НЕ удаляем
+        # Ценный (вложился) или часть графа (рефералы/ссылка) — НЕ удаляем, только напоминание
         if invested:
             if await _nudge_user(u):
                 nudged += 1
         elif has_ref or u["custom_link"]:
-            continue  # сохраняем для целостности ссылок/рефералов
+            # Не удаляем: ссылки и рефералы должны оставаться целыми — удалять нельзя.
+            # Но можно отправить напоминание, чтобы вернуть пользователя.
+            if await _nudge_user(u):
+                nudged += 1
         else:
-            # Полностью пустой неактивный аккаунт — удаляем
+            # Полностью пустой неактивный аккаунт без ссылки/рефералов — удаляем.
+            # Сначала проверяем, что у него нет активных сессий.
+            active_sess = conn.execute(
+                "SELECT id FROM roulette_sessions WHERE active=1 AND (user1_id=? OR user2_id=?) LIMIT 1",
+                (uid, uid),
+            ).fetchone()
+            if active_sess:
+                # Есть активная сессия — не удаляем, чтобы не оборвать чат партнёру
+                continue
             try:
                 conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
                 conn.execute("DELETE FROM referrals WHERE referred_id=?", (uid,))
                 conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
+                conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
                 conn.commit()
                 deleted += 1
             except Exception as e:  # noqa
