@@ -18,3 +18,5 @@ services:
       # Формат: postgresql://user:password@host/dbname?sslmode=require
       - key: DATABASE_URL
         sync: false
+      - key: ADMIN_ACCESS_KEY
+        sync: false
