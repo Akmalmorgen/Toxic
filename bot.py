@@ -3120,8 +3120,8 @@ def admin_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Реклама")],
-        [KeyboardButton("✉️ Рассылка"), KeyboardButton("🛡 Модеры")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка")],
+        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("🔨 Бан / Разбан"), KeyboardButton("⭐ Коины за Stars")],
         [KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
@@ -7091,6 +7091,7 @@ async def _flush_bcast_album(context, key):
 
 
 async def process_bcast_content(update, context):
+    """Получает контент рассылки, затем спрашивает «Добавить кнопку?»."""
     uid = update.effective_user.id
     back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
     if canon(update.message.text) == "❌ Отмена":
@@ -7098,8 +7099,7 @@ async def process_bcast_content(update, context):
         await update.message.reply_text("Отменено.", reply_markup=back_kb)
         return
     msg = update.message
-    # Несколько фото = альбом: Telegram шлёт их отдельными сообщениями с общим media_group_id.
-    # Собираем все фото группы и отправляем ОДНИМ альбомом (а не по отдельности).
+    # Альбом (несколько фото) — обрабатывается отдельно через дебаунс
     if msg.photo and msg.media_group_id:
         key = (uid, msg.media_group_id)
         buf = BCAST_ALBUMS.get(key)
@@ -7111,51 +7111,119 @@ async def process_bcast_content(update, context):
         buf["file_ids"].append(msg.photo[-1].file_id)
         if msg.caption and not buf["caption"]:
             buf["caption"] = msg.caption
-        # дебаунс: ждём, пока придут все фото альбома, затем шлём один раз
         if buf["task"]:
             buf["task"].cancel()
         buf["task"] = asyncio.create_task(_flush_bcast_album(context, key))
-        # ВАЖНО: состояние НЕ сбрасываем здесь — иначе следующие фото альбома
-        # не попадут в сборщик. Его сбросит _flush_bcast_album после отправки.
         return
-    aud = context.user_data["bcast_aud"]
+    # Сохраняем контент для рассылки
+    bcast = context.user_data.setdefault("bcast_data", {})
+    bcast["text"] = msg.text
+    bcast["photo_id"] = msg.photo[-1].file_id if msg.photo else None
+    bcast["voice_id"] = msg.voice.file_id if msg.voice else None
+    bcast["caption"] = msg.caption
+    # Спрашиваем, нужна ли inline-кнопка
+    context.user_data["state"] = "adm_bcast_button_ask"
+    await update.message.reply_text(
+        "🔗 <b>Добавить кнопку к рассылке?</b>\n\n"
+        "Напиши <b>текст кнопки</b> (как её увидит пользователь)\n"
+        "или <b>«-»</b> чтобы отправить без кнопки.",
+        parse_mode="HTML", reply_markup=cancel_reply_kb(),
+    )
+
+
+async def _bcast_button_ask_router(update, context):
+    """Ответ на вопрос о кнопке: текст кнопки или '-' (без)."""
+    uid = update.effective_user.id
+    text = (update.message.text or "").strip()
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    if canon(text) == "❌ Отмена":
+        context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+        context.user_data.pop("bcast_data", None)
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+    if text == "-":
+        # Без кнопки — сразу рассылаем
+        await _execute_broadcast(update, context, btn_text=None, btn_url=None)
+        return
+    # Текст кнопки задан — спрашиваем URL
+    context.user_data.setdefault("bcast_data", {})["btn_text"] = text
+    context.user_data["state"] = "adm_bcast_button_url"
+    await update.message.reply_text(
+        "🔗 Введите ссылку для кнопки (канал, чат или бот):\n"
+        "Например: <code>https://t.me/channel</code>",
+        parse_mode="HTML", reply_markup=cancel_reply_kb(),
+    )
+
+
+async def _bcast_button_url_router(update, context):
+    """Получает URL для кнопки и запускает рассылку."""
+    uid = update.effective_user.id
+    text = (update.message.text or "").strip()
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    if canon(text) == "❌ Отмена":
+        context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+        context.user_data.pop("bcast_data", None)
+        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        return
+    if not is_valid_btn_url(text):
+        await update.message.reply_text(
+            "⚠️ Невалидная ссылка. Нужен формат: https://t.me/... или https://...\nПопробуйте снова:",
+            reply_markup=cancel_reply_kb(),
+        )
+        return
+    btn_text = context.user_data.get("bcast_data", {}).get("btn_text")
+    await _execute_broadcast(update, context, btn_text=btn_text, btn_url=text)
+
+
+async def _execute_broadcast(update, context, btn_text=None, btn_url=None):
+    """Выполняет рассылку сохранённого контента всем/мужчинам/женщинам."""
+    uid = update.effective_user.id
+    back_kb = admin_menu_kb() if is_admin(uid) else moder_menu_kb()
+    bcast = context.user_data.get("bcast_data", {})
+    aud = context.user_data.get("bcast_aud", "all")
     if aud == "all":
         rows = conn.execute("SELECT tg_id FROM users").fetchall()
     else:
         rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
+    # Inline-кнопка (опционально)
+    markup = None
+    if btn_text and btn_url:
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton(btn_text, url=btn_url)]])
     sent, failed = 0, 0
     dead_ids = []
-    prefix_text = "Админ:\n\n"
+    content_text = bcast.get("text")
+    photo_id = bcast.get("photo_id")
+    voice_id = bcast.get("voice_id")
+    caption = bcast.get("caption")
     for r in rows:
         try:
-            if update.message.text:
-                await context.bot.send_message(r["tg_id"], prefix_text + update.message.text)
-            elif update.message.photo:
-                caption = (prefix_text + update.message.caption) if update.message.caption else prefix_text
-                await context.bot.send_photo(r["tg_id"], update.message.photo[-1].file_id, caption=caption)
-            elif update.message.voice:
-                await context.bot.send_message(r["tg_id"], prefix_text)
-                await context.bot.send_voice(r["tg_id"], update.message.voice.file_id)
+            if content_text:
+                await context.bot.send_message(r["tg_id"], content_text, reply_markup=markup)
+            elif photo_id:
+                await context.bot.send_photo(r["tg_id"], photo_id,
+                                             caption=caption or None, reply_markup=markup)
+            elif voice_id:
+                await context.bot.send_voice(r["tg_id"], voice_id, reply_markup=markup)
             sent += 1
         except TelegramForbiddenError:
-            # Заблокировал/не запускал бота — мёртвый аккаунт
             failed += 1
             dead_ids.append(r["tg_id"])
         except TelegramError as e:
             failed += 1
-            if _is_dead_account(e):  # «chat not found», «user deactivated» и т.п.
+            if _is_dead_account(e):
                 dead_ids.append(r["tg_id"])
-    # Сразу чистим недоступных (только «пустые» аккаунты — VIP/коины/покупки не трогаем)
+        await asyncio.sleep(0.03)
     removed = 0
     for bid in dead_ids:
         if safe_purge_dead(bid):
             removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
+    context.user_data.pop("bcast_data", None)
     await update.message.reply_text(
         f"📢 Рассылка завершена.\n"
         f"✅ Доставлено: {sent}\n"
         f"❌ Не удалось: {failed}\n"
-        f"🧹 Удалено недоступных (заблокировали/не запускали бота): {removed}",
+        f"🧹 Удалено недоступных: {removed}",
         reply_markup=back_kb,
     )
 
@@ -8037,6 +8105,12 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "adm_bcast_content":
         await process_bcast_content(update, context)
         return
+    if state == "adm_bcast_button_ask":
+        await _bcast_button_ask_router(update, context)
+        return
+    if state == "adm_bcast_button_url":
+        await _bcast_button_url_router(update, context)
+        return
     if await relay_roulette_message(update, context):
         return
     if text == "⛔ Отменить поиск":
@@ -8058,11 +8132,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "📢 Обязательные каналы":
             await adm_channels_msg(update, context)
-            return
-        if text == "📣 Реклама":
-            context.user_data["state"] = "adm_ad_text"
-            context.user_data["ad"] = {}
-            await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
             return
         if text == "✉️ Рассылка":
             context.user_data["state"] = "adm_bcast_audience"
@@ -8285,6 +8354,12 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     if state == "adm_bcast_content":
         await process_bcast_content(update, context)
+        return
+    if state == "adm_bcast_button_ask":
+        await _bcast_button_ask_router(update, context)
+        return
+    if state == "adm_bcast_button_url":
+        await _bcast_button_url_router(update, context)
         return
     if await relay_roulette_message(update, context):
         return
