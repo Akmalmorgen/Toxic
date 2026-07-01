@@ -296,7 +296,8 @@ if USE_PG:
             # Кэшируем все строки сразу, чтобы lastrowid и fetchone/fetchall не конкурировали
             try:
                 self._rows = raw.fetchall() if raw.description else []
-            except Exception:
+            except Exception as _fe:
+                log.debug("PgCursor fetchall failed (non-critical): %s", _fe)
                 self._rows = []
             self._pos = 0
             # Вычисляем lastrowid из первой строки (RETURNING * возвращает вставленную запись)
@@ -359,6 +360,8 @@ if USE_PG:
                 return _PgCursor(cur)
         def commit(self):
             pass  # autocommit
+        def rollback(self):
+            pass  # autocommit — no transaction to roll back
         def cursor(self):
             return self  # для init_db: conn.cursor().executescript(...)
 
@@ -671,8 +674,9 @@ def migrate():
         try:
             conn.execute(sql)
             conn.commit()
-        except Exception:
+        except Exception as e:
             # колонка уже существует (sqlite или postgres) — откатываем возможную «битую» транзакцию
+            log.debug("migration skip (likely column exists): %s — %s", sql.split("ADD COLUMN")[-1].strip(), e)
             try:
                 conn.rollback()
             except Exception:
@@ -692,7 +696,8 @@ def now_dt():
 def get_setting(key, default=None):
     try:
         row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    except Exception:
+    except Exception as e:
+        log.warning("get_setting(%r) failed, returning default: %s", key, e)
         return default
     return row["value"] if row and row["value"] is not None else default
 
@@ -732,8 +737,8 @@ def touch_user(uid):
                 pass
         conn.execute("UPDATE users SET last_active=? WHERE tg_id=?", (now_iso(), uid))
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("touch_user(%s) failed: %s", uid, e)
 
 
 
@@ -1088,8 +1093,8 @@ def get_lang(uid):
         u = get_user(uid)
         if u and u["lang"] in LANGS:
             return u["lang"]
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("get_lang(%s) failed, defaulting to 'ru': %s", uid, e)
     return "ru"
 
 
@@ -3073,7 +3078,8 @@ async def set_lang_context(update, context):
     try:
         uid = update.effective_user.id if update.effective_user else None
         set_cur_lang(get_lang(uid) if uid else "ru")
-    except Exception:
+    except Exception as e:
+        log.debug("set_lang_context failed, defaulting to 'ru': %s", e)
         set_cur_lang("ru")
 
 
@@ -3285,8 +3291,8 @@ async def grant_daily_bonus(uid, context):
     conn.commit()
     try:
         await context.bot.send_message(uid, t("vip_daily_bonus", n=VIP_DAILY_BONUS), parse_mode="HTML")
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("vip_daily_bonus notification to %s failed: %s", uid, e)
 
 
 async def notify_admins_new_user(context, tg_user):
@@ -3296,7 +3302,8 @@ async def notify_admins_new_user(context, tg_user):
     when = now_dt().strftime("%d.%m.%Y %H:%M")
     try:
         total = conn.execute("SELECT COUNT(*) c FROM users").fetchone()["c"]
-    except Exception:  # noqa
+    except Exception as e:
+        log.warning("notify_admins_new_user: user count query failed: %s", e)
         total = "?"
     text = (
         "🆕 <b>Новый пользователь!</b>\n"
@@ -3310,8 +3317,8 @@ async def notify_admins_new_user(context, tg_user):
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(admin_id, text, parse_mode="HTML")
-        except TelegramError:
-            pass
+        except TelegramError as e:
+            log.debug("notify_admins_new_user to admin %s failed: %s", admin_id, e)
 
 
 async def notify_admins_user_event(context, tg_user, kind, extra=None):
@@ -3339,8 +3346,8 @@ async def notify_admins_user_event(context, tg_user, kind, extra=None):
     for admin_id in ADMIN_IDS:
         try:
             await context.bot.send_message(admin_id, text, parse_mode="HTML")
-        except TelegramError:
-            pass
+        except TelegramError as e:
+            log.debug("notify_admins_user_event to admin %s failed: %s", admin_id, e)
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3817,7 +3824,7 @@ LINK_FLOW_TTL_HOURS = 6  # незавершённый флоу старше эт
 
 
 def save_link_flow(user_id, target_id, state, msg_type=None):
-    """Сохраняет/обновляет незавершённый флоу анона по ссылке в БД."""
+    """Сохраняет/обновляет незавершённый флоу анона по ссылке в БД. Returns True on success."""
     try:
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (user_id,))
         conn.execute(
@@ -3826,15 +3833,18 @@ def save_link_flow(user_id, target_id, state, msg_type=None):
             (user_id, target_id, msg_type, state, now_iso()),
         )
         conn.commit()
-    except Exception as e:  # noqa
-        log.warning("save_link_flow: %s", e)
+        return True
+    except Exception as e:
+        log.error("save_link_flow(user=%s, target=%s, state=%s) failed: %s", user_id, target_id, state, e)
+        return False
 
 
 def load_link_flow(user_id):
     """Возвращает строку незавершённого флоу (если не протух), иначе None."""
     try:
         row = conn.execute("SELECT * FROM link_flow WHERE user_id=?", (user_id,)).fetchone()
-    except Exception:
+    except Exception as e:
+        log.warning("load_link_flow(%s) DB query failed: %s", user_id, e)
         return None
     if not row:
         return None
@@ -3842,8 +3852,8 @@ def load_link_flow(user_id):
         if now_dt() - datetime.fromisoformat(row["updated_at"]) > timedelta(hours=LINK_FLOW_TTL_HOURS):
             clear_link_flow(user_id)
             return None
-    except Exception:
-        pass
+    except (ValueError, TypeError) as e:
+        log.debug("load_link_flow(%s) TTL check failed: %s", user_id, e)
     return row
 
 
@@ -3851,8 +3861,8 @@ def clear_link_flow(user_id):
     try:
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (user_id,))
         conn.commit()
-    except Exception as e:  # noqa
-        log.warning("clear_link_flow: %s", e)
+    except Exception as e:
+        log.warning("clear_link_flow(%s) failed: %s", user_id, e)
 
 
 def share_kb(link, text):
@@ -4180,7 +4190,8 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
                 recipient_id, src_chat_id, src_message_id,
                 caption=f"{quote}{header}:", parse_mode="HTML", reply_markup=kb,
             )
-    except TelegramError:
+    except TelegramError as e:
+        log.warning("deliver_anon_message failed (from=%s to=%s): %s", author_id, recipient_id, e)
         set_cur_lang(_saved_lang)
         return None
 
@@ -7013,8 +7024,12 @@ def purge_user(uid):
         )
         conn.commit()
         return True
-    except Exception as e:  # noqa
-        log.warning("purge_user %s: %s", uid, e)
+    except Exception as e:
+        log.error("purge_user %s failed (possible partial deletion): %s", uid, e, exc_info=True)
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         return False
 
 
@@ -7826,8 +7841,8 @@ async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
             sess = get_active_session(uid)
             if sess:
                 await force_end_session(context, sess["id"])
-        except Exception as e:  # noqa
-            log.warning("end session on block %s: %s", uid, e)
+        except Exception as e:
+            log.warning("end session on block %s: %s", uid, e, exc_info=True)
         # Убираем из очереди поиска
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
         conn.commit()
@@ -8320,7 +8335,7 @@ async def on_error(event: ErrorEvent):
     if isinstance(err, TelegramConflictError):
         log.warning("Conflict: бот запущен в нескольких местах. Оставь один инстанс!")
         return True
-    log.error("Ошибка при обработке апдейта: %s", err)
+    log.error("Ошибка при обработке апдейта: %s", err, exc_info=err)
     return True
 
 
@@ -8495,10 +8510,11 @@ async def _nudge_user(u):
         conn.commit()
         await asyncio.sleep(0.05)  # мягкий троттлинг рассылки
         return True
-    except TelegramError:
+    except TelegramError as e:
+        log.debug("nudge %s: user unreachable: %s", uid, e)
         return False
-    except Exception as e:  # noqa
-        log.warning("nudge %s: %s", uid, e)
+    except Exception as e:
+        log.warning("nudge %s: %s", uid, e, exc_info=True)
         return False
 
 
@@ -8533,8 +8549,8 @@ async def janitor_heavy():
                 conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
                 conn.commit()
                 deleted += 1
-            except Exception as e:  # noqa
-                log.warning("janitor delete %s: %s", uid, e)
+            except Exception as e:
+                log.warning("janitor delete %s: %s", uid, e, exc_info=True)
     log.info("janitor (раз в 2 недели): удалено пустых=%d, уведомлено=%d", deleted, nudged)
     if ADMIN_IDS and (deleted or nudged):
         for aid in ADMIN_IDS:
@@ -8573,8 +8589,8 @@ async def _janitor_loop():
                         log.info("janitor: VACUUM выполнен (место освобождено)")
                     except Exception as e:  # noqa
                         log.warning("VACUUM: %s", e)
-        except Exception as e:  # noqa
-            log.error("janitor_loop: %s", e)
+        except Exception as e:
+            log.error("janitor_loop: %s", e, exc_info=True)
         await asyncio.sleep(JANITOR_WAKE_HOURS * 3600)
 
 
@@ -8586,16 +8602,16 @@ async def _matchmaker_loop():
         await asyncio.sleep(ROULETTE_TICK_SECONDS)
         try:
             await roulette_matchmaker(ctx)
-        except Exception as e:  # noqa
-            log.error("matchmaker: %s", e)
+        except Exception as e:
+            log.error("matchmaker: %s", e, exc_info=True)
         tick += 1
         # Раз в ~60с: авто-стоп долгого поиска, напоминания и зачистка зависших сессий
         if tick % 20 == 0:
             try:
                 await queue_maintenance(ctx)
                 await end_dead_sessions(ctx)
-            except Exception as e:  # noqa
-                log.error("queue_maintenance: %s", e)
+            except Exception as e:
+                log.error("queue_maintenance: %s", e, exc_info=True)
 
 
 async def _run():
@@ -8621,8 +8637,8 @@ async def _run():
         except TelegramConflictError as e:
             log.error("Conflict: запущено несколько инстансов бота. %s", e)
             break
-        except Exception as e:  # noqa
-            log.error("Поллинг упал, перезапуск через 5с: %s", e)
+        except Exception as e:
+            log.error("Поллинг упал, перезапуск через 5с: %s", e, exc_info=True)
             await asyncio.sleep(5)
 
 
