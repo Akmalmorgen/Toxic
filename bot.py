@@ -2,6 +2,7 @@
 Анонимный бот: Анон.Вопрос / Валентинка + Чат-рулетка по полу + Магазин (коины, VIP) + Админка.
 Стек: aiogram v3, sqlite3 (stdlib) / PostgreSQL (Neon).
 """
+from __future__ import annotations
 
 import os
 import sqlite3
@@ -47,11 +48,13 @@ TelegramError = TelegramAPIError
 _lang_var = contextvars.ContextVar("cur_lang", default="ru")
 
 
-def cur_lang():
+UserRow = sqlite3.Row | dict | None
+
+def cur_lang() -> str:
     return _lang_var.get()
 
 
-def set_cur_lang(value):
+def set_cur_lang(value: str) -> None:
     _lang_var.set(value)
 
 
@@ -244,6 +247,14 @@ class Ctx:
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
+
+
+def _safe(func, *args, default=None):
+    """Вызывает func(*args) и возвращает результат; при любой ошибке доступа — default."""
+    try:
+        return func(*args)
+    except (KeyError, IndexError, ValueError, TypeError, AttributeError):
+        return default
 
 USE_PG = bool(DATABASE_URL)
 
@@ -665,22 +676,23 @@ def now_dt():
 
 
 # === Настройки (редактируемые админом) ===
-def get_setting(key, default=None):
+def get_setting(key: str, default: str | None = None) -> str | None:
     try:
         row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    except Exception:
+    except Exception as e:
+        log.debug("get_setting(%s): %s", key, e)
         return default
     return row["value"] if row and row["value"] is not None else default
 
 
-def get_setting_int(key, default):
+def get_setting_int(key: str, default: int) -> int:
     try:
         return int(get_setting(key, default))
     except (TypeError, ValueError):
         return default
 
 
-def set_setting(key, value):
+def set_setting(key: str, value: str | int) -> None:
     conn.execute("DELETE FROM settings WHERE key=?", (key,))
     conn.execute("INSERT INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
     conn.commit()
@@ -708,16 +720,16 @@ def touch_user(uid):
                 pass
         conn.execute("UPDATE users SET last_active=? WHERE tg_id=?", (now_iso(), uid))
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("touch_user(%s): %s", uid, e)
 
 
 
-def get_user(tg_id):
+def get_user(tg_id: int) -> UserRow:
     return conn.execute("SELECT * FROM users WHERE tg_id=?", (tg_id,)).fetchone()
 
 
-def resolve_user_ref(text):
+def resolve_user_ref(text: str | None) -> int | None:
     """Находит пользователя по числовому tg_id или по @username (он должен быть в боте).
     Возвращает tg_id или None."""
     if not text:
@@ -734,7 +746,7 @@ def resolve_user_ref(text):
     return row["tg_id"] if row else None
 
 
-def ensure_user(tg_id, username, first_name=None):
+def ensure_user(tg_id: int, username: str | None, first_name: str | None = None) -> UserRow:
     u = get_user(tg_id)
     if u is None:
         conn.execute(
@@ -753,7 +765,7 @@ def ensure_user(tg_id, username, first_name=None):
     return u
 
 
-def is_moder(user_row):
+def is_moder(user_row: UserRow) -> bool:
     if not user_row:
         return False
     if user_row["is_moder"]:
@@ -768,7 +780,7 @@ def is_moder(user_row):
     return False
 
 
-def is_staff(tg_id):
+def is_staff(tg_id: int) -> bool:
     """Админ или модератор."""
     if is_admin(tg_id):
         return True
@@ -776,11 +788,11 @@ def is_staff(tg_id):
     return is_moder(u)
 
 
-def is_banned(user_row):
+def is_banned(user_row: UserRow) -> bool:
     return bool(user_row) and bool(user_row["is_banned"])
 
 
-def user_mention(user_row):
+def user_mention(user_row: UserRow) -> str:
     """Кликабельная ссылка на пользователя: @username или ID через tg://."""
     if not user_row:
         return "—"
@@ -790,7 +802,7 @@ def user_mention(user_row):
     return f'<a href="tg://user?id={user_row["tg_id"]}">{html.escape(name)}</a> (ID: {user_row["tg_id"]})'
 
 
-def is_vip(user_row):
+def is_vip(user_row: UserRow) -> bool:
     if not user_row:
         return False
     # Админы и модеры — VIP навсегда, без ограничений
@@ -807,11 +819,11 @@ def is_vip(user_row):
         return False
 
 
-def is_admin(tg_id):
+def is_admin(tg_id: int) -> bool:
     return tg_id in ADMIN_IDS
 
 
-def user_age_int(user_row):
+def user_age_int(user_row: UserRow) -> int | None:
     """Возраст пользователя как число (или None, если не задан/нечисловой)."""
     try:
         a = user_row["age"]
@@ -823,13 +835,13 @@ def user_age_int(user_row):
     return int(s) if s.isdigit() else None
 
 
-def is_adult(user_row):
+def is_adult(user_row: UserRow) -> bool:
     """True, если возраст задан и >= 18 (доступ к 18+)."""
     a = user_age_int(user_row)
     return a is not None and a >= 18
 
 
-def is_eighteenplus_active(user_row):
+def is_eighteenplus_active(user_row: UserRow) -> bool:
     """True, если у пользователя есть активный (купленный) доступ к 18+ чату.
     У админа — всегда. Модерам тоже даём (для проверки)."""
     if not user_row:
@@ -859,7 +871,7 @@ AGE_SEARCH_RANGES = {
 }
 
 
-def grant_18plus_access(uid, days):
+def grant_18plus_access(uid: int, days: int) -> None:
     """Открывает пользователю доступ к 18+ чату на `days` дней (0 = навсегда). Продлевает текущий."""
     base = now_dt()
     u = get_user(uid)
@@ -873,7 +885,7 @@ def grant_18plus_access(uid, days):
     conn.commit()
 
 
-def has_admin_access(tg_id):
+def has_admin_access(tg_id: int) -> bool:
     """Доступ к админ-панели: настоящий админ ИЛИ модер, разблокировавший ключ доступа."""
     if is_admin(tg_id):
         return True
@@ -884,7 +896,7 @@ def has_admin_access(tg_id):
         return False
 
 
-def is_unlimited(user_row):
+def is_unlimited(user_row: UserRow) -> bool:
     """Админ или модер — безлимитный аккаунт: бесконечные коины, VIP навсегда, без лимитов."""
     if not user_row:
         return False
@@ -895,7 +907,7 @@ def is_unlimited(user_row):
 
 
 
-def has_forbidden_contacts(text):
+def has_forbidden_contacts(text: str | None) -> bool:
     """True, если в тексте есть @юзернеймы, ссылки, домены, соцсети или длинные числа (ID/телефон).
     Используется для запрета обмена контактами/рекламы каналов в анонимках и рулетке."""
     if not text:
@@ -920,14 +932,14 @@ def has_forbidden_contacts(text):
     return False
 
 
-def gender_label(code):
+def gender_label(code: str | None) -> str:
     return {
         "m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
         "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"},
     }.get(code, {}).get(cur_lang(), "—")
 
 
-def pref_label(code):
+def pref_label(code: str | None) -> str:
     return {
         "m": {"ru": "Парня", "uz": "Yigit", "en": "A guy"},
         "f": {"ru": "Девушку", "uz": "Qiz", "en": "A girl"},
@@ -935,7 +947,7 @@ def pref_label(code):
     }.get(code, {}).get(cur_lang(), "—")
 
 
-def effective_price(price, user_row):
+def effective_price(price: int, user_row: UserRow) -> int:
     """Цена с учётом VIP-скидки. У админа/модера — сниженная (со скидкой),
     но при покупке с них всё равно не списываются коины (см. do_purchase)."""
     if is_vip(user_row):
@@ -946,8 +958,8 @@ def effective_price(price, user_row):
 async def try_delete_message(context, chat_id, message_id):
     try:
         await context.bot.delete_message(chat_id, message_id)
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("try_delete_message(%s, %s): %s", chat_id, message_id, e)
 
 
 # ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
@@ -972,7 +984,7 @@ def get_lang(uid):
         u = get_user(uid)
         if u and u["lang"] in LANGS:
             return u["lang"]
-    except Exception:
+    except (KeyError, TypeError):
         pass
     return "ru"
 
@@ -1244,8 +1256,8 @@ async def clean_screen(update, context):
     """Удаляет нажатую пользователем кнопку, доп. сообщения (карточки) и предыдущее меню бота."""
     try:
         await update.message.delete()
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("clean_screen delete user msg: %s", e)
     for mid in context.user_data.pop("extra_msg_ids", []):
         await try_delete_message(context, update.effective_chat.id, mid)
     mid = context.user_data.pop("last_menu_msg_id", None)
@@ -1297,8 +1309,8 @@ async def grant_daily_bonus(uid, context):
     conn.commit()
     try:
         await context.bot.send_message(uid, t("vip_daily_bonus", n=VIP_DAILY_BONUS), parse_mode="HTML")
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("grant_daily_bonus send to %s: %s", uid, e)
 
 
 async def notify_admins_new_user(context, tg_user):
@@ -3180,8 +3192,8 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     set_cur_lang(get_lang(other_id))
     try:
         await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.warning("end_roulette_session notify other %s: %s", other_id, e)
     set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
@@ -3431,8 +3443,8 @@ async def relay_roulette_message(update, context):
         return True
     try:
         await context.bot.copy_message(other_id, update.effective_chat.id, update.message.message_id)
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.warning("relay_roulette_message to %s: %s", other_id, e)
     # Трансляция модераторам-наблюдателям (/tg), если они есть
     await relay_to_spectators(context, session, update.effective_user.id,
                               update.effective_chat.id, update.message.message_id)
@@ -6500,7 +6512,7 @@ async def on_error(event: ErrorEvent):
     if isinstance(err, TelegramConflictError):
         log.warning("Conflict: бот запущен в нескольких местах. Оставь один инстанс!")
         return True
-    log.error("Ошибка при обработке апдейта: %s", err)
+    log.error("Ошибка при обработке апдейта: %s", err, exc_info=True)
     return True
 
 
