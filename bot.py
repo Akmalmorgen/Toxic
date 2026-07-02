@@ -273,6 +273,14 @@ JANITOR_PERIOD_DAYS = 14    # раз в сколько дней выполнят
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("anon_bot")
 
+
+def _safe(func, *args, default=None):
+    """Вызывает func(*args) и возвращает результат; при любой ошибке доступа — default."""
+    try:
+        return func(*args)
+    except (KeyError, IndexError, ValueError, TypeError, AttributeError):
+        return default
+
 DATABASE_URL = (
     os.getenv("DATABASE_URL", "").strip()
     or os.getenv("POSTGRES_URL", "").strip()
@@ -701,7 +709,8 @@ def now_dt():
 def get_setting(key, default=None):
     try:
         row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    except Exception:
+    except Exception as e:
+        log.debug("get_setting(%s): %s", key, e)
         return default
     return row["value"] if row and row["value"] is not None else default
 
@@ -741,8 +750,8 @@ def touch_user(uid):
                 pass
         conn.execute("UPDATE users SET last_active=? WHERE tg_id=?", (now_iso(), uid))
         conn.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        log.debug("touch_user(%s): %s", uid, e)
 
 
 
@@ -982,8 +991,8 @@ def effective_price(price, user_row):
 async def try_delete_message(context, chat_id, message_id):
     try:
         await context.bot.delete_message(chat_id, message_id)
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("try_delete_message(%s, %s): %s", chat_id, message_id, e)
 
 
 # ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
@@ -1097,7 +1106,7 @@ def get_lang(uid):
         u = get_user(uid)
         if u and u["lang"] in LANGS:
             return u["lang"]
-    except Exception:
+    except (KeyError, TypeError):
         pass
     return "ru"
 
@@ -3240,8 +3249,8 @@ async def clean_screen(update, context):
     """Удаляет нажатую пользователем кнопку, доп. сообщения (карточки) и предыдущее меню бота."""
     try:
         await update.message.delete()
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("clean_screen delete user msg: %s", e)
     for mid in context.user_data.pop("extra_msg_ids", []):
         await try_delete_message(context, update.effective_chat.id, mid)
     mid = context.user_data.pop("last_menu_msg_id", None)
@@ -3293,8 +3302,8 @@ async def grant_daily_bonus(uid, context):
     conn.commit()
     try:
         await context.bot.send_message(uid, t("vip_daily_bonus", n=VIP_DAILY_BONUS), parse_mode="HTML")
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.debug("grant_daily_bonus send to %s: %s", uid, e)
 
 
 async def notify_admins_new_user(context, tg_user):
@@ -5176,8 +5185,8 @@ async def end_roulette_session(context, ender_id, requeue_ender=False):
     set_cur_lang(get_lang(other_id))
     try:
         await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.warning("end_roulette_session notify other %s: %s", other_id, e)
     set_cur_lang(_sl)
     if requeue_ender:
         user = get_user(ender_id)
@@ -5427,8 +5436,8 @@ async def relay_roulette_message(update, context):
         return True
     try:
         await context.bot.copy_message(other_id, update.effective_chat.id, update.message.message_id)
-    except TelegramError:
-        pass
+    except TelegramError as e:
+        log.warning("relay_roulette_message to %s: %s", other_id, e)
     # Трансляция модераторам-наблюдателям (/tg), если они есть
     await relay_to_spectators(context, session, update.effective_user.id,
                               update.effective_chat.id, update.message.message_id)
@@ -8496,7 +8505,7 @@ async def on_error(event: ErrorEvent):
     if isinstance(err, TelegramConflictError):
         log.warning("Conflict: бот запущен в нескольких местах. Оставь один инстанс!")
         return True
-    log.error("Ошибка при обработке апдейта: %s", err)
+    log.error("Ошибка при обработке апдейта: %s", err, exc_info=True)
     return True
 
 
