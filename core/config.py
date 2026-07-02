@@ -13,6 +13,7 @@ ADMIN_IDS: set[int] = {int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if 
 DATABASE_URL = (
     os.getenv("DATABASE_URL", "").strip()
     or os.getenv("POSTGRES_URL", "").strip()
+    or os.getenv("NEON_DATABASE_URL", "").strip()
 )
 DB_PATH = os.getenv("DB_PATH", "").strip() or os.path.join(os.path.dirname(os.path.dirname(__file__)), "bot.db")
 

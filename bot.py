@@ -93,7 +93,7 @@ def LabeledPrice(label=None, amount=None, **kw):
     return _AiLabeledPrice(**kw)
 
 
-from src.config import (  # noqa: E402
+from core.config import (  # noqa: E402
     BOT_TOKEN, ADMIN_IDS, DATABASE_URL, DB_PATH,
     DAILY_LIMIT, BAN_DAYS, ROULETTE_BAN_DAYS, ANON_BAN_FOREVER,
     ROULETTE_TICK_SECONDS, SEARCH_TIMEOUT_MIN, SEARCH_REMIND_MIN,
@@ -966,7 +966,7 @@ async def try_delete_message(context, chat_id, message_id):
 LANGS = ("ru", "uz", "en")
 LANG_BUTTONS = {"🇷🇺 Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
 
-from src.strings import BTN, T  # noqa: E402
+from core.strings import BTN, T  # noqa: E402
 
 # (BTN и T перенесены в src/strings.py)
 # Обратная карта: метка на любом языке -> каноническая русская метка
