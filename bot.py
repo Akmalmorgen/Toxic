@@ -1865,6 +1865,11 @@ T = {
         "uz": "Jins saqlandi: {g} ✅",
         "en": "Gender saved: {g} ✅",
     },
+    "gender_needed_for_search": {
+        "ru": "Для поиска нужно указать пол. Выбери:",
+        "uz": "Qidiruv uchun jinsingizni tanlang:",
+        "en": "Please select your gender to start searching:",
+    },
     "ref_friend_joined": {
         "ru": "🎉 По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b> 💎",
         "uz": "🎉 Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> 💎 qo'shildi",
@@ -5060,6 +5065,12 @@ async def roulette_pref_router(update, context):
         await context.bot.send_message(update.effective_chat.id, t("pick_on_kb"), reply_markup=roulette_pref_reply_kb())
         return
     user = get_user(update.effective_user.id)
+    if not user["gender"]:
+        context.user_data["state"] = "set_gender_first"
+        await context.bot.send_message(
+            update.effective_chat.id, t("gender_needed_for_search"),
+            reply_markup=gender_kb(with_back=False))
+        return
     conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
     conn.execute(
         "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, joined_at) VALUES (?, ?, ?, ?, ?) "
@@ -7036,17 +7047,18 @@ async def process_adm_coins_wizard(update, context):
 
 async def process_adm_ad_wizard(update, context):
     state = context.user_data["state"]
-    text = canon(update.message.text.strip())
-    if text == "❌ Отмена":
+    raw_text = (update.message.text or "").strip()
+    ctext = canon(raw_text)
+    if ctext == "❌ Отмена":
         context.user_data["state"] = None
         await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
         return
     if state == "adm_ad_menu":
-        if text == "📝 Создать новую":
+        if ctext == "📝 Создать новую":
             context.user_data["state"] = "adm_ad_text"
             context.user_data["ad"] = {}
             await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
-        elif text == "🗑 Удалить рекламу":
+        elif ctext == "🗑 Удалить рекламу":
             conn.execute("DELETE FROM ad_config WHERE id=1")
             conn.commit()
             context.user_data["state"] = None
@@ -7056,19 +7068,19 @@ async def process_adm_ad_wizard(update, context):
         return
     ad = context.user_data.get("ad", {})
     if state == "adm_ad_text":
-        ad["text"] = text
+        ad["text"] = raw_text
         context.user_data["state"] = "adm_ad_button_text"
         await update.message.reply_text("Текст кнопки (или «-» если без кнопки):", reply_markup=cancel_reply_kb())
 
     elif state == "adm_ad_button_text":
-        ad["button_text"] = None if text == "-" else text
+        ad["button_text"] = None if raw_text == "-" else raw_text
         if ad["button_text"]:
             context.user_data["state"] = "adm_ad_button_url"
             await update.message.reply_text("Ссылка для кнопки:", reply_markup=cancel_reply_kb())
         else:
             await ad_preview_and_offer(update, context)
     elif state == "adm_ad_button_url":
-        ad["button_url"] = text
+        ad["button_url"] = raw_text
         await ad_preview_and_offer(update, context)
 
 
@@ -7114,6 +7126,7 @@ async def process_ad_send(update, context):
             sent += 1
         except TelegramError:
             failed += 1
+        await asyncio.sleep(0.03)
     context.user_data["state"] = None
     await update.message.reply_text(
         f"📣 Реклама разослана. Доставлено: {sent}, не удалось: {failed}",
@@ -7379,6 +7392,7 @@ async def _do_bcast_send(update, context, button_text, button_url):
             failed += 1
             if _is_dead_account(e):
                 dead_ids.append(r["tg_id"])
+        await asyncio.sleep(0.03)
     removed = 0
     for bid in dead_ids:
         if safe_purge_dead(bid):
