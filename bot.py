@@ -5026,10 +5026,18 @@ async def roulette_pref_router(update, context):
 async def on_roulette_cancel(update, context):
     query = update.callback_query
     await query.answer()
-    conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (query.from_user.id,))
+    uid = query.from_user.id
+    queue_row = conn.execute("SELECT mode FROM roulette_queue WHERE user_id=?", (uid,)).fetchone()
+    was_18plus = queue_row and queue_row["mode"] == "18plus" if queue_row else False
+    conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
     conn.commit()
     await query.edit_message_text(t("roulette_stop"))
-    await context.bot.send_message(query.from_user.id, t("main_menu"), reply_markup=main_menu_kb(query.from_user.id))
+    if was_18plus:
+        context.user_data["state"] = "18plus_pref"
+        await context.bot.send_message(uid, t("roulette_who"), reply_markup=eighteen_plus_roulette_pref_kb())
+    else:
+        context.user_data["state"] = "roulette_pref"
+        await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
 
 
 def compatible(a, b):
@@ -8130,9 +8138,18 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await relay_roulette_message(update, context):
         return
     if text == "⛔ Отменить поиск":
-        conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (update.effective_user.id,))
+        uid = update.effective_user.id
+        # Определяем в какой очереди был пользователь (обычная или 18+)
+        queue_row = conn.execute("SELECT mode FROM roulette_queue WHERE user_id=?", (uid,)).fetchone()
+        was_18plus = queue_row and queue_row["mode"] == "18plus" if queue_row else False
+        conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
         conn.commit()
-        await nav(update, context, t("search_cancelled"), main_menu_kb(update.effective_user.id))
+        if was_18plus:
+            context.user_data["state"] = "18plus_pref"
+            await nav(update, context, t("search_cancelled") + "\n\n" + t("roulette_who"), eighteen_plus_roulette_pref_kb())
+        else:
+            context.user_data["state"] = "roulette_pref"
+            await nav(update, context, t("search_cancelled") + "\n\n" + t("roulette_who"), roulette_pref_reply_kb())
         return
     # Кнопки админ-клавиатуры
     if is_admin(update.effective_user.id):
