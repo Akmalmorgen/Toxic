@@ -6703,18 +6703,18 @@ async def admin_vip_router(update, context):
             conn.execute("UPDATE users SET vip_until=?", (new_until,))
             target_label = "всем"
         elif bulk_filter == "female":
-            conn.execute("UPDATE users SET vip_until=? WHERE gender='female'", (new_until,))
+            conn.execute("UPDATE users SET vip_until=? WHERE gender='f'", (new_until,))
             target_label = "девушкам (Ж)"
         else:
-            conn.execute("UPDATE users SET vip_until=? WHERE gender='male'", (new_until,))
+            conn.execute("UPDATE users SET vip_until=? WHERE gender='m'", (new_until,))
             target_label = "парням (М)"
         conn.commit()
         if bulk_filter == "all":
             count = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
         elif bulk_filter == "female":
-            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='female'").fetchone()["c"]
+            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='f'").fetchone()["c"]
         else:
-            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='male'").fetchone()["c"]
+            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='m'").fetchone()["c"]
         context.user_data["state"] = "admin_vip"
         context.user_data.pop("vip_bulk_filter", None)
         await update.message.reply_text(
@@ -6981,7 +6981,7 @@ async def adm_channels_router(update, context):
 
 
 async def process_bcast_audience_text(update, context):
-    text = canon(update.message.text)
+    text = canon(update.message.text.strip())
     uid = update.effective_user.id
     if text == "❌ Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
