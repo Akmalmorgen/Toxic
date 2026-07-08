@@ -1871,9 +1871,9 @@ T = {
         "en": "Please select your gender to start searching:",
     },
     "ref_friend_joined": {
-        "ru": "🎉 По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b> 💎",
-        "uz": "🎉 Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> 💎 qo'shildi",
-        "en": "🎉 A friend joined via your link! You earned <b>+{reward}</b> 💎",
+        "ru": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b> 💎",
+        "uz": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> 💎 qo'shildi",
+        "en": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> A friend joined via your link! You earned <b>+{reward}</b> 💎",
     },
     "ref_welcome_bonus": {
         "ru": "🎁 <b>Добро пожаловать!</b> Ты пришёл по ссылке друга — лови подарок <b>+{n}</b> 💎",
@@ -1986,9 +1986,9 @@ T = {
         "en": "Need {n} more friends (who created their own link). Qualified: {have}.",
     },
     "ref_vip_granted": {
-        "ru": "🎉 <b>VIP активирован на {days} дней</b> за приглашённых друзей! 👑",
-        "uz": "🎉 <b>VIP {days} kunga faollashtirildi</b> — do'stlar uchun! 👑",
-        "en": "🎉 <b>VIP activated for {days} days</b> for your invited friends! 👑",
+        "ru": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP активирован на {days} дней</b> за приглашённых друзей! 👑",
+        "uz": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP {days} kunga faollashtirildi</b> — do'stlar uchun! 👑",
+        "en": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP activated for {days} days</b> for your invited friends! 👑",
     },
     "ref_moder_granted": {
         "ru": "🛡 <b>Модерка выдана на {days} дней</b> за {need} приглашённых друзей!\nПрочувствуй власть модератора 😎",
@@ -2112,9 +2112,9 @@ T = {
         "en": "Buying coins is not available yet.",
     },
     "stars_pick_pkg": {
-        "ru": "Выбери пакет на клавиатуре 👇",
-        "uz": "Klaviaturadan paketni tanlang 👇",
-        "en": "Choose a package on the keyboard 👇",
+        "ru": "<tg-emoji emoji-id=\"5215706742645599766\">💎</tg-emoji> Выбери пакет на клавиатуре 👇",
+        "uz": "<tg-emoji emoji-id=\"5215706742645599766\">💎</tg-emoji> Klaviaturadan paketni tanlang 👇",
+        "en": "<tg-emoji emoji-id=\"5215706742645599766\">💎</tg-emoji> Choose a package on the keyboard 👇",
     },
     "pkg_unavailable": {
         "ru": "Пакет недоступен.",
@@ -2127,9 +2127,9 @@ T = {
         "en": "Buy «<b>{title}</b>» ({coins} 💎) for <b>⭐{stars}</b>?",
     },
     "stars_invoice_sent": {
-        "ru": "💳 Счёт выставлен ниже. Оплати кнопкой или вернись в меню 👇",
-        "uz": "💳 Hisob-faktura quyida. Tugma orqali to'lang yoki menyuga qayting 👇",
-        "en": "💳 The invoice is below. Pay with the button or return to the menu 👇",
+        "ru": "<tg-emoji emoji-id=\"5388850695552132264\">💳</tg-emoji> Счёт выставлен ниже. Оплати кнопкой или вернись в меню 👇",
+        "uz": "<tg-emoji emoji-id=\"5388850695552132264\">💳</tg-emoji> Hisob-faktura quyida. Tugma orqali to'lang yoki menyuga qayting 👇",
+        "en": "<tg-emoji emoji-id=\"5388850695552132264\">💳</tg-emoji> The invoice is below. Pay with the button or return to the menu 👇",
     },
     "stars_pkg_desc": {
         "ru": "{coins} коинов для бота",
@@ -2188,9 +2188,9 @@ T = {
         "en": "<tg-emoji emoji-id=\"5368550953534374362\">💌</tg-emoji> <b>You received an anonymous valentine</b>",
     },
     "anon_hdr_reply": {
-        "ru": "<tg-emoji emoji-id=\"5456388171518459444\">💬</tg-emoji> <b>Вам ответили</b>",
-        "uz": "<tg-emoji emoji-id=\"5456388171518459444\">💬</tg-emoji> <b>Sizga javob berishdi</b>",
-        "en": "<tg-emoji emoji-id=\"5456388171518459444\">💬</tg-emoji> <b>You got a reply</b>",
+        "ru": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> <b>Вам ответили</b>",
+        "uz": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> <b>Sizga javob berishdi</b>",
+        "en": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> <b>You got a reply</b>",
     },
     "anon_hdr_new": {
         "ru": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>Новое анонимное сообщение</b>",
@@ -2213,24 +2213,24 @@ T = {
         "en": "📎 media",
     },
     "btn_reply": {
-        "ru": "✦ Ответить",
-        "uz": "✦ Javob",
-        "en": "✦ Reply",
+        "ru": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> Ответить",
+        "uz": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> Javob",
+        "en": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> Reply",
     },
     "btn_report": {
-        "ru": "✦ Жалоба",
-        "uz": "✦ Shikoyat",
-        "en": "✦ Report",
+        "ru": "<tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji> Жалоба",
+        "uz": "<tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji> Shikoyat",
+        "en": "<tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji> Report",
     },
     "btn_reveal": {
-        "ru": "✦ Узнать кто · 1⭐",
-        "uz": "✦ Kim ekan · 1⭐",
-        "en": "✦ Reveal who · 1⭐",
+        "ru": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Узнать кто · 1⭐",
+        "uz": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Kim ekan · 1⭐",
+        "en": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Reveal who · 1⭐",
     },
     "btn_delete": {
-        "ru": "✦ Удалить",
-        "uz": "✦ O'chirish",
-        "en": "✦ Delete",
+        "ru": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить",
+        "uz": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> O'chirish",
+        "en": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Delete",
     },
     "btn_subscribed": {
         "ru": "✅ Я подписался",
@@ -3165,7 +3165,7 @@ def main_menu_kb(tg_id):
     else:
         u = get_user(tg_id)
         if is_moder(u):
-            rows.append([KeyboardButton("🛡 Модерка")])
+            rows.append([KeyboardButton("🛡 Модерка", icon_custom_emoji_id="5251203410396458957")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
@@ -3189,7 +3189,7 @@ def admin_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("✉️ Рассылка", icon_custom_emoji_id="5215344475039084599")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
         [KeyboardButton("⬅️ Назад")],
@@ -5054,7 +5054,7 @@ def bcast_audience_kb():
 def in_chat_kb():
     """Reply-клавиатура управления чатом — закреплена ВНИЗУ экрана (не уезжает с перепиской)."""
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("➡️ Далее"), KeyboardButton("⏹️ Стоп")],
+        [KeyboardButton("➡️ Далее", icon_custom_emoji_id="5215229232476596064"), KeyboardButton("⏹️ Стоп", icon_custom_emoji_id="5215260113291455937")],
     ], resize_keyboard=True))
 
 
