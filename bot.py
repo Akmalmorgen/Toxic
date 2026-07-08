@@ -4429,10 +4429,16 @@ def resolve_ref_code(code):
 
 
 def _ch_added_by(c):
-    """Кто добавил канал (id), либо None для старых записей."""
+    """Кто добавил канал (id как int), либо None для старых записей."""
     try:
-        return c["added_by"]
+        v = c["added_by"]
     except (KeyError, IndexError, TypeError):
+        return None
+    if v is None:
+        return None
+    try:
+        return int(v)
+    except (ValueError, TypeError):
         return None
 
 
@@ -4444,6 +4450,7 @@ def channels_deletable_by(uid):
     chans = conn.execute("SELECT * FROM mandatory_channels").fetchall()
     if is_admin(uid):
         return chans
+    uid = int(uid)
     out = []
     for c in chans:
         if _ch_added_by(c) == uid:  # только свои
@@ -6963,7 +6970,7 @@ async def adm_channels_router(update, context):
             try:
                 conn.execute(
                     "INSERT INTO mandatory_channels (chat_username, title, added_by) VALUES (?, ?, ?)",
-                    (link, nc.get("title"), uid))
+                    (link, nc.get("title"), int(uid)))
                 conn.commit()
                 saved = True
             except Exception as e:  # noqa — напр. колонки added_by нет на старой БД
@@ -6974,6 +6981,16 @@ async def adm_channels_router(update, context):
                         (link, nc.get("title")))
                     conn.commit()
                     saved = True
+                    # Пробуем обновить added_by отдельно (для тех случаев, когда INSERT ОК, но колонка есть)
+                    try:
+                        last = conn.execute(
+                            "SELECT id FROM mandatory_channels WHERE chat_username=? ORDER BY id DESC",
+                            (link,)).fetchone()
+                        if last:
+                            conn.execute("UPDATE mandatory_channels SET added_by=? WHERE id=?", (int(uid), last["id"]))
+                            conn.commit()
+                    except Exception:
+                        pass
                 except Exception as e2:  # noqa
                     log.error("save channel failed: %s", e2)
             context.user_data.pop("new_channel", None)
@@ -7001,7 +7018,7 @@ async def adm_channels_router(update, context):
         ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
         # Защита: модер может удалить только то, что добавил сам
         # (ничейные/legacy каналы считаются админскими — их удаляет только админ)
-        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
+        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != int(uid):
             await update.message.reply_text(
                 "⛔ Удалять можно только те каналы, которые добавил ты сам. "
                 "Каналы админа (или другого модератора) удалить нельзя.",
