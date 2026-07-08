@@ -4438,16 +4438,15 @@ def _ch_added_by(c):
 
 def channels_deletable_by(uid):
     """Какие обязательные каналы пользователь вправе удалять:
-    админ — любые; модер — те, что добавил сам, плюс «ничейные» (added_by пуст —
-    старые записи или сохранённые до появления колонки). Каналы, добавленные именно
-    админом, модер удалить НЕ может."""
+    админ — любые; модер — только те, что добавил сам. «Ничейные» каналы
+    (added_by пуст — старые записи / добавленные админом до появления колонки)
+    считаются админскими: модер удалить их НЕ может."""
     chans = conn.execute("SELECT * FROM mandatory_channels").fetchall()
     if is_admin(uid):
         return chans
     out = []
     for c in chans:
-        ab = _ch_added_by(c)
-        if ab == uid or ab is None:  # свои + ничейные (legacy/NULL)
+        if _ch_added_by(c) == uid:  # только свои
             out.append(c)
     return out
 
@@ -7001,7 +7000,8 @@ async def adm_channels_router(update, context):
             return
         ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
         # Защита: модер может удалить только то, что добавил сам
-        if ch is not None and not is_admin(uid) and _ch_added_by(ch) not in (uid, None):
+        # (ничейные/legacy каналы считаются админскими — их удаляет только админ)
+        if ch is not None and not is_admin(uid) and _ch_added_by(ch) != uid:
             await update.message.reply_text(
                 "⛔ Удалять можно только те каналы, которые добавил ты сам. "
                 "Каналы админа (или другого модератора) удалить нельзя.",
