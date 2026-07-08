@@ -5862,7 +5862,7 @@ async def do_purchase(update, context, item):
     conn.commit()
     user = get_user(uid)
     discount_note = f" (со скидкой VIP, обычно {item['price']})" if price != item["price"] else ""
-    await notify_staff(
+    await notify_admins(
         context,
         f"💰 Покупка!\nПользователь: {user_mention(user)}\n"
         f"Товар: {html.escape(item['title'])}\nЦена: {price} 💎{discount_note}",
@@ -6554,6 +6554,15 @@ async def show_pending_reports(update, context):
             InlineKeyboardButton("❌ Отклонить", callback_data=f"repadm:no:{r['id']}"),
         ]])
         await context.bot.send_message(update.effective_chat.id, body, reply_markup=kb)
+
+
+async def notify_admins(context, text, reply_markup=None, parse_mode=None):
+    """Уведомление только админам (ADMIN_IDS) — финансы, регистрации и т.п."""
+    for aid in ADMIN_IDS:
+        try:
+            await context.bot.send_message(aid, text, reply_markup=reply_markup, parse_mode=parse_mode)
+        except TelegramError:
+            pass
 
 
 async def notify_staff(context, text, reply_markup=None, parse_mode=None):
@@ -7607,7 +7616,7 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         parse_mode="HTML", reply_markup=main_menu_kb(uid),
     )
     user = get_user(uid)
-    await notify_staff(
+    await notify_admins(
         context,
         f"⭐ Покупка коинов!\n{user_mention(user)}\n"
         f"Пакет: {html.escape(pkg['title']) if pkg else '-'}\nКоинов: {coins} / Звёзд: {sp.total_amount}",
