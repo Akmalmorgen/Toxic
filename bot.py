@@ -6726,8 +6726,25 @@ async def admin_vip_router(update, context):
             count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='f'").fetchone()["c"]
         else:
             count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='m'").fetchone()["c"]
+        if bulk_filter == "all":
+            rows = conn.execute("SELECT tg_id FROM users").fetchall()
+        elif bulk_filter == "female":
+            rows = conn.execute("SELECT tg_id FROM users WHERE gender='f'").fetchall()
+        else:
+            rows = conn.execute("SELECT tg_id FROM users WHERE gender='m'").fetchall()
         context.user_data["state"] = "admin_vip"
         context.user_data.pop("vip_bulk_filter", None)
+        notified = 0
+        _sl = cur_lang()
+        for r in rows:
+            try:
+                set_cur_lang(get_lang(r["tg_id"]))
+                await context.bot.send_message(r["tg_id"], t("vip_granted_user", days=days), parse_mode="HTML")
+                notified += 1
+            except TelegramError:
+                pass
+            await asyncio.sleep(0.03)
+        set_cur_lang(_sl)
         await update.message.reply_text(
             t("vip_bulk_done", target=target_label, days=days, count=count),
             parse_mode="HTML", reply_markup=admin_vip_kb(),
