@@ -1235,9 +1235,9 @@ T = {
     },
     # === Ссылка (доп.) ===
     "link_section": {
-        "ru": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>Раздел «Моя ссылка»</b>\n\nВыберите действие 👇",
-        "uz": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«Havolam» bo'limi</b>\n\nAmalni tanlang 👇",
-        "en": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«My link» section</b>\n\nChoose an action 👇",
+        "ru": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>Раздел «Моя ссылка»</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Выберите действие 👇",
+        "uz": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«Havolam» bo'limi</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Amalni tanlang 👇",
+        "en": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«My link» section</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Choose an action 👇",
     },
     "link_show": {
         "ru": "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> <b>Ваша персональная ссылка</b> ✦\n<blockquote>{link}</blockquote>\n📤 Нажми «Поделиться» — выбери, кому отправить, и тебе будут писать анонимно 💌",
@@ -2193,9 +2193,9 @@ T = {
         "en": "<tg-emoji emoji-id=\"5213060381366300423\">💬</tg-emoji> <b>You got a reply</b>",
     },
     "anon_hdr_new": {
-        "ru": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>Новое анонимное сообщение</b>",
-        "uz": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>Yangi anonim xabar</b>",
-        "en": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>New anonymous message</b>",
+        "ru": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>Новое анонимное сообщение</b>",
+        "uz": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>Yangi anonim xabar</b>",
+        "en": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>New anonymous message</b>",
     },
     "anon_quote_reply": {
         "ru": "↩️ <i>в ответ на:</i>",
@@ -2233,9 +2233,9 @@ T = {
         "en": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Delete",
     },
     "btn_subscribed": {
-        "ru": "✅ Я подписался",
-        "uz": "✅ Obuna bo'ldim",
-        "en": "✅ I subscribed",
+        "ru": "<tg-emoji emoji-id=\"5465443379917629504\">✅</tg-emoji> Я подписался",
+        "uz": "<tg-emoji emoji-id=\"5465443379917629504\">✅</tg-emoji> Obuna bo'ldim",
+        "en": "<tg-emoji emoji-id=\"5465443379917629504\">✅</tg-emoji> I subscribed",
     },
     "anon_formats_vip": {
         "ru": ", фото, стикеры, гиф, видео",
@@ -3253,7 +3253,7 @@ def link_menu_kb():
 
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👨 Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("👩 Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("👨 Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("👩 Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("🤷 Любого", icon_custom_emoji_id="5368428705880219702")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -3763,8 +3763,8 @@ def eighteen_plus_menu_kb():
 
 def eighteen_plus_roulette_pref_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👨 Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("👩 Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("🤷 Любого")],
-        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+        [KeyboardButton("👨 Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("👩 Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("🤷 Любого", icon_custom_emoji_id="5368428705880219702")],
+        [KeyboardButton("⬅️ Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -6395,7 +6395,7 @@ async def show_moder_menu(update, context):
     if not is_moder(u):
         return
     context.user_data["state"] = "moder"
-    await nav(update, context, "🛡 <b>Панель модератора</b>", moder_menu_kb(), parse_mode="HTML")
+    await nav(update, context, "<tg-emoji emoji-id=\"5951620440735616001\">🛡</tg-emoji> <b>Панель модератора</b>", moder_menu_kb(), parse_mode="HTML")
 
 
 def admin_moder_kb():
@@ -7331,7 +7331,7 @@ async def _flush_bcast_album(context, key):
     try:
         await context.bot.send_message(
             uid,
-            f"📢 Рассылка завершена (альбом из {len(file_ids)} фото).\n"
+            f"<tg-emoji emoji-id=\"5954038069236601443\">📢</tg-emoji> Рассылка завершена (альбом из {len(file_ids)} фото).\n"
             f"✅ Доставлено: {sent}\n"
             f"❌ Не удалось: {failed}\n"
             f"🧹 Удалено недоступных: {removed}",
@@ -7472,7 +7472,7 @@ async def _do_bcast_send(update, context, button_text, button_url):
             removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
     await update.message.reply_text(
-        f"📢 Рассылка завершена.\n"
+        f"<tg-emoji emoji-id=\"5954038069236601443\">📢</tg-emoji> Рассылка завершена.\n"
         f"✅ Доставлено: {sent}\n"
         f"❌ Не удалось: {failed}\n"
         f"🧹 Удалено недоступных (заблокировали/не запускали бота): {removed}",
