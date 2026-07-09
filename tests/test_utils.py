@@ -133,24 +133,24 @@ class TestProgressBar:
 
     def test_zero_progress(self):
         result = bot.progress_bar(0, 10)
-        assert result == "⬜" * 10
+        assert result == "▱" * 10
 
     def test_full_progress(self):
         result = bot.progress_bar(10, 10)
-        assert result == "🟩" * 10
+        assert result == "▰" * 10
 
     def test_half_progress(self):
         result = bot.progress_bar(5, 10)
-        assert result == "🟩" * 5 + "⬜" * 5
+        assert result == "▰" * 5 + "▱" * 5
 
     def test_over_target(self):
         result = bot.progress_bar(15, 10)
         # Should cap at 10 filled
-        assert result == "🟩" * 10
+        assert result == "▰" * 10
 
     def test_custom_slots(self):
         result = bot.progress_bar(3, 6, slots=6)
-        assert result == "🟩" * 3 + "⬜" * 3
+        assert result == "▰" * 3 + "▱" * 3
 
 
 # ──────────────────────── _is_dead_account ────────────────────────
