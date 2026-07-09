@@ -1069,7 +1069,7 @@ BTN = {
     "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
     "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
     "➕ Добавить товар": ("➕ Mahsulot qo'shish", "➕ Add item"),
-    "🗑 Удалить товар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
+    "🗑 Удалить т��вар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
     "📝 Название": ("📝 Nomi", "📝 Name"),
     "💰 Цена": ("💰 Narxi", "💰 Price"),
     "⏳ Срок VIP": ("⏳ VIP muddati", "⏳ VIP duration"),
@@ -2645,7 +2645,7 @@ T = {
         "en": "Partner left the chat.",
     },
     "roulette_already_chat": {
-        "ru": "Вы уже в чате. Пишите собеседнику или используйте кнопки ниже 👇",
+        "ru": "Вы уже в чате. Пишите собеседнику или используйте кноп��и ниже 👇",
         "uz": "Siz allaqachon chatsiz. Suhbatdoshga yozing yoki pastdagi tugmalardan foydalaning 👇",
         "en": "You are already in a chat. Write to your partner or use the buttons below 👇",
     },
@@ -4200,7 +4200,7 @@ def anon_preview(row):
 
 # Универсальная доставка анонимного сообщения (вопрос/валентинка/ответ).
 # Создаёт запись, шлёт получателю с цитатой родителя + кнопкой «Ответить» (и опц. «Пожаловаться»),
-# а автору — подтверждение с кнопкой удаления. Так строится бесконечный двусторонний тред.
+# а автору — подтверждение с кноп��ой удаления. Так строится бесконечный двусторонний тред.
 async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
                        text=None, voice_file_id=None, src_chat_id=None, src_message_id=None,
                        parent_id=None, allow_report=True, vip_badge=False):
@@ -4281,7 +4281,7 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     return mid
 
 
-# Извлекает тип/текст/медиа из входящего сообщения. Возвращает (content_type, text, voice_file_id) либо None при ошибке.
+# Извлекает ти��/текст/медиа из входящего сообщения. Возвращает (content_type, text, voice_file_id) либо None при ошибке.
 async def extract_anon_content(update, is_v):
     m = update.message
     is_media = bool(m.photo or m.sticker or m.animation or m.video or m.video_note or m.document)
@@ -5662,7 +5662,7 @@ async def process_tg_pick(update, context):
         await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
         return
     if not text.isdigit():
-        await update.message.reply_text("Введите ID числом (или «❌ Отмена»):", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("Введите ID ч��слом (или «❌ Отмена»):", reply_markup=cancel_reply_kb())
         return
     session = get_active_session(int(text))
     if not session:
@@ -6974,7 +6974,7 @@ async def adm_channels_router(update, context):
                 "👀 <b>Предпросмотр кнопки:</b>\n"
                 f"Название: <b>{html.escape(title)}</b>\n"
                 f"Ссылка: {html.escape(url)}\n\n"
-                "Так будет выглядеть кнопка 👇\nВсё верно?",
+                "Так будет ��ыглядеть кнопка 👇\nВсё верно?",
                 parse_mode="HTML", reply_markup=preview_kb)
         except TelegramError:
             await update.message.reply_text(
@@ -7237,6 +7237,21 @@ def user_is_disposable(uid):
     return True
 
 
+async def _notify_purged_partners(partner_ids):
+    """Сообщает партнёрам удалённого пользователя, что собеседник покинул чат."""
+    for pid in partner_ids:
+        try:
+            UD[pid]["state"] = "rleft"
+            _sl = cur_lang()
+            set_cur_lang(get_lang(pid))
+            try:
+                await BOTP.send_message(pid, t("roulette_left"), reply_markup=left_chat_kb())
+            finally:
+                set_cur_lang(_sl)
+        except TelegramError as e:
+            log.warning("notify purged partner %s: %s", pid, e)
+
+
 def purge_user(uid):
     try:
         if is_admin(uid):
@@ -7244,25 +7259,33 @@ def purge_user(uid):
         u = get_user(uid)
         if u and is_moder(u):
             return False
-        # Не удаляем пользователя, если у него есть активная сессия рулетки —
-        # иначе его партнёр «зависнет» навсегда без уведомления.
-        active_sess = conn.execute(
-            "SELECT 1 FROM roulette_sessions WHERE active=1 AND (user1_id=? OR user2_id=?) LIMIT 1",
+        # Партнёры по активным сессиям рулетки — их нужно уведомить, что чат завершён,
+        # иначе они «зависнут» с мёртвым собеседником.
+        partner_rows = conn.execute(
+            "SELECT user1_id, user2_id FROM roulette_sessions "
+            "WHERE active=1 AND (user1_id=? OR user2_id=?)",
             (uid, uid),
-        ).fetchone()
-        if active_sess:
-            return False
+        ).fetchall()
+        partner_ids = {
+            (r["user2_id"] if r["user1_id"] == uid else r["user1_id"]) for r in partner_rows
+        }
         conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
         conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
-        # Завершаем неактивные сессии (ended), чтобы не ссылались на удалённого
+        # Завершаем активные сессии, чтобы не ссылались на удалённого
         conn.execute(
             "UPDATE roulette_sessions SET active=0, ended_at=COALESCE(ended_at, ?) "
             "WHERE active=1 AND (user1_id=? OR user2_id=?)",
             (now_iso(), uid, uid),
         )
         conn.commit()
+        if partner_ids:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_notify_purged_partners(partner_ids))
+            except RuntimeError:
+                pass  # вызов вне event loop (тесты) — уведомление пропускаем
         return True
     except Exception as e:  # noqa
         log.warning("purge_user %s: %s", uid, e)
@@ -7820,7 +7843,7 @@ async def reward_link_activity(context, uid, kind):
     """Бонус за активность по ссылке: +LINK_REWARD_COINS за каждые LINK_REWARD_EVERY действий.
     kind: 'sent' (отправил по ссылке) или 'answered' (ответил). VIP и персонал — без бонуса."""
     u = get_user(uid)
-    if not u or is_vip(u):   # is_vip True и для админа/модера → бонус им не идёт
+    if not u or is_vip(u):   # is_vip True и для админа/модера → бонус им не ��дёт
         return
     if kind == "sent":
         col_total, col_paid = "link_sent_total", "link_sent_rewarded"
@@ -8600,7 +8623,7 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             markup = InlineKeyboardMarkup([
                 [InlineKeyboardButton("✅ Одобрить", callback_data=f"agever:ok:{uid}"),
                  InlineKeyboardButton("❌ Отменить", callback_data=f"agever:no:{uid}")],
-                [InlineKeyboardButton("✉️ В ЛС пользователю", url=f"tg://user?id={uid}")],
+                [InlineKeyboardButton("✉️ В ЛС п��льзователю", url=f"tg://user?id={uid}")],
             ])
             for admin_id in ADMIN_IDS:
                 try:
@@ -8973,7 +8996,7 @@ async def _run():
 
 
 def main():
-    # фоновый веб-сервер СНАЧАЛА (Render ждёт открытый PORT чтобы считать сервис живым)
+    # фоновый веб-сервер СНАЧАЛА (Render ждёт открытый PORT чтобы ��читать сервис живым)
     threading.Thread(target=_keep_alive_server, daemon=True).start()
     asyncio.run(_run())
 
