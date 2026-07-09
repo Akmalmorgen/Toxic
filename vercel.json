@@ -1,0 +1,12 @@
+{
+  "buildCommand": "exit 0",
+  "outputDirectory": ".",
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.11"
+    }
+  },
+  "env": {
+    "BOT_TOKEN": "@bot_token"
+  }
+}
