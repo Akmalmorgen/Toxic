@@ -7515,7 +7515,7 @@ async def show_star_shop(update, context):
         label = f"{item_title(p)} —{p['price_stars']}"
         smap[label] = p["id"]
         rows.append([KeyboardButton(label)])
-    rows.append([KeyboardButton("Назад")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     context.user_data["star_map"] = smap
     context.user_data["state"] = "star_shop"
     await nav(update, context, t("stars_title"),
@@ -7723,7 +7723,7 @@ async def star_admin_router(update, context):
             label = f"{p['title']} —{p['price_stars']}"
             smap[label] = p["id"]
             rows.append([KeyboardButton(label)])
-        rows.append([KeyboardButton("Отмена")])
+        rows.append([KeyboardButton("❌ Отмена")])
         context.user_data["star_del_map"] = smap
         context.user_data["state"] = "star_del"
         await update.message.reply_text("Какой пакет удалить?", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
@@ -8022,7 +8022,7 @@ def referral_kb(uid=None):
     rows = [[KeyboardButton("🏆 Топ пригласивших")]]
     if uid is not None and is_admin(uid):
         rows.append([KeyboardButton("✏️ Изменить")])
-    rows.append([KeyboardButton("Назад")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
