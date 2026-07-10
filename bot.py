@@ -1015,7 +1015,7 @@ async def try_delete_message(context, chat_id, message_id):
 
 # ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
 LANGS = ("ru", "uz", "en")
-LANG_BUTTONS = {"<tg-emoji emoji-id=\"6138500390544478959\"><tg-emoji emoji-id=\"6138500390544478959\">🇷🇺</tg-emoji></tg-emoji> Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
+LANG_BUTTONS = {"🇷🇺 Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
 
 # Реестр кнопок: каноническая русская метка -> перевод (uz, en). Эмодзи одинаковые во всех языках.
 BTN = {
@@ -1260,9 +1260,9 @@ T = {
         "en": "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> <b>Your personal link</b>\n<blockquote>{link}</blockquote>\nTap «Share» — pick who to send it to, and people will message you anonymously",
     },
     "link_done": {
-        "ru": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Готово! Ваша ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться», чтобы отправить её",
-        "uz": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Tayyor! Havolangiz</b>\n<blockquote>{link}</blockquote>\nUni yuborish uchun «Ulashish» tugmasini bosing",
-        "en": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Done! Your link</b>\n<blockquote>{link}</blockquote>\nTap «Share» to send it",
+        "ru": "✅ <b>Готово! Ваша ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться», чтобы отправить её",
+        "uz": "✅ <b>Tayyor! Havolangiz</b>\n<blockquote>{link}</blockquote>\nUni yuborish uchun «Ulashish» tugmasini bosing",
+        "en": "✅ <b>Done! Your link</b>\n<blockquote>{link}</blockquote>\nTap «Share» to send it",
     },
     "btn_share": {
         "ru": "Поделиться",
@@ -1354,7 +1354,7 @@ T = {
             "Получено по ссылке: <b>{received}</b>\n"
             "Приглашено друзей: <b>{invited}</b>\n"
             "Место в топе: <b>{rank}</b>\n"
-            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
             "Коины: <b>{coins}</b>\n"
             "Потрачено звёзд (покупка коинов): <b>{stars}</b>\n"
             "Регистрация: <b>{reg_date}</b>"
@@ -1373,7 +1373,7 @@ T = {
             "Havola orqali kelgan: <b>{received}</b>\n"
             "Taklif qilingan do'stlar: <b>{invited}</b>\n"
             "Topdagi o'rin: <b>{rank}</b>\n"
-            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
             "Coinlar: <b>{coins}</b>\n"
             "Sarflangan yulduzlar (coin xaridi): <b>{stars}</b>\n"
             "Ro'yxatdan o'tgan: <b>{reg_date}</b>"
@@ -1392,7 +1392,7 @@ T = {
             "Received via link: <b>{received}</b>\n"
             "Friends invited: <b>{invited}</b>\n"
             "Leaderboard place: <b>{rank}</b>\n"
-            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
+            "👑 VIP: <b>{vip}</b>\n"
             "Coins: <b>{coins}</b>\n"
             "Stars spent (buying coins): <b>{stars}</b>\n"
             "Registered: <b>{reg_date}</b>"
@@ -1539,14 +1539,14 @@ T = {
         "en": "<b>{price}</b> (VIP discount, usually {orig})",
     },
     "purchase_coins": {
-        "ru": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Покупка совершена!</b> Начислено <b>{amt}</b>",
-        "uz": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Xarid amalga oshirildi!</b> <b>{amt}</b> qo'shildi",
-        "en": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Purchase complete!</b> <b>{amt}</b> added",
+        "ru": "✅ <b>Покупка совершена!</b> Начислено <b>{amt}</b>",
+        "uz": "✅ <b>Xarid amalga oshirildi!</b> <b>{amt}</b> qo'shildi",
+        "en": "✅ <b>Purchase complete!</b> <b>{amt}</b> added",
     },
     "purchase_vip": {
-        "ru": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Покупка совершена!</b> VIP активен на <b>{days}</b> дн.",
-        "uz": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Xarid amalga oshirildi!</b> VIP <b>{days}</b> kun faol",
-        "en": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Purchase complete!</b> VIP active for <b>{days}</b> days",
+        "ru": "✅ <b>Покупка совершена!</b> VIP активен на <b>{days}</b> дн.",
+        "uz": "✅ <b>Xarid amalga oshirildi!</b> VIP <b>{days}</b> kun faol",
+        "en": "✅ <b>Purchase complete!</b> VIP active for <b>{days}</b> days",
     },
     "purchase_manual": {
         "ru": "<b>Покупка совершена!</b> Админ свяжется с вами и выдаст товар.",
@@ -2290,7 +2290,7 @@ T = {
             "<i>Тебе пишут тайно, а ты отвечаешь кому угодно.</i>\n\n"
             "<blockquote>Личная ссылка для анонимок\n"
             "Чат-рулетка по интересам\n"
-            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> Никто не узнает, кто ты</blockquote>\n"
+            "🕵️ Никто не узнает, кто ты</blockquote>\n"
             "Поехали — выбери свой пол"
         ),
         "uz": (
@@ -2305,7 +2305,7 @@ T = {
             "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz.</i>\n\n"
             "<blockquote>Anonim xabarlar uchun shaxsiy havola\n"
             "Qiziqish bo'yicha chat-ruletka\n"
-            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> Hech kim siz kimligingizni bilmaydi</blockquote>\n"
+            "🕵️ Hech kim siz kimligingizni bilmaydi</blockquote>\n"
             "Boshladik — jinsingizni tanlang"
         ),
         "en": (
@@ -2320,7 +2320,7 @@ T = {
             "<i>People message you secretly, and you reply to anyone.</i>\n\n"
             "<blockquote>Personal link for anonymous messages\n"
             "Chat roulette by interest\n"
-            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> No one will know who you are</blockquote>\n"
+            "🕵️ No one will know who you are</blockquote>\n"
             "Let's go — choose your gender"
         ),
     },
