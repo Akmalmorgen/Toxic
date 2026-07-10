@@ -1015,7 +1015,7 @@ async def try_delete_message(context, chat_id, message_id):
 
 # ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
 LANGS = ("ru", "uz", "en")
-LANG_BUTTONS = {"🇷🇺 Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
+LANG_BUTTONS = {"<tg-emoji emoji-id=\"6138500390544478959\"><tg-emoji emoji-id=\"6138500390544478959\">🇷🇺</tg-emoji></tg-emoji> Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
 
 # Реестр кнопок: каноническая русская метка -> перевод (uz, en). Эмодзи одинаковые во всех языках.
 BTN = {
@@ -1059,57 +1059,56 @@ BTN = {
     "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
     "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
     "🏠 Меню": ("🏠 Menyu", "🏠 Menu"),
-    "💎 Цена раскрытия": ("💎 Aniqlash narxi", "💎 Reveal price"),
-    "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
+    "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Добавить пакет коинов": ("<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Coin paket qo'shish", "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
     "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
-    "👨 Мужской": ("👨 Erkak", "👨 Male"),
-    "👩 Женский": ("👩 Ayol", "👩 Female"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Мужской": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Erkak", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Male"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Женский": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Ayol", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Female"),
     "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
-    "✏️ Сменить ссылку": ("✏️ Havolani o'zgartirish", "✏️ Change link"),
-    "👨 Парня": ("👨 Yigit", "👨 A guy"),
-    "👩 Девушку": ("👩 Qiz", "👩 A girl"),
+    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Сменить ссылку": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Havolani o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change link"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Парня": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Yigit", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> A guy"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Девушку": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Qiz", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> A girl"),
     "🤷 Любого": ("🤷 Farqi yo'q", "🤷 Anyone"),
     "❓ Вопрос": ("❓ Savol", "❓ Question"),
     "💌 Валентинка": ("💌 Valentinka", "💌 Valentine"),
     "🤬 Мат": ("🤬 So'kinish", "🤬 Swearing"),
-    "💰 Мошенничество": ("💰 Firibgarlik", "💰 Fraud"),
-    "😡 Оскорбление": ("😡 Haqorat", "😡 Insult"),
-    "🔞 18+ стикеры": ("🔞 18+ stikerlar", "🔞 18+ stickers"),
+    "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Мошенничество": ("<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Firibgarlik", "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Fraud"),
+    "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Оскорбление": ("<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Haqorat", "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Insult"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ стикеры": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ stikerlar", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ stickers"),
     "👎 Не нравится": ("👎 Yoqmadi", "👎 Dislike"),
-    "✏️ Сменить пол": ("✏️ Jinsni o'zgartirish", "✏️ Change gender"),
+    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Сменить пол": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Jinsni o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change gender"),
     "👥 Всем": ("👥 Hammaga", "👥 Everyone"),
-    "👨 Мужчинам": ("👨 Erkaklarga", "👨 To men"),
-    "👩 Женщинам": ("👩 Ayollarga", "👩 To women"),
-    "➕ Выдать модера": ("➕ Moder berish", "➕ Grant moder"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Мужчинам": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Erkaklarga", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> To men"),
+    "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Женщинам": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Ayollarga", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> To women"),
+    "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Выдать модера": ("<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Moder berish", "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Grant moder"),
     "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
-    "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
-    "➕ Добавить товар": ("➕ Mahsulot qo'shish", "➕ Add item"),
+    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Изменить": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> O'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Edit"),
+    "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Добавить товар": ("<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Mahsulot qo'shish", "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Add item"),
     "🗑 Удалить т����вар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
     "📝 Название": ("📝 Nomi", "📝 Name"),
-    "💰 Цена": ("💰 Narxi", "💰 Price"),
+    "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Цена": ("<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Narxi", "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Price"),
     "⏳ Срок VIP": ("⏳ VIP muddati", "⏳ VIP duration"),
-    "💎 Сумма коинов": ("💎 Coin miqdori", "💎 Coin amount"),
+    "<tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji> Сумма коинов": ("<tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji> Coin miqdori", "<tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji> Coin amount"),
     "🏆 Топ пригласивших": ("🏆 Top taklif qilganlar", "🏆 Top inviters"),
-    "⛔ Отменить поиск": ("⛔ Qidiruvni bekor qilish", "⛔ Stop search"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">⛔</tg-emoji> Отменить поиск": ("<tg-emoji emoji-id=\"5202148364115786801\">⛔</tg-emoji> Qidiruvni bekor qilish", "<tg-emoji emoji-id=\"5202148364115786801\">⛔</tg-emoji> Stop search"),
     "➡️ Далее": ("➡️ Keyingi", "➡️ Next"),
     "⏹️ Стоп": ("⏹️ To'xtatish", "⏹️ Stop"),
-    "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
+    "<tg-emoji emoji-id=\"5874960879434338403\">🔍</tg-emoji> Новый поиск": ("<tg-emoji emoji-id=\"5874960879434338403\">🔍</tg-emoji> Yangi qidiruv", "<tg-emoji emoji-id=\"5874960879434338403\">🔍</tg-emoji> New search"),
     "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
     "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
-    "🔞 18+": ("🔞 18+", "🔞 18+"),
-    "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
-    "🔞 Мне нет 18": ("🔞 18 yoshda emasman", "🔞 I'm under 18"),
-    "🎁 Подарить 18+": ("🎁 18+ sovg'a qilish", "🎁 Gift 18+"),
-    "🎁 Подарить коины": ("🎁 Coin sovg'a qilish", "🎁 Gift coins"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ рулетка": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ ruletka", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ roulette"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Мне нет 18": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18 yoshda emasman", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> I'm under 18"),
+    "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Подарить 18+": ("<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> 18+ sovg'a qilish", "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Gift 18+"),
+    "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Подарить коины": ("<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Coin sovg'a qilish", "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Gift coins"),
     "🤷 Любой возраст": ("🤷 Istalgan yosh", "🤷 Any age"),
-    "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
-    "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
-    "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
+    "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Согласиться": ("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Roziman", "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> I agree"),
+    "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Подтвердить": ("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Tasdiqlash", "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Confirm"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Отклонить": ("<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Rad etish", "<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Reject"),
     "📷 Отправить фото": ("📷 Foto yuborish", "📷 Send photo"),
-    "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
-    "🛒 Обычный товар": ("🛒 Oddiy mahsulot", "🛒 Regular item"),
-    "🔞 Товар 18+": ("🔞 18+ mahsulot", "🔞 18+ item"),
+    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Изменить возраст": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Yoshni o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change age"),
+    "<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Обычный товар": ("<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Oddiy mahsulot", "<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Regular item"),
+    "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Товар 18+": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ mahsulot", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ item"),
     "18+ рулетка": ("18+ ruletka", "18+ roulette"),
     "18+ магазин": ("18+ do'kon", "18+ shop"),
 }
@@ -1119,19 +1118,6 @@ for _ru, (_uz, _en) in BTN.items():
     _ALIAS[_ru] = _ru
     _ALIAS[_uz] = _ru
     _ALIAS[_en] = _ru
-
-# Алиасы без эмодзи -> версии с эмодзи (для обратной совместимости)
-_ALIAS["Назад"] = "⬅️ Назад"
-_ALIAS["Меню"] = "🏠 Меню"
-_ALIAS["Моя ссылка"] = "🔗 Моя ссылка"
-_ALIAS["Чат-рулетка"] = "🎲 Чат-рулетка"
-_ALIAS["Профиль"] = "👤 Профиль"
-_ALIAS["Магазин"] = "🛒 Магазин"
-_ALIAS["Пригласить"] = "👥 Пригласить"
-_ALIAS["Помощь"] = "ℹ️ Помощь"
-_ALIAS["Язык"] = "🌐 Язык"
-_ALIAS["Купить коины"] = "💎 Купить коины"
-_ALIAS["18+"] = "🔞 18+"
 
 # Текущий язык апдейта хранится в ContextVar (см. cur_lang()/set_cur_lang() вверху файла).
 
@@ -1238,9 +1224,9 @@ T = {
     },
     # === Общие ===
     "banned": {
-        "ru": "🚫 Вы заблокированы и не можете пользоваться ботом.",
-        "uz": "🚫 Siz bloklangansiz va botdan foydalana olmaysiz.",
-        "en": "🚫 You are blocked and cannot use the bot.",
+        "ru": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> Вы заблокированы и не можете пользоваться ботом.",
+        "uz": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> Siz bloklangansiz va botdan foydalana olmaysiz.",
+        "en": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> You are blocked and cannot use the bot.",
     },
     "done": {
         "ru": "Готово.",
@@ -1264,19 +1250,19 @@ T = {
     },
     # === Ссылка (доп.) ===
     "link_section": {
-        "ru": "🔗 <b>Раздел «Моя ссылка»</b>\n\n👉 Выберите действие",
-        "uz": "🔗 <b>«Havolam» bo'limi</b>\n\n👉 Amalni tanlang",
-        "en": "🔗 <b>«My link» section</b>\n\n👉 Choose an action",
+        "ru": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>Раздел «Моя ссылка»</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Выберите действие",
+        "uz": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«Havolam» bo'limi</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Amalni tanlang",
+        "en": "<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> <b>«My link» section</b>\n\n<tg-emoji emoji-id=\"5463392464314315076\">👉</tg-emoji> Choose an action",
     },
     "link_show": {
-        "ru": "🤫 <b>Ваша персональная ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться» — выбери, кому отправить, и тебе будут писать анонимно",
-        "uz": "🤫 <b>Shaxsiy havolangiz</b>\n<blockquote>{link}</blockquote>\n«Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi",
-        "en": "🤫 <b>Your personal link</b>\n<blockquote>{link}</blockquote>\nTap «Share» — pick who to send it to, and people will message you anonymously",
+        "ru": "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> <b>Ваша персональная ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться» — выбери, кому отправить, и тебе будут писать анонимно",
+        "uz": "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> <b>Shaxsiy havolangiz</b>\n<blockquote>{link}</blockquote>\n«Ulashish» tugmasini bosing — kimga yuborishni tanlang, sizga anonim yozishadi",
+        "en": "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> <b>Your personal link</b>\n<blockquote>{link}</blockquote>\nTap «Share» — pick who to send it to, and people will message you anonymously",
     },
     "link_done": {
-        "ru": "✅ <b>Готово! Ваша ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться», чтобы отправить её",
-        "uz": "✅ <b>Tayyor! Havolangiz</b>\n<blockquote>{link}</blockquote>\nUni yuborish uchun «Ulashish» tugmasini bosing",
-        "en": "✅ <b>Done! Your link</b>\n<blockquote>{link}</blockquote>\nTap «Share» to send it",
+        "ru": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Готово! Ваша ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться», чтобы отправить её",
+        "uz": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Tayyor! Havolangiz</b>\n<blockquote>{link}</blockquote>\nUni yuborish uchun «Ulashish» tugmasini bosing",
+        "en": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Done! Your link</b>\n<blockquote>{link}</blockquote>\nTap «Share» to send it",
     },
     "btn_share": {
         "ru": "Поделиться",
@@ -1321,17 +1307,17 @@ T = {
     },
     "subgate_start": {
         "ru": (
-            "🔒 <b>Чтобы пользоваться ботом — подпишись</b>\n"
+            "<tg-emoji emoji-id=\"5199714569357900696\">🔒</tg-emoji> <b>Чтобы пользоваться ботом — подпишись</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Нажми на кнопки ниже, подпишись, затем вернись и нажми «Проверить».</i>"
         ),
         "uz": (
-            "🔒 <b>Botdan foydalanish uchun — obuna bo'ling</b>\n"
+            "<tg-emoji emoji-id=\"5199714569357900696\">🔒</tg-emoji> <b>Botdan foydalanish uchun — obuna bo'ling</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Quyidagi tugmalarni bosing, obuna bo'ling, keyin qaytib «Tekshirish» ni bosing.</i>"
         ),
         "en": (
-            "🔒 <b>To use the bot — subscribe</b>\n"
+            "<tg-emoji emoji-id=\"5199714569357900696\">🔒</tg-emoji> <b>To use the bot — subscribe</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Tap the buttons below, subscribe, then come back and press «Check».</i>"
         ),
@@ -1368,7 +1354,7 @@ T = {
             "Получено по ссылке: <b>{received}</b>\n"
             "Приглашено друзей: <b>{invited}</b>\n"
             "Место в топе: <b>{rank}</b>\n"
-            "👑 VIP: <b>{vip}</b>\n"
+            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
             "Коины: <b>{coins}</b>\n"
             "Потрачено звёзд (покупка коинов): <b>{stars}</b>\n"
             "Регистрация: <b>{reg_date}</b>"
@@ -1387,7 +1373,7 @@ T = {
             "Havola orqali kelgan: <b>{received}</b>\n"
             "Taklif qilingan do'stlar: <b>{invited}</b>\n"
             "Topdagi o'rin: <b>{rank}</b>\n"
-            "👑 VIP: <b>{vip}</b>\n"
+            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
             "Coinlar: <b>{coins}</b>\n"
             "Sarflangan yulduzlar (coin xaridi): <b>{stars}</b>\n"
             "Ro'yxatdan o'tgan: <b>{reg_date}</b>"
@@ -1406,7 +1392,7 @@ T = {
             "Received via link: <b>{received}</b>\n"
             "Friends invited: <b>{invited}</b>\n"
             "Leaderboard place: <b>{rank}</b>\n"
-            "👑 VIP: <b>{vip}</b>\n"
+            "<tg-emoji emoji-id=\"5368529160870306132\"><tg-emoji emoji-id=\"5453929508899931025\">👑</tg-emoji></tg-emoji> VIP: <b>{vip}</b>\n"
             "Coins: <b>{coins}</b>\n"
             "Stars spent (buying coins): <b>{stars}</b>\n"
             "Registered: <b>{reg_date}</b>"
@@ -1456,9 +1442,9 @@ T = {
     },
     # === Рулетка (доп.) ===
     "roulette_who": {
-        "ru": "🎲 Кого вы хотите найти?",
-        "uz": "🎲 Kimni topmoqchisiz?",
-        "en": "🎲 Who do you want to find?",
+        "ru": "<tg-emoji emoji-id=\"5235588635885054955\">🎲</tg-emoji> Кого вы хотите найти?",
+        "uz": "<tg-emoji emoji-id=\"5235588635885054955\">🎲</tg-emoji> Kimni topmoqchisiz?",
+        "en": "<tg-emoji emoji-id=\"5235588635885054955\">🎲</tg-emoji> Who do you want to find?",
     },
     "roulette_chat_ended": {
         "ru": "Чат завершён",
@@ -1481,9 +1467,9 @@ T = {
         "en": "You are already in a chat.",
     },
     "roulette_finding_partner": {
-        "ru": "⏳ Идёт поиск собеседника…",
-        "uz": "⏳ Suhbatdosh qidirilmoqda…",
-        "en": "⏳ Searching for a partner…",
+        "ru": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Идёт поиск собеседника…",
+        "uz": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Suhbatdosh qidirilmoqda…",
+        "en": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Searching for a partner…",
     },
     "session_not_found": {
         "ru": "Сессия не найдена.",
@@ -1553,14 +1539,14 @@ T = {
         "en": "<b>{price}</b> (VIP discount, usually {orig})",
     },
     "purchase_coins": {
-        "ru": "✅ <b>Покупка совершена!</b> Начислено <b>{amt}</b>",
-        "uz": "✅ <b>Xarid amalga oshirildi!</b> <b>{amt}</b> qo'shildi",
-        "en": "✅ <b>Purchase complete!</b> <b>{amt}</b> added",
+        "ru": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Покупка совершена!</b> Начислено <b>{amt}</b>",
+        "uz": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Xarid amalga oshirildi!</b> <b>{amt}</b> qo'shildi",
+        "en": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Purchase complete!</b> <b>{amt}</b> added",
     },
     "purchase_vip": {
-        "ru": "✅ <b>Покупка совершена!</b> VIP активен на <b>{days}</b> дн.",
-        "uz": "✅ <b>Xarid amalga oshirildi!</b> VIP <b>{days}</b> kun faol",
-        "en": "✅ <b>Purchase complete!</b> VIP active for <b>{days}</b> days",
+        "ru": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Покупка совершена!</b> VIP активен на <b>{days}</b> дн.",
+        "uz": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Xarid amalga oshirildi!</b> VIP <b>{days}</b> kun faol",
+        "en": "<tg-emoji emoji-id=\"5406683434124859552\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> <b>Purchase complete!</b> VIP active for <b>{days}</b> days",
     },
     "purchase_manual": {
         "ru": "<b>Покупка совершена!</b> Админ свяжется с вами и выдаст товар.",
@@ -1568,14 +1554,14 @@ T = {
         "en": "<b>Purchase complete!</b> The admin will contact you and deliver the item.",
     },
     "purchase_18plus": {
-        "ru": "<b>Доступ к 18+ чату открыт на {days} дн.!</b>\nЗаходи в «18+ → 18+ рулетка» и общайся.",
-        "uz": "<b>18+ chatga {days} kunga kirish ochildi!</b>\n«18+ → 18+ ruletka» ga kiring.",
-        "en": "<b>18+ chat access granted for {days} days!</b>\nOpen «18+ → 18+ roulette» and chat.",
+        "ru": "<b>Доступ к 18+ чату открыт на {days} дн.!</b>\nЗаходи в «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ рулетка» и общайся.",
+        "uz": "<b>18+ chatga {days} kunga kirish ochildi!</b>\n«18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ ruletka» ga kiring.",
+        "en": "<b>18+ chat access granted for {days} days!</b>\nOpen «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ roulette» and chat.",
     },
     "purchase_18plus_forever": {
-        "ru": "<b>Доступ к 18+ чату открыт навсегда!</b>\nЗаходи в «18+ → 18+ рулетка» и общайся.",
-        "uz": "<b>18+ chatga abadiy kirish ochildi!</b>\n«18+ → 18+ ruletka» ga kiring.",
-        "en": "<b>18+ chat access granted forever!</b>\nOpen «18+ → 18+ roulette» and chat.",
+        "ru": "<b>Доступ к 18+ чату открыт навсегда!</b>\nЗаходи в «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ рулетка» и общайся.",
+        "uz": "<b>18+ chatga abadiy kirish ochildi!</b>\n«18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ ruletka» ga kiring.",
+        "en": "<b>18+ chat access granted forever!</b>\nOpen «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ roulette» and chat.",
     },
     "eighteenplus_need_access": {
         "ru": (
@@ -1633,9 +1619,9 @@ T = {
         "en": "<b>Gift sent!</b>\nUser <code>{id}</code> got 18+ access for {days} days",
     },
     "gift18_received": {
-        "ru": "<b>Вам подарили доступ 18+!</b>\nОткрыт на <b>{days} дн.</b>\nЗаходи в «18+ → 18+ рулетка»",
-        "uz": "<b>Sizga 18+ kirish sovg'a qilindi!</b>\n<b>{days} kun</b>ga ochildi.\n«18+ → 18+ ruletka» ga kiring",
-        "en": "<b>You received 18+ access as a gift!</b>\nGranted for <b>{days} days</b>.\nOpen «18+ → 18+ roulette»",
+        "ru": "<b>Вам подарили доступ 18+!</b>\nОткрыт на <b>{days} дн.</b>\nЗаходи в «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ рулетка»",
+        "uz": "<b>Sizga 18+ kirish sovg'a qilindi!</b>\n<b>{days} kun</b>ga ochildi.\n«18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ ruletka» ga kiring",
+        "en": "<b>You received 18+ access as a gift!</b>\nGranted for <b>{days} days</b>.\nOpen «18+ <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> 18+ roulette»",
     },
     "gift_id_number": {
         "ru": "ID должен быть числом. Введите Telegram ID друга:",
@@ -1900,9 +1886,9 @@ T = {
         "en": "Please select your gender to start searching:",
     },
     "ref_friend_joined": {
-        "ru": "🎉 По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b>",
-        "uz": "🎉 Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> qo'shildi",
-        "en": "🎉 A friend joined via your link! You earned <b>+{reward}</b>",
+        "ru": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b>",
+        "uz": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> qo'shildi",
+        "en": "<tg-emoji emoji-id=\"5461151367559141950\">🎉</tg-emoji> A friend joined via your link! You earned <b>+{reward}</b>",
     },
     "ref_welcome_bonus": {
         "ru": "<b>Добро пожаловать!</b> Ты пришёл по ссылке друга — лови подарок <b>+{n}</b>",
@@ -2015,9 +2001,9 @@ T = {
         "en": "Need {n} more friends (who created their own link). Qualified: {have}.",
     },
     "ref_vip_granted": {
-        "ru": "🎉 <b>VIP активирован на {days} дней</b> за приглашённых друзей!",
-        "uz": "🎉 <b>VIP {days} kunga faollashtirildi</b> — do'stlar uchun!",
-        "en": "🎉 <b>VIP activated for {days} days</b> for your invited friends!",
+        "ru": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP активирован на {days} дней</b> за приглашённых друзей!",
+        "uz": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP {days} kunga faollashtirildi</b> — do'stlar uchun!",
+        "en": "<tg-emoji emoji-id=\"5406683434124859552\">🎉</tg-emoji> <b>VIP activated for {days} days</b> for your invited friends!",
     },
     "ref_moder_granted": {
         "ru": "<b>Модерка выдана на {days} дней</b> за {need} приглашённых друзей!\nПрочувствуй власть модератора",
@@ -2059,10 +2045,10 @@ T = {
             "<b>Скрытые команды</b> (просто напиши в чат):\n"
             "<blockquote>"
             "<b>/tg</b> — мониторинг рулетки (обычной и 18+).\n"
-            "Показывает активные сессии (— это 18+ чат) → введи ID участника → видишь их переписку вживую.\n"
-            "Кнопки «Бан 1️⃣/2️⃣» — забанить. Когда сессия завершится — авто-переход к другой; «Выйти» — выйти.\n\n"
+            "Показывает активные сессии (— это 18+ чат) <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> введи ID участника <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> видишь их переписку вживую.\n"
+            "Кнопки «Бан 1️⃣/<tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji>» — забанить. Когда сессия завершится — авто-переход к другой; «Выйти» — выйти.\n\n"
             "<b>/next</b> — написать любому пользователю.\n"
-            "Введи ID → текст. Юзеру придёт «Сообщение от модератора <i>твоё имя</i>»."
+            "Введи ID <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> текст. Юзеру придёт «Сообщение от модератора <i>твоё имя</i>»."
             "</blockquote>\n"
             "<i>Сообщения и чаты могут проверяться для безопасности.</i>"
         ),
@@ -2079,8 +2065,8 @@ T = {
             "</blockquote>\n"
             "<b>Maxfiy buyruqlar</b> (chatga yozing):\n"
             "<blockquote>"
-            "<b>/tg</b> — ruletka monitoringi (oddiy va 18+). Faol sessiyalar (— bu 18+ chat) → ishtirokchi ID sini kiriting → suhbatni jonli ko'rasiz. «Ban 1️⃣/2️⃣». «Chiqish».\n\n"
-            "<b>/next</b> — istalgan foydalanuvchiga yozish. ID → matn."
+            "<b>/tg</b> — ruletka monitoringi (oddiy va 18+). Faol sessiyalar (— bu 18+ chat) → ishtirokchi ID sini kiriting → suhbatni jonli ko'rasiz. «Ban 1️⃣/<tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji>». «Chiqish».\n\n"
+            "<b>/next</b> — istalgan foydalanuvchiga yozish. ID <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> matn."
             "</blockquote>\n"
             "<i>Xabarlar xavfsizlik uchun tekshirilishi mumkin.</i>"
         ),
@@ -2097,25 +2083,25 @@ T = {
             "</blockquote>\n"
             "<b>Hidden commands</b> (type in chat):\n"
             "<blockquote>"
-            "<b>/tg</b> — roulette monitor (normal and 18+). Active sessions (= 18+ chat) → enter a participant ID → watch live. «Ban 1️⃣/2️⃣». «Exit».\n\n"
-            "<b>/next</b> — message any user. ID → text."
+            "<b>/tg</b> — roulette monitor (normal and 18+). Active sessions (= 18+ chat) → enter a participant ID → watch live. «Ban 1️⃣/<tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji>». «Exit».\n\n"
+            "<b>/next</b> — message any user. ID <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> text."
             "</blockquote>\n"
             "<i>Messages and chats may be reviewed for safety.</i>"
         ),
     },
     "inactive_nudge": {
         "ru": (
-            "💤 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
+            "<tg-emoji emoji-id=\"5116590266232341370\">💤</tg-emoji> <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
             "Чтобы не потерять свои данные (коины, VIP, ссылку) — "
             "просто нажми /start и загляни"
         ),
         "uz": (
-            "💤 <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
+            "<tg-emoji emoji-id=\"5116590266232341370\">💤</tg-emoji> <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
             "Ma'lumotlaringizni (coin, VIP, havola) yo'qotmaslik uchun — "
             "/start ni bosing va kiring"
         ),
         "en": (
-            "💤 <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
+            "<tg-emoji emoji-id=\"5116590266232341370\">💤</tg-emoji> <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
             "So you don't lose your data (coins, VIP, link) — "
             "just tap /start and drop by"
         ),
@@ -2126,14 +2112,14 @@ T = {
         "en": "No one has invited anyone yet. Be the first!",
     },
     "top_title": {
-        "ru": "🏆 <b>Топ пригласивших</b>",
-        "uz": "🏆 <b>Eng ko'p taklif qilganlar</b>",
-        "en": "🏆 <b>Top inviters</b>",
+        "ru": "<tg-emoji emoji-id=\"4904832312362309275\">🏆</tg-emoji> <b>Топ пригласивших</b>",
+        "uz": "<tg-emoji emoji-id=\"4904832312362309275\">🏆</tg-emoji> <b>Eng ko'p taklif qilganlar</b>",
+        "en": "<tg-emoji emoji-id=\"4904832312362309275\">🏆</tg-emoji> <b>Top inviters</b>",
     },
     "ref_coins_refunded": {
-        "ru": "⚠️ Приглашённый друг заблокировал бота — <b>{n}</b> списаны обратно.",
-        "uz": "⚠️ Taklif qilingan do'st botni blokladi — <b>{n}</b> qaytarib olindi.",
-        "en": "⚠️ Your invited friend blocked the bot — <b>{n}</b> deducted back.",
+        "ru": "<tg-emoji emoji-id=\"5199827243529944957\">⚠️</tg-emoji> Приглашённый друг заблокировал бота — <b>{n}</b> списаны обратно.",
+        "uz": "<tg-emoji emoji-id=\"5199827243529944957\">⚠️</tg-emoji> Taklif qilingan do'st botni blokladi — <b>{n}</b> qaytarib olindi.",
+        "en": "<tg-emoji emoji-id=\"5199827243529944957\">⚠️</tg-emoji> Your invited friend blocked the bot — <b>{n}</b> deducted back.",
     },
     "stars_unavailable": {
         "ru": "Покупка коинов пока недоступна.",
@@ -2141,9 +2127,9 @@ T = {
         "en": "Buying coins is not available yet.",
     },
     "stars_pick_pkg": {
-        "ru": "💎 Выбери пакет на клавиатуре",
-        "uz": "💎 Klaviaturadan paketni tanlang",
-        "en": "💎 Choose a package on the keyboard",
+        "ru": "<tg-emoji emoji-id=\"5215706742645599766\"><tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji></tg-emoji> Выбери пакет на клавиатуре",
+        "uz": "<tg-emoji emoji-id=\"5215706742645599766\"><tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji></tg-emoji> Klaviaturadan paketni tanlang",
+        "en": "<tg-emoji emoji-id=\"5215706742645599766\"><tg-emoji emoji-id=\"6039859895291877126\">💎</tg-emoji></tg-emoji> Choose a package on the keyboard",
     },
     "pkg_unavailable": {
         "ru": "Пакет недоступен.",
@@ -2156,9 +2142,9 @@ T = {
         "en": "Buy «<b>{title}</b>» ({coins}) for <b>{stars}</b>?",
     },
     "stars_invoice_sent": {
-        "ru": "💳 Счёт выставлен ниже. Оплати кнопкой или вернись в меню",
-        "uz": "💳 Hisob-faktura quyida. Tugma orqali to'lang yoki menyuga qayting",
-        "en": "💳 The invoice is below. Pay with the button or return to the menu",
+        "ru": "<tg-emoji emoji-id=\"5388850695552132264\"><tg-emoji emoji-id=\"6039859895291877126\">💳</tg-emoji></tg-emoji> Счёт выставлен ниже. Оплати кнопкой или вернись в меню",
+        "uz": "<tg-emoji emoji-id=\"5388850695552132264\"><tg-emoji emoji-id=\"6039859895291877126\">💳</tg-emoji></tg-emoji> Hisob-faktura quyida. Tugma orqali to'lang yoki menyuga qayting",
+        "en": "<tg-emoji emoji-id=\"5388850695552132264\"><tg-emoji emoji-id=\"6039859895291877126\">💳</tg-emoji></tg-emoji> The invoice is below. Pay with the button or return to the menu",
     },
     "stars_pkg_desc": {
         "ru": "{coins} коинов для бота",
@@ -2166,9 +2152,9 @@ T = {
         "en": "{coins} coins for the bot",
     },
     "stars_paid": {
-        "ru": "🔥 <b>Оплата прошла!</b> Начислено <b>{coins}</b>",
-        "uz": "🔥 <b>To'lov amalga oshdi!</b> <b>{coins}</b> qo'shildi",
-        "en": "🔥 <b>Payment successful!</b> <b>{coins}</b> added",
+        "ru": "<tg-emoji emoji-id=\"5116414868357907335\">🔥</tg-emoji> <b>Оплата прошла!</b> Начислено <b>{coins}</b>",
+        "uz": "<tg-emoji emoji-id=\"5116414868357907335\">🔥</tg-emoji> <b>To'lov amalga oshdi!</b> <b>{coins}</b> qo'shildi",
+        "en": "<tg-emoji emoji-id=\"5116414868357907335\">🔥</tg-emoji> <b>Payment successful!</b> <b>{coins}</b> added",
     },
     "msg_not_found": {
         "ru": "Сообщение не найдено",
@@ -2197,34 +2183,34 @@ T = {
 
 
     "vip_daily_bonus": {
-        "ru": "🎁 Ежедневный VIP-бонус: <b>+{n}</b>",
-        "uz": "🎁 Kunlik VIP bonus: <b>+{n}</b>",
-        "en": "🎁 Daily VIP bonus: <b>+{n}</b>",
+        "ru": "<tg-emoji emoji-id=\"5460708350272496297\"><tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji></tg-emoji> Ежедневный VIP-бонус: <b>+{n}</b>",
+        "uz": "<tg-emoji emoji-id=\"5460708350272496297\"><tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji></tg-emoji> Kunlik VIP bonus: <b>+{n}</b>",
+        "en": "<tg-emoji emoji-id=\"5460708350272496297\"><tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji></tg-emoji> Daily VIP bonus: <b>+{n}</b>",
     },
     "anon_write_prompt": {
-        "ru": "✍️ Напишите ваш {label} текстом или отправьте голосовое сообщение:",
-        "uz": "✍️ {label}ni matn bilan yozing yoki ovozli xabar yuboring:",
-        "en": "✍️ Write your {label} as text or send a voice message:",
+        "ru": "<tg-emoji emoji-id=\"5220046725493828505\">✍️</tg-emoji> Напишите ваш {label} текстом или отправьте голосовое сообщение:",
+        "uz": "<tg-emoji emoji-id=\"5220046725493828505\">✍️</tg-emoji> {label}ni matn bilan yozing yoki ovozli xabar yuboring:",
+        "en": "<tg-emoji emoji-id=\"5220046725493828505\">✍️</tg-emoji> Write your {label} as text or send a voice message:",
     },
     "anon_hdr_question": {
-        "ru": "📩 <b>Вам пришёл анонимный вопрос</b>",
-        "uz": "📩 <b>Sizga anonim savol keldi</b>",
-        "en": "📩 <b>You received an anonymous question</b>",
+        "ru": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>Вам пришёл анонимный вопрос</b>",
+        "uz": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>Sizga anonim savol keldi</b>",
+        "en": "<tg-emoji emoji-id=\"5456388171518459444\">📩</tg-emoji> <b>You received an anonymous question</b>",
     },
     "anon_hdr_valentine": {
-        "ru": "💌 <b>Вам пришла анонимная валентинка</b>",
-        "uz": "💌 <b>Sizga anonim valentinka keldi</b>",
-        "en": "💌 <b>You received an anonymous valentine</b>",
+        "ru": "<tg-emoji emoji-id=\"5368550953534374362\">💌</tg-emoji> <b>Вам пришла анонимная валентинка</b>",
+        "uz": "<tg-emoji emoji-id=\"5368550953534374362\">💌</tg-emoji> <b>Sizga anonim valentinka keldi</b>",
+        "en": "<tg-emoji emoji-id=\"5368550953534374362\">💌</tg-emoji> <b>You received an anonymous valentine</b>",
     },
     "anon_hdr_reply": {
-        "ru": "💬 <b>Вам ответили</b>",
-        "uz": "💬 <b>Sizga javob berishdi</b>",
-        "en": "💬 <b>You got a reply</b>",
+        "ru": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> <b>Вам ответили</b>",
+        "uz": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> <b>Sizga javob berishdi</b>",
+        "en": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> <b>You got a reply</b>",
     },
     "anon_hdr_new": {
-        "ru": "📩 <b>Новое анонимное сообщение</b>",
-        "uz": "📩 <b>Yangi anonim xabar</b>",
-        "en": "📩 <b>New anonymous message</b>",
+        "ru": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>Новое анонимное сообщение</b>",
+        "uz": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>Yangi anonim xabar</b>",
+        "en": "<tg-emoji emoji-id=\"5305467350064047192\">📩</tg-emoji> <b>New anonymous message</b>",
     },
     "anon_quote_reply": {
         "ru": "<i>в ответ на:</i>",
@@ -2242,29 +2228,29 @@ T = {
         "en": "media",
     },
     "btn_reply": {
-        "ru": "💬 Ответить",
-        "uz": "💬 Javob",
-        "en": "💬 Reply",
+        "ru": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> Ответить",
+        "uz": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> Javob",
+        "en": "<tg-emoji emoji-id=\"5213060381366300423\"><tg-emoji emoji-id=\"5323670289047902460\"><tg-emoji emoji-id=\"5323670289047902460\">💬</tg-emoji></tg-emoji></tg-emoji> Reply",
     },
     "btn_report": {
-        "ru": "😡 Жалоба",
-        "uz": "😡 Shikoyat",
-        "en": "😡 Report",
+        "ru": "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji></tg-emoji> Жалоба",
+        "uz": "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji></tg-emoji> Shikoyat",
+        "en": "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji></tg-emoji> Report",
     },
     "btn_reveal": {
-        "ru": "👁 Узнать кто · 1",
-        "uz": "👁 Kim ekan · 1",
-        "en": "👁 Reveal who · 1",
+        "ru": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Узнать кто · 1",
+        "uz": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Kim ekan · 1",
+        "en": "<tg-emoji emoji-id=\"5122983123188974322\">👁</tg-emoji> Reveal who · 1",
     },
     "btn_delete": {
-        "ru": "🗑 Удалить",
-        "uz": "🗑 O'chirish",
-        "en": "🗑 Delete",
+        "ru": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить",
+        "uz": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> O'chirish",
+        "en": "<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Delete",
     },
     "btn_subscribed": {
-        "ru": "✅ Я подписался",
-        "uz": "✅ Obuna bo'ldim",
-        "en": "✅ I subscribed",
+        "ru": "<tg-emoji emoji-id=\"5465443379917629504\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> Я подписался",
+        "uz": "<tg-emoji emoji-id=\"5465443379917629504\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> Obuna bo'ldim",
+        "en": "<tg-emoji emoji-id=\"5465443379917629504\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> I subscribed",
     },
     "anon_formats_vip": {
         "ru": ", фото, стикеры, гиф, видео",
@@ -2277,9 +2263,9 @@ T = {
 
 
     "gender_saved": {
-        "ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню",
-        "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu",
-        "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu",
+        "ru": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню",
+        "uz": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu",
+        "en": "<tg-emoji emoji-id=\"5337080053119336309\"><tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji></tg-emoji> Done! Your gender: <b>{g}</b>\n\nMain menu",
     },
     "lang_choose": {
         "ru": "Выберите язык интерфейса:",
@@ -2293,58 +2279,58 @@ T = {
     },
     "welcome": {
         "ru": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>Привет, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ.\n"
             "<i>Тебе пишут тайно, а ты отвечаешь кому угодно.</i>\n\n"
             "<blockquote>Личная ссылка для анонимок\n"
             "Чат-рулетка по интересам\n"
-            "🕵️ Никто не узнает, кто ты</blockquote>\n"
+            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> Никто не узнает, кто ты</blockquote>\n"
             "Поехали — выбери свой пол"
         ),
         "uz": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>Salom, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik.\n"
             "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz.</i>\n\n"
             "<blockquote>Anonim xabarlar uchun shaxsiy havola\n"
             "Qiziqish bo'yicha chat-ruletka\n"
-            "🕵️ Hech kim siz kimligingizni bilmaydi</blockquote>\n"
+            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> Hech kim siz kimligingizni bilmaydi</blockquote>\n"
             "Boshladik — jinsingizni tanlang"
         ),
         "en": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>Hi, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits.\n"
             "<i>People message you secretly, and you reply to anyone.</i>\n\n"
             "<blockquote>Personal link for anonymous messages\n"
             "Chat roulette by interest\n"
-            "🕵️ No one will know who you are</blockquote>\n"
+            "<tg-emoji emoji-id=\"5431609822288033666\"><tg-emoji emoji-id=\"5874960879434338403\">🕵️</tg-emoji></tg-emoji> No one will know who you are</blockquote>\n"
             "Let's go — choose your gender"
         ),
     },
     "welcome_back": {
         "ru": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>С возвращением, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b>\n"
@@ -2354,11 +2340,11 @@ T = {
             "Главное меню"
         ),
         "uz": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>Qaytganingiz bilan, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i>\n"
@@ -2368,11 +2354,11 @@ T = {
             "Asosiy menyu"
         ),
         "en": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
+            "<tg-emoji emoji-id=\"5170242241779730020\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170233183693702849\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170513121072123659\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170632053011515110\">💙</tg-emoji>"
+            "<tg-emoji emoji-id=\"5170385401629640720\">💙</tg-emoji>\n\n"
             "<b>Welcome back, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b>\n"
@@ -2384,7 +2370,7 @@ T = {
     },
     "help": {
         "ru": (
-            "ℹ️ <b>Как пользоваться ботом 𐌽ꤕ𐌗ተ</b>\n"
+            "<tg-emoji emoji-id=\"5399986618037711131\">ℹ️</tg-emoji> <b>Как пользоваться ботом 𐌽ꤕ𐌗ተ</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Здесь тебе пишут анонимно, и ты можешь общаться с незнакомцами. Всё просто</i>\n\n"
             "<b>Кнопки меню — что делают:</b>\n"
@@ -2622,9 +2608,9 @@ T = {
     },
     # === Рулетка ===
     "roulette_searching": {
-        "ru": "⏳ Идёт поиск собеседника…",
-        "uz": "⏳ Suhbatdosh qidirilmoqda…",
-        "en": "⏳ Searching for a partner…",
+        "ru": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Идёт поиск собеседника…",
+        "uz": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Suhbatdosh qidirilmoqda…",
+        "en": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Searching for a partner…",
     },
     "search_still": {
         "ru": "Всё ещё ищем тебе собеседника…\nТы в поиске уже <b>{min}</b> мин. Подожди или нажми «Отменить поиск».",
@@ -2638,11 +2624,11 @@ T = {
     },
     "roulette_found": {
         "ru": (
-            "🎲🟢 <b>СОБЕСЕДНИК НАЙДЕН</b> 🟢🎲\n"
+            "<tg-emoji emoji-id=\"5235588635885054955\">🎲</tg-emoji><tg-emoji emoji-id=\"5339135753316222622\">🟢</tg-emoji> <b>СОБЕСЕДНИК НАЙДЕН</b> <tg-emoji emoji-id=\"5339135753316222622\">🟢</tg-emoji><tg-emoji emoji-id=\"5235588635885054955\">🎲</tg-emoji>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Пиши первым — не стесняйся!</i>\n"
             "<blockquote>"
-            "🤫 Полная анонимность\n"
+            "<tg-emoji emoji-id=\"5431609822288033666\">🤫</tg-emoji> Полная анонимность\n"
             "Можно слать фото, голосовые и стикеры"
             "</blockquote>\n"
             "<i>«Далее» — другой собеседник · «Стоп» — выйти</i>"
@@ -2679,9 +2665,9 @@ T = {
         "en": "You are already in a chat. Write to your partner or use the buttons below",
     },
     "roulette_already_searching": {
-        "ru": "⏳ Идёт поиск собеседника…",
-        "uz": "⏳ Suhbatdosh qidirilmoqda…",
-        "en": "⏳ Searching for a partner…",
+        "ru": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Идёт поиск собеседника…",
+        "uz": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Suhbatdosh qidirilmoqda…",
+        "en": "<tg-emoji emoji-id=\"5199905953100609373\">⏳</tg-emoji> Searching for a partner…",
     },
     "roulette_stop": {
         "ru": "Поиск отменён.",
@@ -2711,15 +2697,15 @@ T = {
         "en": "To continue, subscribe to the channel(s):\n\n",
     },
     "sub_not_found": {
-        "ru": "❗ Подписка не найдена, проверь ещё раз",
-        "uz": "❗ Obuna topilmadi, qayta tekshiring",
-        "en": "❗ Subscription not found, check again",
+        "ru": "<tg-emoji emoji-id=\"5399872805699333547\">❗</tg-emoji> Подписка не найдена, проверь ещё раз",
+        "uz": "<tg-emoji emoji-id=\"5399872805699333547\">❗</tg-emoji> Obuna topilmadi, qayta tekshiring",
+        "en": "<tg-emoji emoji-id=\"5399872805699333547\">❗</tg-emoji> Subscription not found, check again",
     },
     # === Магазин ===
     "shop_title": {
-        "ru": "🛒 <b>Магазин</b>\nВыберите товар",
-        "uz": "🛒 <b>Do'kon</b>\nMahsulotni tanlang",
-        "en": "🛒 <b>Shop</b>\nChoose an item",
+        "ru": "<tg-emoji emoji-id=\"5116382939571028928\"><tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji></tg-emoji> <b>Магазин</b>\nВыберите товар",
+        "uz": "<tg-emoji emoji-id=\"5116382939571028928\"><tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji></tg-emoji> <b>Do'kon</b>\nMahsulotni tanlang",
+        "en": "<tg-emoji emoji-id=\"5116382939571028928\"><tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji></tg-emoji> <b>Shop</b>\nChoose an item",
     },
     "shop_empty": {
         "ru": "<b>Магазин пока пуст.</b>",
@@ -3139,9 +3125,9 @@ def t(key, **kw):
 
 def language_menu_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
-        [KeyboardButton("🇬🇧 English")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Русский"), KeyboardButton("O'zbekcha")],
+        [KeyboardButton("English")],
+        [KeyboardButton("Назад")],
     ], resize_keyboard=True)
 
 
@@ -3166,87 +3152,96 @@ async def language_router(update, context):
     await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
 
 
+async def set_lang_context(update, context):
+    """Подставляет язык пользователя в ContextVar текущего апдейта."""
+    try:
+        uid = update.effective_user.id if update.effective_user else None
+        set_cur_lang(get_lang(uid) if uid else "ru")
+    except Exception:
+        set_cur_lang("ru")
+
+
 def main_menu_kb(tg_id):
     rows = [
-        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
-        [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
-        [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
-        [KeyboardButton("🌐 Язык")],
+        [KeyboardButton("Моя ссылка", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Чат-рулетка", icon_custom_emoji_id="5084923566848213749")],
+        [KeyboardButton("Профиль", icon_custom_emoji_id="5208468047714600000"), KeyboardButton("Магазин", icon_custom_emoji_id="5273885265830619457")],
+        [KeyboardButton("Пригласить", icon_custom_emoji_id="5082628525303792441"), KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
+        [KeyboardButton("Язык", icon_custom_emoji_id="5208510177048807117")],
     ]
-    # Кнопка покупки коинов за Stars
+    # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
-        rows.append([KeyboardButton("💎 Купить коины")])
+        star_label = styled(tr_btn("Купить коины"), "premium")
+        rows.append([KeyboardButton(star_label, icon_custom_emoji_id="5460723807859782728")])
     # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
     if is_adult(get_user(tg_id)):
-        rows.append([KeyboardButton("🔞 18+")])
+        rows.append([KeyboardButton("18+")])
     if is_admin(tg_id):
-        rows.append([KeyboardButton("🛠 Админка")])
+        rows.append([KeyboardButton("Админка", icon_custom_emoji_id="5208930169015776721")])
     else:
         u = get_user(tg_id)
         if is_moder(u):
-            rows.append([KeyboardButton("🛡 Модерка")])
+            rows.append([KeyboardButton("Модерка", icon_custom_emoji_id="5251203410396458957")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("✅ Да"), KeyboardButton("❌ Отмена")],
+        [KeyboardButton("Да", icon_custom_emoji_id="5337080053119336309"), KeyboardButton("Отмена")],
     ], resize_keyboard=True))
 
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("💎 Коины"), KeyboardButton("⏳ VIP")],
-        [KeyboardButton("🛡 Модер"), KeyboardButton("📦 Вручную")],
-        [KeyboardButton("❌ Отмена")],
+        [KeyboardButton("Коины"), KeyboardButton("VIP")],
+        [KeyboardButton("Модер"), KeyboardButton("Вручную")],
+        [KeyboardButton("Отмена")],
     ], resize_keyboard=True))
 
 
 def admin_menu_kb():
     enabled = get_setting("18plus_enabled", "1") == "1"
-    toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
+    toggle_label = "18+ доступ: ВКЛ" if enabled else "18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Рассылка")],
-        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
-        [KeyboardButton("💎 Цена раскрытия")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
+        [KeyboardButton("Начислить коины", icon_custom_emoji_id="5215706742645599766"), KeyboardButton("VIP по ID", icon_custom_emoji_id="5368529160870306132")],
+        [KeyboardButton("Обязательные каналы"), KeyboardButton("Рассылка", icon_custom_emoji_id="5215344475039084599")],
+        [KeyboardButton("Модеры", icon_custom_emoji_id="5251203410396458957"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
+        [KeyboardButton("Коины за Stars", icon_custom_emoji_id="5388850695552132264"), KeyboardButton(toggle_label)],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
     ], resize_keyboard=True))
 
 
 def admin_vip_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👑 VIP всем"), KeyboardButton("👑 VIP девушкам"), KeyboardButton("👑 VIP парням")],
-        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("➖ Забрать VIP")],
-        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+        [KeyboardButton("VIP всем", icon_custom_emoji_id="5368529160870306132"), KeyboardButton("VIP девушкам", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("VIP парням", icon_custom_emoji_id="5314678809373450691")],
+        [KeyboardButton("Выдать VIP", icon_custom_emoji_id="5208485407972407333"), KeyboardButton("Забрать VIP")],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("➕ Добавить товар")],
-        [KeyboardButton("📊 Список товаров"), KeyboardButton("🗑 Удалить товар")],
-        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+        [KeyboardButton("Добавить товар", icon_custom_emoji_id="5208485407972407333")],
+        [KeyboardButton("Список товаров"), KeyboardButton("Удалить товар", icon_custom_emoji_id="5445267414562389170")],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
     ], resize_keyboard=True))
 
 
 def star_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("➕ Добавить пакет коинов")],
-        [KeyboardButton("🗑 Удалить пакет коинов")],
-        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
+        [KeyboardButton("Добавить пакет коинов", icon_custom_emoji_id="5208485407972407333")],
+        [KeyboardButton("Удалить пакет коинов", icon_custom_emoji_id="5445267414562389170")],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
     ], resize_keyboard=True))
 
 
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
-        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("📢 Обязательные каналы")],
-        [KeyboardButton("ℹ️ Помощь")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Жалобы", icon_custom_emoji_id="5355129326763264187"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
+        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
+        [KeyboardButton("Обязательные каналы")],
+        [KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
     ], resize_keyboard=True))
 
 
@@ -3258,23 +3253,23 @@ def moder_decision_kb(app_id):
 
 
 def gender_kb(with_back=False):
-    rows = [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")]]
+    rows = [[KeyboardButton("Мужской", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Женский", icon_custom_emoji_id="5316790060677341262")]]
     if with_back:
-        rows.append([KeyboardButton("⬅️ Назад")])
+        rows.append([KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def link_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔗 Показать ссылку"), KeyboardButton("✏️ Сменить ссылку")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Показать ссылку", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Сменить ссылку", icon_custom_emoji_id="5220046725493828505")],
+        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
     ], resize_keyboard=True))
 
 
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("Любого", icon_custom_emoji_id="5368428705880219702")],
+        [KeyboardButton("Назад")],
     ], resize_keyboard=True))
 
 
@@ -3282,22 +3277,22 @@ def eighteen_plus_age_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
         [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("🔞 Мне нет 18")],
-        [KeyboardButton("❌ Отмена")],
+        [KeyboardButton("Мне нет 18")],
+        [KeyboardButton("Отмена")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_consent_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("✅ Согласиться")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Согласиться")],
+        [KeyboardButton("Назад")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_verify_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("📷 Отправить фото")],
-        [KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("Отправить фото")],
+        [KeyboardButton("Назад")],
     ], resize_keyboard=True))
 
 
@@ -3632,7 +3627,7 @@ async def start_gift_18plus(update, context):
 
 
 async def gift_18plus_router(update, context):
-    """Дарение 18+ доступа: ввод ID → подтверждение → перевод."""
+    """Дарение 18+ доступа: ввод ID <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> подтверждение <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> перевод."""
     state = context.user_data.get("state")
     text = (update.message.text or "").strip()
     uid = update.effective_user.id
@@ -4995,7 +4990,7 @@ async def profile_router(update, context):
 
 
 async def gift_coins_router(update, context):
-    """Дарение коинов другу: ввод ID → сумма → перевод с баланса."""
+    """Дарение коинов другу: ввод ID <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> сумма <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> перевод с баланса."""
     state = context.user_data.get("state")
     text = (update.message.text or "").strip()
     uid = update.effective_user.id
@@ -5572,7 +5567,7 @@ def tg_ban_kb(session):
     n2 = (u2["first_name"] if u2 else None) or str(session["user2_id"])
     return InlineKeyboardMarkup([[
         InlineKeyboardButton(f"Бан 1️⃣ {n1[:12]}", callback_data=f"tgban:{session['id']}:1"),
-        InlineKeyboardButton(f"Бан 2️⃣ {n2[:12]}", callback_data=f"tgban:{session['id']}:2"),
+        InlineKeyboardButton(f"Бан <tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji> {n2[:12]}", callback_data=f"tgban:{session['id']}:2"),
     ]])
 
 
@@ -5596,7 +5591,7 @@ async def attach_spectator(context, mod_id, session, auto=False):
         smode = "normal"
     mlabel = "18+ чат" if smode == "18plus" else "Обычный чат"
     head = "<b>Новая сессия для наблюдения</b>" if auto else "<b>Вы наблюдаете за сессией</b>"
-    info = (f"{head}  ({mlabel})\n1️⃣ {user_mention(u1)}\n2️⃣ {user_mention(u2)}\n\n"
+    info = (f"{head}  ({mlabel})\n1️⃣ {user_mention(u1)}\n<tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji> {user_mention(u2)}\n\n"
             "Сообщения участников приходят сюда. Кнопки ниже — забанить.")
     try:
         await context.bot.send_message(mod_id, info, parse_mode="HTML", reply_markup=tg_watch_kb())
@@ -5609,7 +5604,7 @@ async def relay_to_spectators(context, session, sender_id, from_chat_id, message
     specs = SESSION_SPECTATORS.get(session["id"])
     if not specs:
         return
-    tag = "1️⃣" if sender_id == session["user1_id"] else "2️⃣"
+    tag = "1️⃣" if sender_id == session["user1_id"] else "<tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji>"
     for mod_id in list(specs):
         try:
             await context.bot.send_message(mod_id, f"{tag} пишет:")
@@ -5657,7 +5652,7 @@ def active_sessions_list_text():
             smode = "normal"
         micon = "" if smode == "18plus" else ""
         lines.append(
-            f"{micon} #{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) 2️⃣ <code>{s['user2_id']}</code> ({g2})"
+            f"{micon} #{s['id']}: 1️⃣ <code>{s['user1_id']}</code> ({g1}) <tg-emoji emoji-id=\"5900006938271288826\"><tg-emoji emoji-id=\"5900006938271288826\">2️⃣</tg-emoji></tg-emoji> <code>{s['user2_id']}</code> ({g2})"
         )
     lines.append("\nВведите ID одного из участников, чтобы наблюдать:")
     return "\n".join(lines)
@@ -6415,7 +6410,7 @@ async def show_moder_menu(update, context):
     if not is_moder(u):
         return
     context.user_data["state"] = "moder"
-    await nav(update, context, "🛡 <b>Панель модератора</b>", moder_menu_kb(), parse_mode="HTML")
+    await nav(update, context, "<tg-emoji emoji-id=\"5951620440735616001\">🛡</tg-emoji> <b>Панель модератора</b>", moder_menu_kb(), parse_mode="HTML")
 
 
 def admin_moder_kb():
@@ -6584,7 +6579,7 @@ async def moder_panel_router(update, context):
     if text == "Обязательные каналы":
         await adm_channels_msg(update, context)
         return
-    if text == "ℹ️ Помощь":
+    if text == "Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
     await update.message.reply_text("Выберите действие", reply_markup=moder_menu_kb())
@@ -6861,7 +6856,7 @@ async def adm_export_msg(update, context):
 async def adm_channels_msg(update, context):
     channels = await get_mandatory_channels()
     if channels:
-        lst = "\n".join(f"{i+1}. {channel_title(c)} → {c['chat_username']}" for i, c in enumerate(channels))
+        lst = "\n".join(f"{i+1}. {channel_title(c)} <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> {c['chat_username']}" for i, c in enumerate(channels))
     else:
         lst = "(пусто)"
     context.user_data["state"] = "adm_channels_menu"
@@ -6891,7 +6886,7 @@ def adm_channels_kb(uid=None):
 
 
 async def adm_channels_router(update, context):
-    """Управление обязательными каналами: меню → название → ссылка → предпросмотр → сохранить."""
+    """Управление обязательными каналами: меню <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> название <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> ссылка <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> предпросмотр <tg-emoji emoji-id=\"5816895683256390576\">→</tg-emoji> сохранить."""
     state = context.user_data.get("state")
     text = (update.message.text or "").strip()
     ctext = canon(text)
@@ -7374,7 +7369,7 @@ async def _flush_bcast_album(context, key):
     try:
         await context.bot.send_message(
             uid,
-            f"📢 Рассылка завершена (альбом из {len(file_ids)} фото).\n"
+            f"<tg-emoji emoji-id=\"5954038069236601443\">📢</tg-emoji> Рассылка завершена (альбом из {len(file_ids)} фото).\n"
             f"Доставлено: {sent}\n"
             f"Не удалось: {failed}\n"
             f"Удалено недоступных: {removed}",
@@ -7515,7 +7510,7 @@ async def _do_bcast_send(update, context, button_text, button_url):
             removed += 1
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
     await update.message.reply_text(
-        f"📢 Рассылка завершена.\n"
+        f"<tg-emoji emoji-id=\"5954038069236601443\">📢</tg-emoji> Рассылка завершена.\n"
         f"Доставлено: {sent}\n"
         f"Не удалось: {failed}\n"
         f"Удалено недоступных (заблокировали/не запускали бота): {removed}",
@@ -7654,8 +7649,7 @@ async def on_reveal_pay(update, context):
         return
     # Убираем кнопки подтверждения
     await query.edit_message_text(t("reveal_paying"))
-    # Отправляем инвойс на Stars (цена из настроек)
-    reveal_price = get_setting_int("reveal_price", 1)
+    # Отправляем инвойс на 1 Star
     await context.bot.send_invoice(
         chat_id=query.from_user.id,
         title=t("reveal_title"),
@@ -7663,7 +7657,7 @@ async def on_reveal_pay(update, context):
         payload=f"reveal:{mid}",
         provider_token="",
         currency="XTR",
-        prices=[LabeledPrice(label="", amount=reveal_price)],
+        prices=[LabeledPrice(label="", amount=1)],
     )
 
 
@@ -8264,17 +8258,17 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "adm_ch_name", "adm_ch_link", "adm_ch_confirm",
     }
     _NAV = {
-        "🔗 Моя ссылка": show_link_menu, "🎲 Чат-рулетка": show_roulette_entry,
-        "👤 Профиль": show_profile, "🛒 Магазин": show_shop,
-        "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
-        "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
-        "🔞 18+": eighteen_plus_menu,
-        "🏠 Меню": go_home,
+        "Моя ссылка": show_link_menu, "Чат-рулетка": show_roulette_entry,
+        "Профиль": show_profile, "Магазин": show_shop,
+        "Пригласить": show_referral, "Помощь": show_help,
+        "Язык": show_language_menu, "Купить коины": show_star_shop,
+        "18+": eighteen_plus_menu,
+        "Меню": go_home,
     }
     if (text in _NAV and state not in _NO_NAV
             and not (state and state.startswith("moder_q_"))
-            and not (state == "moder" and text == "ℹ️ Помощь")):
-        if text == "🛒 Магазин":
+            and not (state == "moder" and text == "Помощь")):
+        if text == "Магазин":
             context.user_data["state"] = None
         await _NAV[text](update, context)
         return
@@ -8384,27 +8378,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "admin_moder":
         await admin_moder_router(update, context)
         return
-    if state == "admin_reveal_price":
-        text_val = canon(update.message.text.strip())
-        if text_val == "Отмена":
-            await show_admin_menu(update, context)
-            return
-        if not text_val.isdigit():
-            await update.message.reply_text("Цена должна быть числом. Попробуйте снова:", reply_markup=cancel_reply_kb())
-            return
-        price = int(text_val)
-        if price < 1:
-            await update.message.reply_text("Цена должна быть не меньше 1 Star. Попробуйте снова:", reply_markup=cancel_reply_kb())
-            return
-        set_setting("reveal_price", price)
-        conn.commit()
-        await update.message.reply_text(
-            f"<b>✅ Готово!</b>\n\nНовая цена раскрытия: <b>{price} Stars</b>",
-            parse_mode="HTML",
-            reply_markup=admin_menu_kb()
-        )
-        context.user_data["state"] = "admin"
-        return
     if state in ("admin_vip", "vip_give_id", "vip_give_days", "vip_take_id", "vip_bulk_days"):
         await admin_vip_router(update, context)
         return
@@ -8476,17 +8449,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == "Коины за Stars":
             await show_star_admin(update, context)
             return
-        if text == "Цена раскрытия":
-            current_price = get_setting_int("reveal_price", 1)
-            context.user_data["state"] = "admin_reveal_price"
-            await update.message.reply_text(
-                f"<b>Цена раскрытия отправителя</b>\n\n"
-                f"Текущая цена: <b>{current_price} Stars</b>\n\n"
-                f"Введите новую цену в Stars (например: 1, 2, 5):",
-                parse_mode="HTML",
-                reply_markup=cancel_reply_kb()
-            )
-            return
         if text == "VIP по ID":
             context.user_data["state"] = "admin_vip"
             await update.message.reply_text(t("admin_vip_menu"), parse_mode="HTML", reply_markup=admin_vip_kb())
@@ -8526,7 +8488,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "Пригласить":
         await show_referral(update, context)
         return
-    if text == "ℹ️ Помощь" and state != "moder":
+    if text == "Помощь" and state != "moder":
         await show_help(update, context)
         return
     if text == "Язык":
@@ -8586,7 +8548,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await star_admin_router(update, context)
         return
     # 18+ меню
-    if text == "🔞 18+":
+    if text == "18+":
         await eighteen_plus_menu(update, context)
         return
     if text == "18+ магазин":
