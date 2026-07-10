@@ -1139,26 +1139,19 @@ def set_lang(uid, lang):
 
 def canon(text):
     """Любая языковая метка кнопки -> каноническая русская (для маршрутизации).
-    Убирает декоративные обрамления styled() перед поиском."""
+    Убирает декоративные обрамления перед поиском."""
     if text is None:
         return None
-    # Убираем styled() обрамления
-    t = text
-    if t.startswith("⟡ ") and t.endswith(" ⟡"):
-        t = t[2:-2]
-    elif t.startswith("« ") and t.endswith(" »"):
-        t = t[2:-2]
+    # Простой текст без обрамлений
+    t = text.strip()
     return _ALIAS.get(t, _ALIAS.get(text, text))
 
 
 # Стилизация кнопок — единый декор применяется после получения перевода
 def styled(text, kind="default"):
     """Добавляет декоративное обрамление к тексту кнопки.
-    kind: default — без изменений, premium — ⟡...⟡, accent — «...»"""
-    if kind == "premium":
-        return f"⟡ {text} ⟡"
-    if kind == "accent":
-        return f"« {text} »"
+    kind: default — без изменений, premium — обычный текст, accent — обычный текст"""
+    # Убрали премиум декор, возвращаем просто текст
     return text
 
 
@@ -1177,8 +1170,7 @@ def tr_btn(ru_label, lang=None, kind="default"):
 
 
 def tr_kb(markup, lang=None):
-    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру.
-    Уже стилизованные кнопки (⟡/«») не переводятся повторно."""
+    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру."""
     lang = lang or cur_lang()
     if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
         return markup
@@ -1187,11 +1179,8 @@ def tr_kb(markup, lang=None):
         new_row = []
         for b in row:
             txt = b.text
-            # Если кнопка уже стилизована — оставляем как есть
-            if txt.startswith("⟡ ") or txt.startswith("« "):
-                new_row.append(KeyboardButton(txt))
-            else:
-                new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
+            # Переводим все кнопки
+            new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
         new_rows.append(new_row)
     return ReplyKeyboardMarkup(
         new_rows,
@@ -2093,17 +2082,17 @@ T = {
         "ru": (
             "💤 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
             "Чтобы не потерять свои данные (коины, VIP, ссылку) — "
-            "просто нажми /start и загляни"
+            "просто нажми /start и загляни 👋"
         ),
         "uz": (
             "💤 <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
             "Ma'lumotlaringizni (coin, VIP, havola) yo'qotmaslik uchun — "
-            "/start ni bosing va kiring"
+            "/start ni bosing va kiring 👋"
         ),
         "en": (
             "💤 <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
             "So you don't lose your data (coins, VIP, link) — "
-            "just tap /start and drop by"
+            "just tap /start and drop by 👋"
         ),
     },
     "top_empty": {
@@ -2279,100 +2268,70 @@ T = {
     },
     "welcome": {
         "ru": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>Привет, {name}!</b>\n"
+            "<b>Привет, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ.\n"
-            "<i>Тебе пишут тайно, а ты отвечаешь кому угодно.</i>\n\n"
-            "<blockquote>Личная ссылка для анонимок\n"
-            "Чат-рулетка по интересам\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ ✨\n"
+            "<i>Тебе пишут тайно, а ты отвечаешь кому угодно 💬</i>\n\n"
+            "<blockquote>🔗 Личная ссылка для анонимок\n"
+            "🎲 Чат-рулетка по интересам\n"
             "🕵️ Никто не узнает, кто ты</blockquote>\n"
-            "Поехали — выбери свой пол"
+            "Поехали — выбери свой пол 🚀"
         ),
         "uz": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>Salom, {name}!</b>\n"
+            "<b>Salom, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik.\n"
-            "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz.</i>\n\n"
-            "<blockquote>Anonim xabarlar uchun shaxsiy havola\n"
-            "Qiziqish bo'yicha chat-ruletka\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik ✨\n"
+            "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz 💬</i>\n\n"
+            "<blockquote>🔗 Anonim xabarlar uchun shaxsiy havola\n"
+            "🎲 Qiziqish bo'yicha chat-ruletka\n"
             "🕵️ Hech kim siz kimligingizni bilmaydi</blockquote>\n"
-            "Boshladik — jinsingizni tanlang"
+            "Boshladik — jinsingizni tanlang 🚀"
         ),
         "en": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>Hi, {name}!</b>\n"
+            "<b>Hi, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits.\n"
-            "<i>People message you secretly, and you reply to anyone.</i>\n\n"
-            "<blockquote>Personal link for anonymous messages\n"
-            "Chat roulette by interest\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits ✨\n"
+            "<i>People message you secretly, and you reply to anyone 💬</i>\n\n"
+            "<blockquote>🔗 Personal link for anonymous messages\n"
+            "🎲 Chat roulette by interest\n"
             "🕵️ No one will know who you are</blockquote>\n"
-            "Let's go — choose your gender"
+            "Let's go — choose your gender 🚀"
         ),
     },
     "welcome_back": {
         "ru": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>С возвращением, {name}!</b>\n"
+            "<b>С возвращением, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b>\n"
-            "<blockquote>Делись ссылкой — лови анонимки\n"
-            "Заходи в чат-рулетку\n"
-            "Зови друзей — забирай награды</blockquote>\n"
-            "Главное меню"
+            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
+            "🎲 Заходи в чат-рулетку\n"
+            "👥 Зови друзей — забирай награды</blockquote>\n"
+            "Главное меню 🏠"
         ),
         "uz": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>Qaytganingiz bilan, {name}!</b>\n"
+            "<b>Qaytganingiz bilan, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i>\n"
-            "<blockquote>Havolani ulashing — anonim xabarlar oling\n"
-            "Chat-ruletkaga kiring\n"
-            "Do'stlarni chaqiring — mukofot oling</blockquote>\n"
-            "Asosiy menyu"
+            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
+            "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
+            "🎲 Chat-ruletkaga kiring\n"
+            "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
+            "Asosiy menyu 🏠"
         ),
         "en": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
-            "<b>Welcome back, {name}!</b>\n"
+            "<b>Welcome back, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b>\n"
-            "<blockquote>Share your link — get anonymous messages\n"
-            "Jump into chat roulette\n"
-            "Invite friends — claim rewards</blockquote>\n"
-            "Main menu"
+            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "<blockquote>🔗 Share your link — get anonymous messages\n"
+            "🎲 Jump into chat roulette\n"
+            "👥 Invite friends — claim rewards</blockquote>\n"
+            "Main menu 🏠"
         ),
     },
     "help": {
         "ru": (
             "ℹ️ <b>Как пользоваться ботом 𐌽ꤕ𐌗ተ</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Здесь тебе пишут анонимно, и ты можешь общаться с незнакомцами. Всё просто</i>\n\n"
+            "<i>Здесь тебе пишут анонимно, и ты можешь общаться с незнакомцами. Всё просто</i> ✨\n\n"
             "<b>Кнопки меню — что делают:</b>\n"
             "<blockquote>"
             "<b>Моя ссылка</b> — твоя личная ссылка. Кинь её в сторис или другу — и тебе будут писать анонимные сообщения. Ты не узнаешь кто (если не откроешь за).\n\n"
@@ -3125,9 +3084,9 @@ def t(key, **kw):
 
 def language_menu_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("Русский"), KeyboardButton("O'zbekcha")],
-        [KeyboardButton("English")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
+        [KeyboardButton("🇬🇧 English")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True)
 
 
@@ -3163,85 +3122,86 @@ async def set_lang_context(update, context):
 
 def main_menu_kb(tg_id):
     rows = [
-        [KeyboardButton("Моя ссылка", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Чат-рулетка", icon_custom_emoji_id="5084923566848213749")],
-        [KeyboardButton("Профиль", icon_custom_emoji_id="5208468047714600000"), KeyboardButton("Магазин", icon_custom_emoji_id="5273885265830619457")],
-        [KeyboardButton("Пригласить", icon_custom_emoji_id="5082628525303792441"), KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
-        [KeyboardButton("Язык", icon_custom_emoji_id="5208510177048807117")],
+        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
+        [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
+        [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
+        [KeyboardButton("🌐 Язык")],
     ]
     # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
         star_label = styled(tr_btn("Купить коины"), "premium")
-        rows.append([KeyboardButton(star_label, icon_custom_emoji_id="5460723807859782728")])
+        rows.append([KeyboardButton(star_label)])
     # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
     if is_adult(get_user(tg_id)):
-        rows.append([KeyboardButton("18+")])
+        rows.append([KeyboardButton("🔞 18+")])
     if is_admin(tg_id):
-        rows.append([KeyboardButton("Админка", icon_custom_emoji_id="5208930169015776721")])
+        rows.append([KeyboardButton("🛠 Админка")])
     else:
         u = get_user(tg_id)
         if is_moder(u):
-            rows.append([KeyboardButton("Модерка", icon_custom_emoji_id="5251203410396458957")])
+            rows.append([KeyboardButton("🛡 Модерка")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Да", icon_custom_emoji_id="5337080053119336309"), KeyboardButton("Отмена")],
+        [KeyboardButton("✅ Да"), KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Коины"), KeyboardButton("VIP")],
-        [KeyboardButton("Модер"), KeyboardButton("Вручную")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("💎 Коины"), KeyboardButton("👑 VIP")],
+        [KeyboardButton("🛡 Модер"), KeyboardButton("✨ Вручную")],
+        [KeyboardButton("⬅️ Отмена")],
     ], resize_keyboard=True))
 
 
 def admin_menu_kb():
     enabled = get_setting("18plus_enabled", "1") == "1"
-    toggle_label = "18+ доступ: ВКЛ" if enabled else "18+ доступ: ВЫКЛ"
+    toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
-        [KeyboardButton("Начислить коины", icon_custom_emoji_id="5215706742645599766"), KeyboardButton("VIP по ID", icon_custom_emoji_id="5368529160870306132")],
-        [KeyboardButton("Обязательные каналы"), KeyboardButton("Рассылка", icon_custom_emoji_id="5215344475039084599")],
-        [KeyboardButton("Модеры", icon_custom_emoji_id="5251203410396458957"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
-        [KeyboardButton("Коины за Stars", icon_custom_emoji_id="5388850695552132264"), KeyboardButton(toggle_label)],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("💎 Начислить коины"), KeyboardButton("👑 VIP по ID")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Рассылка")],
+        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
+        [KeyboardButton("💎 Цена раскрытия")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def admin_vip_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("VIP всем", icon_custom_emoji_id="5368529160870306132"), KeyboardButton("VIP девушкам", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("VIP парням", icon_custom_emoji_id="5314678809373450691")],
-        [KeyboardButton("Выдать VIP", icon_custom_emoji_id="5208485407972407333"), KeyboardButton("Забрать VIP")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("👥 VIP всем"), KeyboardButton("👩 VIP девушкам"), KeyboardButton("👨 VIP парням")],
+        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("❌ Забрать VIP")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Добавить товар", icon_custom_emoji_id="5208485407972407333")],
-        [KeyboardButton("Список товаров"), KeyboardButton("Удалить товар", icon_custom_emoji_id="5445267414562389170")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("➕ Добавить товар")],
+        [KeyboardButton("📋 Список товаров"), KeyboardButton("🗑 Удалить товар")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def star_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Добавить пакет коинов", icon_custom_emoji_id="5208485407972407333")],
-        [KeyboardButton("Удалить пакет коинов", icon_custom_emoji_id="5445267414562389170")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("➕ Добавить пакет коинов")],
+        [KeyboardButton("🗑 Удалить пакет коинов")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Жалобы", icon_custom_emoji_id="5355129326763264187"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
-        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
-        [KeyboardButton("Обязательные каналы")],
-        [KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("⚠️ Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("📢 Обязательные каналы")],
+        [KeyboardButton("ℹ️ Помощь")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -3253,23 +3213,23 @@ def moder_decision_kb(app_id):
 
 
 def gender_kb(with_back=False):
-    rows = [[KeyboardButton("Мужской", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Женский", icon_custom_emoji_id="5316790060677341262")]]
+    rows = [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")]]
     if with_back:
-        rows.append([KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")])
+        rows.append([KeyboardButton("⬅️ Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def link_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Показать ссылку", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Сменить ссылку", icon_custom_emoji_id="5220046725493828505")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("👁 Показать ссылку"), KeyboardButton("🔄 Сменить ссылку")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("Любого", icon_custom_emoji_id="5368428705880219702")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -3277,38 +3237,38 @@ def eighteen_plus_age_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
         [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("Мне нет 18")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("🔞 Мне нет 18")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_consent_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Согласиться")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("✅ Согласиться")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_verify_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Отправить фото")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("📷 Отправить фото")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def anon_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Вопрос"), KeyboardButton("Валентинка")],
-        [KeyboardButton("Отмена")]
+        [KeyboardButton("❓ Вопрос"), KeyboardButton("💌 Валентинка")],
+        [KeyboardButton("❌ Отмена")]
     ], resize_keyboard=True))
 
 
 def report_reason_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Мат"), KeyboardButton("Мошенничество")],
-        [KeyboardButton("Оскорбление"), KeyboardButton("18+ стикеры")],
-        [KeyboardButton("Не нравится")],
-        [KeyboardButton("Отмена")]
+        [KeyboardButton("🤬 Мат"), KeyboardButton("💰 Мошенничество")],
+        [KeyboardButton("😡 Оскорбление"), KeyboardButton("🔞 18+ стикеры")],
+        [KeyboardButton("👎 Не нравится")],
+        [KeyboardButton("❌ Отмена")]
     ], resize_keyboard=True))
 
 
@@ -3351,9 +3311,9 @@ async def go_home(update, context):
 
 def profile_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Сменить пол"), KeyboardButton("Изменить возраст")],
-        [KeyboardButton("Подарить коины")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("✏️ Сменить пол"), KeyboardButton("📅 Изменить возраст")],
+        [KeyboardButton("🎁 Подарить коины")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -3763,30 +3723,30 @@ def eighteen_plus_age_search_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/24")],
         [KeyboardButton("24/26"), KeyboardButton("26/28"), KeyboardButton("28/30")],
-        [KeyboardButton("30+"), KeyboardButton("Любой возраст")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("30+"), KeyboardButton("🤷 Любой возраст")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("18+ рулетка"), KeyboardButton("18+ магазин")],
-        [KeyboardButton("Подарить 18+")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("🔞 18+ рулетка"), KeyboardButton("🛒 18+ магазин")],
+        [KeyboardButton("🎁 Подарить 18+")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_roulette_pref_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("Любого", icon_custom_emoji_id="5368428705880219702")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_shop_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("18+ магазин")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("🛒 18+ магазин")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -5042,42 +5002,42 @@ async def gift_coins_router(update, context):
 
 def age_back_kb():
     """Клавиатура смены возраста в профиле — только кнопка возврата (ввод числом)."""
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Назад")]], resize_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True))
 
 
 def searching_kb():
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Отменить поиск")]], resize_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("🛑 Отменить поиск")]], resize_keyboard=True))
 
 
 def cancel_reply_kb():
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Отмена")]], resize_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True))
 
 
 def link_code_kb():
     """Клавиатура ввода кода ссылки — с постоянной кнопкой «Назад»."""
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Назад")]], resize_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True))
 
 
 def bcast_audience_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Всем")],
-        [KeyboardButton("Мужчинам"), KeyboardButton("Женщинам")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("👥 Всем")],
+        [KeyboardButton("👨 Мужчинам"), KeyboardButton("👩 Женщинам")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def in_chat_kb():
     """Reply-клавиатура управления чатом — закреплена ВНИЗУ экрана (не уезжает с перепиской)."""
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Далее", icon_custom_emoji_id="5215229232476596064"), KeyboardButton("Стоп", icon_custom_emoji_id="5215260113291455937")],
+        [KeyboardButton("➡️ Далее"), KeyboardButton("🛑 Стоп")],
     ], resize_keyboard=True))
 
 
 def left_chat_kb():
     """Reply-клавиатура после ухода собеседника: новый поиск / жалоба / меню."""
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Новый поиск", icon_custom_emoji_id="5375338737028841420")],
-        [KeyboardButton("Пожаловаться", icon_custom_emoji_id="5355129326763264187"), KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("🔄 Новый поиск")],
+        [KeyboardButton("⚠️ Пожаловаться"), KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -5558,7 +5518,7 @@ SESSION_SPECTATORS = defaultdict(set)    # session_id -> {mod_id}
 
 
 def tg_watch_kb():
-    return ReplyKeyboardMarkup([[KeyboardButton("Выйти")]], resize_keyboard=True)
+    return ReplyKeyboardMarkup([[KeyboardButton("🚪 Выйти")]], resize_keyboard=True)
 
 
 def tg_ban_kb(session):
@@ -5787,8 +5747,8 @@ async def show_shop(update, context):
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
     if is_admin(update.effective_user.id):
-        rows.append([KeyboardButton("Добавить товар"), KeyboardButton("Изменить")])
-    rows.append([KeyboardButton("Назад")])
+        rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     base = t("shop_title") if items else t("shop_empty")
     if items and is_vip(viewer) and not is_admin(update.effective_user.id):
         base += "\n" + t("shop_vip_note")
@@ -5810,8 +5770,8 @@ async def show_eighteen_plus_shop(update, context):
         rows.append([KeyboardButton(label)])
     context.user_data["shop_map"] = shop_map
     if is_admin(update.effective_user.id):
-        rows.append([KeyboardButton("Добавить товар"), KeyboardButton("Изменить")])
-    rows.append([KeyboardButton("Назад"), KeyboardButton("Меню")])
+        rows.append([KeyboardButton("➕ Добавить товар"), KeyboardButton("✏️ Изменить")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     base = t("18plus_shop_title") if items else t("18plus_shop_empty")
     if items and is_vip(viewer) and not is_admin(update.effective_user.id):
         base += "\n" + t("shop_vip_note")
@@ -5853,7 +5813,7 @@ async def shop_router(update, context):
         return
     item_id = context.user_data.get("shop_map", {}).get(text)
     if item_id is None:
-        await nav(update, context, t("shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Назад")]], resize_keyboard=True)))
+        await nav(update, context, t("shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True)))
         return
     item = conn.execute("SELECT * FROM shop_items WHERE id=? AND active=1", (item_id,)).fetchone()
     if not item:
@@ -5953,7 +5913,7 @@ async def do_purchase(update, context, item):
             update, context,
             t("moder_form_gender"),
             tr_kb(ReplyKeyboardMarkup(
-                [[KeyboardButton("Мужской"), KeyboardButton("Женский")], [KeyboardButton("Отмена")]],
+                [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")], [KeyboardButton("❌ Отмена")]],
                 resize_keyboard=True,
             )),
             parse_mode="HTML",
@@ -6236,9 +6196,9 @@ async def _finalize_new_item(update, context):
 
 def shop_category_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Обычный товар")],
-        [KeyboardButton("Товар 18+")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("🛍 Обычный товар")],
+        [KeyboardButton("🔞 Товар 18+")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
@@ -6272,22 +6232,22 @@ async def shop_edit_list(update, context):
         label = f"{it['title']} — {it['price']}"
         edit_map[label] = it["id"]
         rows.append([KeyboardButton(label)])
-    rows.append([KeyboardButton("Назад")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     context.user_data["edit_map"] = edit_map
     context.user_data["state"] = "shop_edit_pick"
     await update.message.reply_text("Выберите товар для изменения", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
 
 
 def shop_edit_item_kb(item):
-    rows = [[KeyboardButton("Название"), KeyboardButton("Цена")]]
+    rows = [[KeyboardButton("📝 Название"), KeyboardButton("💵 Цена")]]
     if item["reward_type"] == "coins":
-        rows.append([KeyboardButton("Сумма коинов")])
+        rows.append([KeyboardButton("💰 Сумма коинов")])
     elif item["reward_type"] == "vip" or item["is_vip"]:
-        rows.append([KeyboardButton("Срок VIP")])
+        rows.append([KeyboardButton("⏰ Срок VIP")])
     elif item["reward_type"] == "eighteenplus":
-        rows.append([KeyboardButton("Срок доступа")])
-    rows.append([KeyboardButton("Удалить товар")])
-    rows.append([KeyboardButton("Назад"), KeyboardButton("Меню")])
+        rows.append([KeyboardButton("⏱ Срок доступа")])
+    rows.append([KeyboardButton("🗑 Удалить товар")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
@@ -6415,8 +6375,8 @@ async def show_moder_menu(update, context):
 
 def admin_moder_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Выдать модера"), KeyboardButton("Забрать модера")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("👮 Выдать модера"), KeyboardButton("🚫 Забрать модера")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -6873,15 +6833,15 @@ async def adm_channels_msg(update, context):
 
 def adm_channels_kb(uid=None):
     rows = [
-        [KeyboardButton("Добавить канал")],
-        [KeyboardButton("Удалить канал")],
+        [KeyboardButton("➕ Добавить канал")],
+        [KeyboardButton("🗑 Удалить канал")],
     ]
     # Переключатель «Подписка для входа» — только у админа
     if uid is not None and is_admin(uid):
         enabled = get_setting("subgate_enabled", "0") == "1"
         toggle = "Подписка для входа: ВКЛ" if enabled else "Подписка для входа: ВЫКЛ"
         rows.append([KeyboardButton(toggle)])
-    rows.append([KeyboardButton("Назад"), KeyboardButton("Меню")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
@@ -6950,7 +6910,7 @@ async def adm_channels_router(update, context):
                 label = f"{i+1}. {channel_title(c)}{tag}"
                 rows.append([KeyboardButton(label)])
                 del_map[label] = c["id"]
-            rows.append([KeyboardButton("Назад")])
+            rows.append([KeyboardButton("⬅️ Назад")])
             context.user_data["del_map"] = del_map
             context.user_data["state"] = "adm_ch_delete"
             hint = ("Выбери канал для удаления\n— добавил админ, — добавил модератор"
@@ -6981,7 +6941,7 @@ async def adm_channels_router(update, context):
         title = context.user_data["new_channel"]["title"]
         context.user_data["state"] = "adm_ch_confirm"
         save_kb = tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Сохранить")], [KeyboardButton("Отмена")]], resize_keyboard=True))
+            [[KeyboardButton("💾 Сохранить")], [KeyboardButton("❌ Отмена")]], resize_keyboard=True))
         # Предпросмотр кнопки — но кривая ссылка НЕ должна ломать показ кнопки «Сохранить»
         try:
             preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=url)]])
@@ -7187,7 +7147,7 @@ async def ad_preview_and_offer(update, context):
     await update.message.reply_text(
         "Разослать рекламу всем пользователям?",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Отправить всем")], [KeyboardButton("Отмена")]],
+            [[KeyboardButton("📢 Отправить всем")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
         )),
     )
@@ -7418,7 +7378,7 @@ async def process_bcast_content(update, context):
     await update.message.reply_text(
         "Добавить кнопку к рассылке?\nОтветьте «Да» или «-» (без кнопки):",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Да")], [KeyboardButton("Отмена")]],
+            [[KeyboardButton("✅ Да")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
         )),
     )
@@ -7530,7 +7490,7 @@ async def show_star_shop(update, context):
         label = f"{item_title(p)} —{p['price_stars']}"
         smap[label] = p["id"]
         rows.append([KeyboardButton(label)])
-    rows.append([KeyboardButton("Назад")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     context.user_data["star_map"] = smap
     context.user_data["state"] = "star_shop"
     await nav(update, context, t("stars_title"),
@@ -7738,7 +7698,7 @@ async def star_admin_router(update, context):
             label = f"{p['title']} —{p['price_stars']}"
             smap[label] = p["id"]
             rows.append([KeyboardButton(label)])
-        rows.append([KeyboardButton("Отмена")])
+        rows.append([KeyboardButton("❌ Отмена")])
         context.user_data["star_del_map"] = smap
         context.user_data["state"] = "star_del"
         await update.message.reply_text("Какой пакет удалить?", reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)))
@@ -8034,20 +7994,20 @@ async def show_referral(update, context):
 
 
 def referral_kb(uid=None):
-    rows = [[KeyboardButton("Топ пригласивших")]]
+    rows = [[KeyboardButton("🏆 Топ пригласивших")]]
     if uid is not None and is_admin(uid):
-        rows.append([KeyboardButton("Изменить")])
-    rows.append([KeyboardButton("Назад")])
+        rows.append([KeyboardButton("✏️ Изменить")])
+    rows.append([KeyboardButton("⬅️ Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 # ── Админ: настройки реферальных наград ──
 def ref_settings_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("VIP: дней"), KeyboardButton("VIP: друзей")],
-        [KeyboardButton("Модер: дней"), KeyboardButton("Модер: друзей")],
-        [KeyboardButton("Фото"), KeyboardButton("Убрать фото")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("👑 VIP: дней"), KeyboardButton("👥 VIP: друзей")],
+        [KeyboardButton("🛡 Модер: дней"), KeyboardButton("👥 Модер: друзей")],
+        [KeyboardButton("📷 Фото"), KeyboardButton("🚫 Убрать фото")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True)
 
 
