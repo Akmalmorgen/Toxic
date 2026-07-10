@@ -2080,19 +2080,19 @@ T = {
     },
     "inactive_nudge": {
         "ru": (
-            "💤 <b>Давно тебя не было в Toxic!</b>\n"
+            "💤 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
             "Чтобы не потерять свои данные (коины, VIP, ссылку) — "
-            "просто нажми /start и загляни"
+            "просто нажми /start и загляни 👋"
         ),
         "uz": (
-            "💤 <b>Sizni Toxic da ko'rmaganimizga ancha bo'ldi!</b>\n"
+            "💤 <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
             "Ma'lumotlaringizni (coin, VIP, havola) yo'qotmaslik uchun — "
-            "/start ni bosing va kiring"
+            "/start ni bosing va kiring 👋"
         ),
         "en": (
-            "💤 <b>Haven't seen you in Toxic for a while!</b>\n"
+            "💤 <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
             "So you don't lose your data (coins, VIP, link) — "
-            "just tap /start and drop by"
+            "just tap /start and drop by 👋"
         ),
     },
     "top_empty": {
@@ -2270,7 +2270,7 @@ T = {
         "ru": (
             "<b>Привет, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>Toxic</b> — это анонимность без границ ✨\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ ✨\n"
             "<i>Тебе пишут тайно, а ты отвечаешь кому угодно 💬</i>\n\n"
             "<blockquote>🔗 Личная ссылка для анонимок\n"
             "🎲 Чат-рулетка по интересам\n"
@@ -2280,7 +2280,7 @@ T = {
         "uz": (
             "<b>Salom, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>Toxic</b> — chegarasiz anonimlik ✨\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik ✨\n"
             "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz 💬</i>\n\n"
             "<blockquote>🔗 Anonim xabarlar uchun shaxsiy havola\n"
             "🎲 Qiziqish bo'yicha chat-ruletka\n"
@@ -2290,7 +2290,7 @@ T = {
         "en": (
             "<b>Hi, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>Toxic</b> — anonymity without limits ✨\n"
+            "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits ✨\n"
             "<i>People message you secretly, and you reply to anyone 💬</i>\n\n"
             "<blockquote>🔗 Personal link for anonymous messages\n"
             "🎲 Chat roulette by interest\n"
@@ -2300,30 +2300,27 @@ T = {
     },
     "welcome_back": {
         "ru": (
-            "✨🎉💫🌟⭐\n\n"
             "<b>С возвращением, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Рады видеть тебя снова в</i> <b>Toxic</b> 💫\n"
+            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
             "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
             "🎲 Заходи в чат-рулетку\n"
             "👥 Зови друзей — забирай награды</blockquote>\n"
             "Главное меню 🏠"
         ),
         "uz": (
-            "✨🎉💫🌟⭐\n\n"
             "<b>Qaytganingiz bilan, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Sizni</i> <b>Toxic</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
+            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
             "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
             "🎲 Chat-ruletkaga kiring\n"
             "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
             "Asosiy menyu 🏠"
         ),
         "en": (
-            "✨🎉💫🌟⭐\n\n"
             "<b>Welcome back, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Glad to see you again in</i> <b>Toxic</b> 💫\n"
+            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
             "<blockquote>🔗 Share your link — get anonymous messages\n"
             "🎲 Jump into chat roulette\n"
             "👥 Invite friends — claim rewards</blockquote>\n"
@@ -2361,7 +2358,7 @@ T = {
             "<i>Выбери нужную кнопку в меню снизу</i>"
         ),
         "uz": (
-            "<b>Toxic botidan qanday foydalanish</b>\n"
+            "<b>𐌽ꤕ𐌗ተ botidan qanday foydalanish</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Bu yerda sizga anonim yozishadi va notanishlar bilan suhbatlashasiz. Hammasi oddiy</i>\n\n"
             "<b>Menyu tugmalari — nima qiladi:</b>\n"
@@ -2390,7 +2387,7 @@ T = {
             "<i>Pastdagi menyudan kerakli tugmani tanlang</i>"
         ),
         "en": (
-            "<b>How to use the Toxic bot</b>\n"
+            "<b>How to use the 𐌽ꤕ𐌗ተ bot</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>People message you anonymously here, and you can chat with strangers. It's simple</i>\n\n"
             "<b>Menu buttons — what they do:</b>\n"
