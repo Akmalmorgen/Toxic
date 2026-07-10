@@ -1139,26 +1139,19 @@ def set_lang(uid, lang):
 
 def canon(text):
     """Любая языковая метка кнопки -> каноническая русская (для маршрутизации).
-    Убирает декоративные обрамления styled() перед поиском."""
+    Убирает декоративные обрамления перед поиском."""
     if text is None:
         return None
-    # Убираем styled() обрамления
-    t = text
-    if t.startswith("⟡ ") and t.endswith(" ⟡"):
-        t = t[2:-2]
-    elif t.startswith("« ") and t.endswith(" »"):
-        t = t[2:-2]
+    # Простой текст без обрамлений
+    t = text.strip()
     return _ALIAS.get(t, _ALIAS.get(text, text))
 
 
 # Стилизация кнопок — единый декор применяется после получения перевода
 def styled(text, kind="default"):
     """Добавляет декоративное обрамление к тексту кнопки.
-    kind: default — без изменений, premium — ⟡...⟡, accent — «...»"""
-    if kind == "premium":
-        return f"⟡ {text} ⟡"
-    if kind == "accent":
-        return f"« {text} »"
+    kind: default — без изменений, premium — обычный текст, accent — обычный текст"""
+    # Убрали премиум декор, возвращаем просто текст
     return text
 
 
@@ -1177,8 +1170,7 @@ def tr_btn(ru_label, lang=None, kind="default"):
 
 
 def tr_kb(markup, lang=None):
-    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру.
-    Уже стилизованные кнопки (⟡/«») не переводятся повторно."""
+    """Переводит метки reply-клавиатуры на текущий язык, сохраняя структуру."""
     lang = lang or cur_lang()
     if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
         return markup
@@ -1187,11 +1179,8 @@ def tr_kb(markup, lang=None):
         new_row = []
         for b in row:
             txt = b.text
-            # Если кнопка уже стилизована — оставляем как есть
-            if txt.startswith("⟡ ") or txt.startswith("« "):
-                new_row.append(KeyboardButton(txt))
-            else:
-                new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
+            # Переводим все кнопки
+            new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
         new_rows.append(new_row)
     return ReplyKeyboardMarkup(
         new_rows,
@@ -2091,17 +2080,17 @@ T = {
     },
     "inactive_nudge": {
         "ru": (
-            "💤 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\n"
+            "💤 <b>Давно тебя не было в Toxic!</b>\n"
             "Чтобы не потерять свои данные (коины, VIP, ссылку) — "
             "просто нажми /start и загляни"
         ),
         "uz": (
-            "💤 <b>Sizni 𐌽ꤕ𐌗ተ da ko'rmaganimizga ancha bo'ldi!</b>\n"
+            "💤 <b>Sizni Toxic da ko'rmaganimizga ancha bo'ldi!</b>\n"
             "Ma'lumotlaringizni (coin, VIP, havola) yo'qotmaslik uchun — "
             "/start ni bosing va kiring"
         ),
         "en": (
-            "💤 <b>Haven't seen you in 𐌽ꤕ𐌗ተ for a while!</b>\n"
+            "💤 <b>Haven't seen you in Toxic for a while!</b>\n"
             "So you don't lose your data (coins, VIP, link) — "
             "just tap /start and drop by"
         ),
@@ -2279,10 +2268,9 @@ T = {
     },
     "welcome": {
         "ru": (
-            ""
             "<b>Привет, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ ✨\n"
+            "<b>Toxic</b> — это анонимность без границ ✨\n"
             "<i>Тебе пишут тайно, а ты отвечаешь кому угодно 💬</i>\n\n"
             "<blockquote>🔗 Личная ссылка для анонимок\n"
             "🎲 Чат-рулетка по интересам\n"
@@ -2290,10 +2278,9 @@ T = {
             "Поехали — выбери свой пол 🚀"
         ),
         "uz": (
-            ""
             "<b>Salom, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik ✨\n"
+            "<b>Toxic</b> — chegarasiz anonimlik ✨\n"
             "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz 💬</i>\n\n"
             "<blockquote>🔗 Anonim xabarlar uchun shaxsiy havola\n"
             "🎲 Qiziqish bo'yicha chat-ruletka\n"
@@ -2301,10 +2288,9 @@ T = {
             "Boshladik — jinsingizni tanlang 🚀"
         ),
         "en": (
-            ""
             "<b>Hi, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits ✨\n"
+            "<b>Toxic</b> — anonymity without limits ✨\n"
             "<i>People message you secretly, and you reply to anyone 💬</i>\n\n"
             "<blockquote>🔗 Personal link for anonymous messages\n"
             "🎲 Chat roulette by interest\n"
@@ -2317,7 +2303,7 @@ T = {
             "✨🎉💫🌟⭐\n\n"
             "<b>С возвращением, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "<i>Рады видеть тебя снова в</i> <b>Toxic</b> 💫\n"
             "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
             "🎲 Заходи в чат-рулетку\n"
             "👥 Зови друзей — забирай награды</blockquote>\n"
@@ -2327,7 +2313,7 @@ T = {
             "✨🎉💫🌟⭐\n\n"
             "<b>Qaytganingiz bilan, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
+            "<i>Sizni</i> <b>Toxic</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
             "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
             "🎲 Chat-ruletkaga kiring\n"
             "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
@@ -2337,7 +2323,7 @@ T = {
             "✨🎉💫🌟⭐\n\n"
             "<b>Welcome back, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "<i>Glad to see you again in</i> <b>Toxic</b> 💫\n"
             "<blockquote>🔗 Share your link — get anonymous messages\n"
             "🎲 Jump into chat roulette\n"
             "👥 Invite friends — claim rewards</blockquote>\n"
@@ -2346,7 +2332,7 @@ T = {
     },
     "help": {
         "ru": (
-            "ℹ️ <b>Как пользоваться ботом 𐌽ꤕ𐌗ተ</b>\n"
+            "ℹ️ <b>Как пользоваться ботом Toxic</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Здесь тебе пишут анонимно, и ты можешь общаться с незнакомцами. Всё просто</i>\n\n"
             "<b>Кнопки меню — что делают:</b>\n"
@@ -2375,7 +2361,7 @@ T = {
             "<i>Выбери нужную кнопку в меню снизу</i>"
         ),
         "uz": (
-            "<b>𐌽ꤕ𐌗ተ botidan qanday foydalanish</b>\n"
+            "<b>Toxic botidan qanday foydalanish</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Bu yerda sizga anonim yozishadi va notanishlar bilan suhbatlashasiz. Hammasi oddiy</i>\n\n"
             "<b>Menyu tugmalari — nima qiladi:</b>\n"
@@ -2404,7 +2390,7 @@ T = {
             "<i>Pastdagi menyudan kerakli tugmani tanlang</i>"
         ),
         "en": (
-            "<b>How to use the 𐌽ꤕ𐌗ተ bot</b>\n"
+            "<b>How to use the Toxic bot</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>People message you anonymously here, and you can chat with strangers. It's simple</i>\n\n"
             "<b>Menu buttons — what they do:</b>\n"
