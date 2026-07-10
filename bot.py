@@ -2279,7 +2279,7 @@ T = {
     },
     "welcome": {
         "ru": (
-            "𓆩❤𓆪\n\n"
+            ""
             "<b>Привет, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ ✨\n"
@@ -2290,7 +2290,7 @@ T = {
             "Поехали — выбери свой пол 🚀"
         ),
         "uz": (
-            "𓆩❤𓆪\n\n"
+            ""
             "<b>Salom, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik ✨\n"
@@ -2301,7 +2301,7 @@ T = {
             "Boshladik — jinsingizni tanlang 🚀"
         ),
         "en": (
-            "𓆩❤𓆪\n\n"
+            ""
             "<b>Hi, {name}! 👋</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits ✨\n"
@@ -2314,7 +2314,7 @@ T = {
     },
     "welcome_back": {
         "ru": (
-            "𓆩❤𓆪\n\n"
+            ""
             "<b>С возвращением, {name}! 🎉</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
@@ -3109,9 +3109,9 @@ def t(key, **kw):
 
 def language_menu_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("Русский"), KeyboardButton("O'zbekcha")],
-        [KeyboardButton("English")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
+        [KeyboardButton("🇬🇧 English")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True)
 
 
