@@ -1065,7 +1065,7 @@ BTN = {
     "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Мужской": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Erkak", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Male"),
     "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Женский": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Ayol", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Female"),
     "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
-    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Сменить ссылку": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Havolani o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change link"),
+    "✏️ Сменить ссылку": ("✏️ Havolani o'zgartirish", "✏️ Change link"),
     "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Парня": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Yigit", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> A guy"),
     "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Девушку": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Qiz", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> A girl"),
     "🤷 Любого": ("🤷 Farqi yo'q", "🤷 Anyone"),
@@ -1073,16 +1073,16 @@ BTN = {
     "💌 Валентинка": ("💌 Valentinka", "💌 Valentine"),
     "🤬 Мат": ("🤬 So'kinish", "🤬 Swearing"),
     "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Мошенничество": ("<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Firibgarlik", "<tg-emoji emoji-id=\"6039859895291877126\">💰</tg-emoji> Fraud"),
-    "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Оскорбление": ("<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Haqorat", "<tg-emoji emoji-id=\"5355129326763264187\"><tg-emoji emoji-id=\"5355129326763264187\">😡</tg-emoji></tg-emoji> Insult"),
+    "😡 Оскорбление": ("😡 Haqorat", "😡 Insult"),
     "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ стикеры": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ stikerlar", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ stickers"),
     "👎 Не нравится": ("👎 Yoqmadi", "👎 Dislike"),
-    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Сменить пол": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Jinsni o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change gender"),
+    "✏️ Сменить пол": ("✏️ Jinsni o'zgartirish", "✏️ Change gender"),
     "👥 Всем": ("👥 Hammaga", "👥 Everyone"),
     "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Мужчинам": ("<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> Erkaklarga", "<tg-emoji emoji-id=\"5453929508899931025\">👨</tg-emoji> To men"),
     "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Женщинам": ("<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> Ayollarga", "<tg-emoji emoji-id=\"5453929508899931025\">👩</tg-emoji> To women"),
     "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Выдать модера": ("<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Moder berish", "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Grant moder"),
     "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
-    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Изменить": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> O'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Edit"),
+    "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
     "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Добавить товар": ("<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Mahsulot qo'shish", "<tg-emoji emoji-id=\"5323670289047902460\">➕</tg-emoji> Add item"),
     "🗑 Удалить т����вар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
     "📝 Название": ("📝 Nomi", "📝 Name"),
@@ -1099,14 +1099,14 @@ BTN = {
     "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+"),
     "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ рулетка": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ ruletka", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ roulette"),
     "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Мне нет 18": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18 yoshda emasman", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> I'm under 18"),
-    "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Подарить 18+": ("<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> 18+ sovg'a qilish", "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Gift 18+"),
-    "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Подарить коины": ("<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Coin sovg'a qilish", "<tg-emoji emoji-id=\"5935784883430364379\"><tg-emoji emoji-id=\"5935784883430364379\">🎁</tg-emoji></tg-emoji> Gift coins"),
+    "🎁 Подарить 18+": ("🎁 18+ sovg'a qilish", "🎁 Gift 18+"),
+    "🎁 Подарить коины": ("🎁 Coin sovg'a qilish", "🎁 Gift coins"),
     "🤷 Любой возраст": ("🤷 Istalgan yosh", "🤷 Any age"),
     "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Согласиться": ("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Roziman", "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> I agree"),
     "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Подтвердить": ("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Tasdiqlash", "<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Confirm"),
     "<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Отклонить": ("<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Rad etish", "<tg-emoji emoji-id=\"5202148364115786801\">❌</tg-emoji> Reject"),
     "📷 Отправить фото": ("📷 Foto yuborish", "📷 Send photo"),
-    "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Изменить возраст": ("<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Yoshni o'zgartirish", "<tg-emoji emoji-id=\"5879841310902324730\"><tg-emoji emoji-id=\"5879841310902324730\">✏️</tg-emoji></tg-emoji> Change age"),
+    "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
     "<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Обычный товар": ("<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Oddiy mahsulot", "<tg-emoji emoji-id=\"5460689598445273231\">🛒</tg-emoji> Regular item"),
     "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Товар 18+": ("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ mahsulot", "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ item"),
     "18+ рулетка": ("18+ ruletka", "18+ roulette"),
@@ -1224,9 +1224,9 @@ T = {
     },
     # === Общие ===
     "banned": {
-        "ru": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> Вы заблокированы и не можете пользоваться ботом.",
-        "uz": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> Siz bloklangansiz va botdan foydalana olmaysiz.",
-        "en": "<tg-emoji emoji-id=\"5390944410504535549\"><tg-emoji emoji-id=\"5202148364115786801\">🚫</tg-emoji></tg-emoji> You are blocked and cannot use the bot.",
+        "ru": "🚫 Вы заблокированы и не можете пользоваться ботом.",
+        "uz": "🚫 Siz bloklangansiz va botdan foydalana olmaysiz.",
+        "en": "🚫 You are blocked and cannot use the bot.",
     },
     "done": {
         "ru": "Готово.",
@@ -3125,9 +3125,9 @@ def t(key, **kw):
 
 def language_menu_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("Русский"), KeyboardButton("O'zbekcha")],
-        [KeyboardButton("English")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇷🇺</tg-emoji> Русский"), KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇺🇿</tg-emoji> O'zbekcha")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇬🇧</tg-emoji> English")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True)
 
 
@@ -3163,85 +3163,84 @@ async def set_lang_context(update, context):
 
 def main_menu_kb(tg_id):
     rows = [
-        [KeyboardButton("Моя ссылка", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Чат-рулетка", icon_custom_emoji_id="5084923566848213749")],
-        [KeyboardButton("Профиль", icon_custom_emoji_id="5208468047714600000"), KeyboardButton("Магазин", icon_custom_emoji_id="5273885265830619457")],
-        [KeyboardButton("Пригласить", icon_custom_emoji_id="5082628525303792441"), KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
-        [KeyboardButton("Язык", icon_custom_emoji_id="5208510177048807117")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> Моя ссылка"), KeyboardButton("<tg-emoji emoji-id=\"5084923566848213749\">🎲</tg-emoji> Чат-рулетка")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208468047714600000\">👤</tg-emoji> Профиль"), KeyboardButton("<tg-emoji emoji-id=\"5273885265830619457\">🛒</tg-emoji> Магазин")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5082628525303792441\">👥</tg-emoji> Пригласить"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">ℹ️</tg-emoji> Помощь")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🌐</tg-emoji> Язык")],
     ]
     # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
-        star_label = styled(tr_btn("Купить коины"), "premium")
-        rows.append([KeyboardButton(star_label, icon_custom_emoji_id="5460723807859782728")])
+        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5460723807859782728\">💎</tg-emoji> Купить коины")])
     # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
     if is_adult(get_user(tg_id)):
-        rows.append([KeyboardButton("18+")])
+        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+")])
     if is_admin(tg_id):
-        rows.append([KeyboardButton("Админка", icon_custom_emoji_id="5208930169015776721")])
+        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5208930169015776721\">🛠</tg-emoji> Админка")])
     else:
         u = get_user(tg_id)
         if is_moder(u):
-            rows.append([KeyboardButton("Модерка", icon_custom_emoji_id="5251203410396458957")])
+            rows.append([KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модерка")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Да", icon_custom_emoji_id="5337080053119336309"), KeyboardButton("Отмена")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5337080053119336309\">✅</tg-emoji> Да"), KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Коины"), KeyboardButton("VIP")],
-        [KeyboardButton("Модер"), KeyboardButton("Вручную")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">💎</tg-emoji> Коины"), KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">⏳</tg-emoji> VIP")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модер"), KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">📦</tg-emoji> Вручную")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def admin_menu_kb():
     enabled = get_setting("18plus_enabled", "1") == "1"
-    toggle_label = "18+ доступ: ВКЛ" if enabled else "18+ доступ: ВЫКЛ"
+    toggle_label = "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ доступ: ВКЛ" if enabled else "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
-        [KeyboardButton("Начислить коины", icon_custom_emoji_id="5215706742645599766"), KeyboardButton("VIP по ID", icon_custom_emoji_id="5368529160870306132")],
-        [KeyboardButton("Обязательные каналы"), KeyboardButton("Рассылка", icon_custom_emoji_id="5215344475039084599")],
-        [KeyboardButton("Модеры", icon_custom_emoji_id="5251203410396458957"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
-        [KeyboardButton("Коины за Stars", icon_custom_emoji_id="5388850695552132264"), KeyboardButton(toggle_label)],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Статистика"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📤</tg-emoji> Выгрузить пользователей")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">💰</tg-emoji> Начислить коины"), KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">👑</tg-emoji> VIP по ID")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📢</tg-emoji> Обязательные каналы"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📣</tg-emoji> Рассылка")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модеры"), KeyboardButton("<tg-emoji emoji-id=\"5390944410504535549\">🔨</tg-emoji> Бан / Разбан")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5388850695552132264\">⭐</tg-emoji> Коины за Stars"), KeyboardButton(toggle_label)],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
 def admin_vip_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("VIP всем", icon_custom_emoji_id="5368529160870306132"), KeyboardButton("VIP девушкам", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("VIP парням", icon_custom_emoji_id="5314678809373450691")],
-        [KeyboardButton("Выдать VIP", icon_custom_emoji_id="5208485407972407333"), KeyboardButton("Забрать VIP")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">👑</tg-emoji> VIP всем"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👑</tg-emoji> VIP девушкам"), KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👑</tg-emoji> VIP парням")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Выдать VIP"), KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">➖</tg-emoji> Забрать VIP")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Добавить товар", icon_custom_emoji_id="5208485407972407333")],
-        [KeyboardButton("Список товаров"), KeyboardButton("Удалить товар", icon_custom_emoji_id="5445267414562389170")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Добавить товар")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Список товаров"), KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить товар")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
     ], resize_keyboard=True))
 
 
 def star_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Добавить пакет коинов", icon_custom_emoji_id="5208485407972407333")],
-        [KeyboardButton("Удалить пакет коинов", icon_custom_emoji_id="5445267414562389170")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471"), KeyboardButton("Меню")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Добавить пакет коинов")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить пакет коинов")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
     ], resize_keyboard=True))
 
 
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Жалобы", icon_custom_emoji_id="5355129326763264187"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
-        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
-        [KeyboardButton("Обязательные каналы")],
-        [KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5355129326763264187\">🚩</tg-emoji> Жалобы"), KeyboardButton("<tg-emoji emoji-id=\"5390944410504535549\">🔨</tg-emoji> Бан / Разбан")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Статистика"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📤</tg-emoji> Выгрузить пользователей")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📢</tg-emoji> Обязательные каналы")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">ℹ️</tg-emoji> Помощь")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
@@ -3253,23 +3252,23 @@ def moder_decision_kb(app_id):
 
 
 def gender_kb(with_back=False):
-    rows = [[KeyboardButton("Мужской", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Женский", icon_custom_emoji_id="5316790060677341262")]]
+    rows = [[KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👨</tg-emoji> Мужской"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👩</tg-emoji> Женский")]]
     if with_back:
-        rows.append([KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")])
+        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def link_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Показать ссылку", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Сменить ссылку", icon_custom_emoji_id="5220046725493828505")],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> Показать ссылку"), KeyboardButton("<tg-emoji emoji-id=\"5220046725493828505\">✏️</tg-emoji> Сменить ссылку")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Парня", icon_custom_emoji_id="5314678809373450691"), KeyboardButton("Девушку", icon_custom_emoji_id="5316790060677341262"), KeyboardButton("Любого", icon_custom_emoji_id="5368428705880219702")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👨</tg-emoji> Парня"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👩</tg-emoji> Девушку"), KeyboardButton("<tg-emoji emoji-id=\"5368428705880219702\">🤷</tg-emoji> Любого")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
@@ -3277,22 +3276,22 @@ def eighteen_plus_age_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
         [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("Мне нет 18")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Мне нет 18")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_consent_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Согласиться")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Согласиться")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_verify_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Отправить фото")],
-        [KeyboardButton("Назад")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📷</tg-emoji> Отправить фото")],
+        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
     ], resize_keyboard=True))
 
 
