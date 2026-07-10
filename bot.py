@@ -5838,7 +5838,7 @@ async def shop_router(update, context):
         return
     item_id = context.user_data.get("shop_map", {}).get(text)
     if item_id is None:
-        await nav(update, context, t("shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("Назад")]], resize_keyboard=True)))
+        await nav(update, context, t("shop_pick_item"), tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⬅️ Назад")]], resize_keyboard=True)))
         return
     item = conn.execute("SELECT * FROM shop_items WHERE id=? AND active=1", (item_id,)).fetchone()
     if not item:
@@ -5938,7 +5938,7 @@ async def do_purchase(update, context, item):
             update, context,
             t("moder_form_gender"),
             tr_kb(ReplyKeyboardMarkup(
-                [[KeyboardButton("Мужской"), KeyboardButton("Женский")], [KeyboardButton("Отмена")]],
+                [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")], [KeyboardButton("❌ Отмена")]],
                 resize_keyboard=True,
             )),
             parse_mode="HTML",
@@ -6221,9 +6221,9 @@ async def _finalize_new_item(update, context):
 
 def shop_category_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Обычный товар")],
-        [KeyboardButton("Товар 18+")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("🛍 Обычный товар")],
+        [KeyboardButton("🔞 Товар 18+")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
@@ -6400,8 +6400,8 @@ async def show_moder_menu(update, context):
 
 def admin_moder_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Выдать модера"), KeyboardButton("Забрать модера")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("👮 Выдать модера"), KeyboardButton("🚫 Забрать модера")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
@@ -6858,8 +6858,8 @@ async def adm_channels_msg(update, context):
 
 def adm_channels_kb(uid=None):
     rows = [
-        [KeyboardButton("Добавить канал")],
-        [KeyboardButton("Удалить канал")],
+        [KeyboardButton("➕ Добавить канал")],
+        [KeyboardButton("🗑 Удалить канал")],
     ]
     # Переключатель «Подписка для входа» — только у админа
     if uid is not None and is_admin(uid):
