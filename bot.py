@@ -2314,8 +2314,8 @@ T = {
     },
     "welcome_back": {
         "ru": (
-            "💙💙💙💙💙\n\n"
-            "<b>С возвращением, {name}! 🎉</b>\n"
+            "✨🎉💫🌟⭐\n\n"
+            "<b>С возвращением, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
             "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
@@ -2324,24 +2324,24 @@ T = {
             "Главное меню 🏠"
         ),
         "uz": (
-            "💙💙💙💙💙\n\n"
-            "<b>Qaytganingiz bilan, {name}!</b>\n"
+            "✨🎉💫🌟⭐\n\n"
+            "<b>Qaytganingiz bilan, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i>\n"
-            "<blockquote>Havolani ulashing — anonim xabarlar oling\n"
-            "Chat-ruletkaga kiring\n"
-            "Do'stlarni chaqiring — mukofot oling</blockquote>\n"
-            "Asosiy menyu"
+            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
+            "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
+            "🎲 Chat-ruletkaga kiring\n"
+            "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
+            "Asosiy menyu 🏠"
         ),
         "en": (
-            "💙💙💙💙💙\n\n"
-            "<b>Welcome back, {name}!</b>\n"
+            "✨🎉💫🌟⭐\n\n"
+            "<b>Welcome back, {name}! 🎊</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b>\n"
-            "<blockquote>Share your link — get anonymous messages\n"
-            "Jump into chat roulette\n"
-            "Invite friends — claim rewards</blockquote>\n"
-            "Main menu"
+            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "<blockquote>🔗 Share your link — get anonymous messages\n"
+            "🎲 Jump into chat roulette\n"
+            "👥 Invite friends — claim rewards</blockquote>\n"
+            "Main menu 🏠"
         ),
     },
     "help": {
