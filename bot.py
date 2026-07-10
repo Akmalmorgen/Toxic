@@ -6866,7 +6866,7 @@ def adm_channels_kb(uid=None):
         enabled = get_setting("subgate_enabled", "0") == "1"
         toggle = "Подписка для входа: ВКЛ" if enabled else "Подписка для входа: ВЫКЛ"
         rows.append([KeyboardButton(toggle)])
-    rows.append([KeyboardButton("Назад"), KeyboardButton("Меню")])
+    rows.append([KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
@@ -6935,7 +6935,7 @@ async def adm_channels_router(update, context):
                 label = f"{i+1}. {channel_title(c)}{tag}"
                 rows.append([KeyboardButton(label)])
                 del_map[label] = c["id"]
-            rows.append([KeyboardButton("Назад")])
+            rows.append([KeyboardButton("⬅️ Назад")])
             context.user_data["del_map"] = del_map
             context.user_data["state"] = "adm_ch_delete"
             hint = ("Выбери канал для удаления\n— добавил админ, — добавил модератор"
@@ -6966,7 +6966,7 @@ async def adm_channels_router(update, context):
         title = context.user_data["new_channel"]["title"]
         context.user_data["state"] = "adm_ch_confirm"
         save_kb = tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Сохранить")], [KeyboardButton("Отмена")]], resize_keyboard=True))
+            [[KeyboardButton("💾 Сохранить")], [KeyboardButton("❌ Отмена")]], resize_keyboard=True))
         # Предпросмотр кнопки — но кривая ссылка НЕ должна ломать показ кнопки «Сохранить»
         try:
             preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=url)]])
@@ -7172,7 +7172,7 @@ async def ad_preview_and_offer(update, context):
     await update.message.reply_text(
         "Разослать рекламу всем пользователям?",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Отправить всем")], [KeyboardButton("Отмена")]],
+            [[KeyboardButton("📢 Отправить всем")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
         )),
     )
@@ -7403,7 +7403,7 @@ async def process_bcast_content(update, context):
     await update.message.reply_text(
         "Добавить кнопку к рассылке?\nОтветьте «Да» или «-» (без кнопки):",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("Да")], [KeyboardButton("Отмена")]],
+            [[KeyboardButton("✅ Да")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
         )),
     )
@@ -8019,9 +8019,9 @@ async def show_referral(update, context):
 
 
 def referral_kb(uid=None):
-    rows = [[KeyboardButton("Топ пригласивших")]]
+    rows = [[KeyboardButton("🏆 Топ пригласивших")]]
     if uid is not None and is_admin(uid):
-        rows.append([KeyboardButton("Изменить")])
+        rows.append([KeyboardButton("✏️ Изменить")])
     rows.append([KeyboardButton("Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
@@ -8029,10 +8029,10 @@ def referral_kb(uid=None):
 # ── Админ: настройки реферальных наград ──
 def ref_settings_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("VIP: дней"), KeyboardButton("VIP: друзей")],
-        [KeyboardButton("Модер: дней"), KeyboardButton("Модер: друзей")],
-        [KeyboardButton("Фото"), KeyboardButton("Убрать фото")],
-        [KeyboardButton("Назад"), KeyboardButton("Меню")],
+        [KeyboardButton("👑 VIP: дней"), KeyboardButton("👥 VIP: друзей")],
+        [KeyboardButton("🛡 Модер: дней"), KeyboardButton("👥 Модер: друзей")],
+        [KeyboardButton("📷 Фото"), KeyboardButton("🚫 Убрать фото")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True)
 
 
