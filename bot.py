@@ -3147,51 +3147,52 @@ async def set_lang_context(update, context):
 
 def main_menu_kb(tg_id):
     rows = [
-        [KeyboardButton("Моя ссылка", icon_custom_emoji_id="5375511227210433241"), KeyboardButton("Чат-рулетка", icon_custom_emoji_id="5084923566848213749")],
-        [KeyboardButton("Профиль", icon_custom_emoji_id="5208468047714600000"), KeyboardButton("Магазин", icon_custom_emoji_id="5273885265830619457")],
-        [KeyboardButton("Пригласить", icon_custom_emoji_id="5082628525303792441"), KeyboardButton("Помощь", icon_custom_emoji_id="5399986618037711131")],
-        [KeyboardButton("Язык", icon_custom_emoji_id="5208510177048807117")],
+        [KeyboardButton("🔗 Моя ссылка", icon_custom_emoji_id="5461046042076136604"), KeyboardButton("🎲 Чат-рулетка", icon_custom_emoji_id="5440682476844378367")],
+        [KeyboardButton("👤 Профиль", icon_custom_emoji_id="5453929508899931025"), KeyboardButton("🛒 Магазин", icon_custom_emoji_id="5460689598445273231")],
+        [KeyboardButton("👥 Пригласить", icon_custom_emoji_id="6017098754761429988"), KeyboardButton("ℹ️ Помощь", icon_custom_emoji_id="5327779391634153863")],
+        [KeyboardButton("🌐 Язык", icon_custom_emoji_id="5382311255656648590")],
     ]
     # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
         star_label = styled(tr_btn("Купить коины"), "premium")
-        rows.append([KeyboardButton(star_label, icon_custom_emoji_id="5460723807859782728")])
+        rows.append([KeyboardButton(star_label, icon_custom_emoji_id="6039859895291877126")])
     # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
     if is_adult(get_user(tg_id)):
-        rows.append([KeyboardButton("18+")])
+        rows.append([KeyboardButton("🔞 18+", icon_custom_emoji_id="5202148364115786801")])
     if is_admin(tg_id):
-        rows.append([KeyboardButton("Админка", icon_custom_emoji_id="5208930169015776721")])
+        rows.append([KeyboardButton("🛠 Админка", icon_custom_emoji_id="5296535548960189760")])
     else:
         u = get_user(tg_id)
         if is_moder(u):
-            rows.append([KeyboardButton("Модерка", icon_custom_emoji_id="5251203410396458957")])
+            rows.append([KeyboardButton("🛡 Модерка", icon_custom_emoji_id="5325901193845694681")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Да", icon_custom_emoji_id="5337080053119336309"), KeyboardButton("Отмена")],
+        [KeyboardButton("✅ Да", icon_custom_emoji_id="6325805795518715615"), KeyboardButton("❌ Отмена", icon_custom_emoji_id="5202148364115786801")],
     ], resize_keyboard=True))
 
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Коины"), KeyboardButton("VIP")],
-        [KeyboardButton("Модер"), KeyboardButton("Вручную")],
-        [KeyboardButton("Отмена")],
+        [KeyboardButton("💎 Коины", icon_custom_emoji_id="6039859895291877126"), KeyboardButton("👑 VIP", icon_custom_emoji_id="5467774507777277411")],
+        [KeyboardButton("🛡 Модер", icon_custom_emoji_id="5325901193845694681"), KeyboardButton("✨ Вручную", icon_custom_emoji_id="5397981293512243749")],
+        [KeyboardButton("⬅️ Отмена", icon_custom_emoji_id="5816895683256390576")],
     ], resize_keyboard=True))
 
 
 def admin_menu_kb():
     enabled = get_setting("18plus_enabled", "1") == "1"
-    toggle_label = "18+ доступ: ВКЛ" if enabled else "18+ доступ: ВЫКЛ"
+    toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("Статистика"), KeyboardButton("Выгрузить пользователей")],
-        [KeyboardButton("Начислить коины", icon_custom_emoji_id="5215706742645599766"), KeyboardButton("VIP по ID", icon_custom_emoji_id="5368529160870306132")],
-        [KeyboardButton("Обязательные каналы"), KeyboardButton("Рассылка", icon_custom_emoji_id="5215344475039084599")],
-        [KeyboardButton("Модеры", icon_custom_emoji_id="5251203410396458957"), KeyboardButton("Бан / Разбан", icon_custom_emoji_id="5390944410504535549")],
-        [KeyboardButton("Коины за Stars", icon_custom_emoji_id="5388850695552132264"), KeyboardButton(toggle_label)],
-        [KeyboardButton("Назад", icon_custom_emoji_id="5213358684024877471")],
+        [KeyboardButton("📊 Статистика", icon_custom_emoji_id="5382311255656648590"), KeyboardButton("📤 Выгрузить пользователей", icon_custom_emoji_id="5935784883430364379")],
+        [KeyboardButton("💎 Начислить коины", icon_custom_emoji_id="6039859895291877126"), KeyboardButton("👑 VIP по ID", icon_custom_emoji_id="5467774507777277411")],
+        [KeyboardButton("📢 Обязательные каналы", icon_custom_emoji_id="5323670289047902460"), KeyboardButton("📣 Рассылка", icon_custom_emoji_id="5411370450330597094")],
+        [KeyboardButton("🛡 Модеры", icon_custom_emoji_id="5325901193845694681"), KeyboardButton("🔨 Бан / Разбан", icon_custom_emoji_id="5226912286551086845")],
+        [KeyboardButton("⭐ Коины за Stars", icon_custom_emoji_id="6325805795518715615"), KeyboardButton(toggle_label, icon_custom_emoji_id="5202148364115786801")],
+        [KeyboardButton("💎 Цена раскрытия", icon_custom_emoji_id="6039859895291877126")],
+        [KeyboardButton("⬅️ Назад", icon_custom_emoji_id="5816895683256390576")],
     ], resize_keyboard=True))
 
 
