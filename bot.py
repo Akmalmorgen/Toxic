@@ -30,7 +30,7 @@ from aiogram.filters import CommandStart, CommandObject, Command
 from aiogram.types import (
     Message, CallbackQuery, ChatMemberUpdated, PreCheckoutQuery, ErrorEvent,
     ReplyKeyboardRemove, ReplyParameters, BufferedInputFile, BotCommand,
-    InputMediaPhoto,
+    InputMediaPhoto, MessageEntity,
     KeyboardButton as _AiKeyboardButton,
     ReplyKeyboardMarkup as _AiReplyKeyboardMarkup,
     InlineKeyboardButton as _AiInlineKeyboardButton,
@@ -2314,7 +2314,6 @@ T = {
     },
     "welcome_back": {
         "ru": (
-            ""
             "<b>С возвращением, {name}! 🎉</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
@@ -2324,11 +2323,6 @@ T = {
             "Главное меню 🏠"
         ),
         "uz": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
             "<b>Qaytganingiz bilan, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i>\n"
@@ -2338,11 +2332,6 @@ T = {
             "Asosiy menyu"
         ),
         "en": (
-            "💙"
-            "💙"
-            "💙"
-            "💙"
-            "💙\n\n"
             "<b>Welcome back, {name}!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b>\n"
@@ -3463,10 +3452,24 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     name = tg_user.first_name or "друг"
+    # Добавляем премиум эмодзи 💙 в начало сообщения
+    blue_hearts = "💙💙💙💙💙\n\n"
+    message_text = blue_hearts + t("welcome_back", name=html.escape(name))
+    
+    # Создаём entities для премиум эмодзи
+    entities = [
+        MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=0, length=2, custom_emoji_id="5170242241779730020"),
+        MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=2, length=2, custom_emoji_id="5170233183693702849"),
+        MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=4, length=2, custom_emoji_id="5170513121072123659"),
+        MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=6, length=2, custom_emoji_id="5170632053011515110"),
+        MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=8, length=2, custom_emoji_id="5170385401629640720"),
+    ]
+    
     await update.message.reply_text(
-        t("welcome_back", name=html.escape(name)),
+        message_text,
         parse_mode="HTML",
         reply_markup=main_menu_kb(tg_user.id),
+        entities=entities,
     )
 
 
@@ -4575,7 +4578,26 @@ async def deliver_start_menu(context, uid, greet=True):
             UD[uid]["state"] = "set_age_first"
             await context.bot.send_message(uid, t("age_register_ask"), parse_mode="HTML", reply_markup=ReplyKeyboardRemove())
         elif greet:
-            await context.bot.send_message(uid, t("welcome_back", name=name), parse_mode="HTML", reply_markup=main_menu_kb(uid))
+            # Добавляем премиум эмодзи 💙 в начало сообщения
+            blue_hearts = "💙💙💙💙💙\n\n"
+            message_text = blue_hearts + t("welcome_back", name=name)
+            
+            # Создаём entities для премиум эмодзи
+            entities = [
+                MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=0, length=2, custom_emoji_id="5170242241779730020"),
+                MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=2, length=2, custom_emoji_id="5170233183693702849"),
+                MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=4, length=2, custom_emoji_id="5170513121072123659"),
+                MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=6, length=2, custom_emoji_id="5170632053011515110"),
+                MessageEntity(type=MessageEntity.CUSTOM_EMOJI, offset=8, length=2, custom_emoji_id="5170385401629640720"),
+            ]
+            
+            await context.bot.send_message(
+                uid, 
+                message_text, 
+                parse_mode="HTML", 
+                reply_markup=main_menu_kb(uid),
+                entities=entities,
+            )
         else:
             UD[uid]["state"] = None
             await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
