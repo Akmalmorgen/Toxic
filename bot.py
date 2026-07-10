@@ -3153,7 +3153,7 @@ async def language_router(update, context):
     await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
 
 
-async def main_menu_kb(tg_id):
+def main_menu_kb(tg_id):
     rows = [
         [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
         [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
@@ -3172,25 +3172,6 @@ async def main_menu_kb(tg_id):
         u = get_user(tg_id)
         if is_moder(u):
             rows.append([KeyboardButton("🛡 Модерка")])
-    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
-    rows = [
-        [KeyboardButton("<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> Моя ссылка"), KeyboardButton("<tg-emoji emoji-id=\"5084923566848213749\">🎲</tg-emoji> Чат-рулетка")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5208468047714600000\">👤</tg-emoji> Профиль"), KeyboardButton("<tg-emoji emoji-id=\"5273885265830619457\">🛒</tg-emoji> Магазин")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5082628525303792441\">👥</tg-emoji> Пригласить"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">ℹ️</tg-emoji> Помощь")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🌐</tg-emoji> Язык")],
-    ]
-    # Кнопка покупки коинов за Stars — стилизована как premium
-    if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
-        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5460723807859782728\">💎</tg-emoji> Купить коины")])
-    # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
-    if is_adult(get_user(tg_id)):
-        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+")])
-    if is_admin(tg_id):
-        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5208930169015776721\">🛠</tg-emoji> Админка")])
-    else:
-        u = get_user(tg_id)
-        if is_moder(u):
-            rows.append([KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модерка")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
