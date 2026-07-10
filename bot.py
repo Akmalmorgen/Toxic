@@ -1120,6 +1120,19 @@ for _ru, (_uz, _en) in BTN.items():
     _ALIAS[_uz] = _ru
     _ALIAS[_en] = _ru
 
+# Алиасы без эмодзи -> версии с эмодзи (для обратной совместимости)
+_ALIAS["Назад"] = "⬅️ Назад"
+_ALIAS["Меню"] = "🏠 Меню"
+_ALIAS["Моя ссылка"] = "🔗 Моя ссылка"
+_ALIAS["Чат-рулетка"] = "🎲 Чат-рулетка"
+_ALIAS["Профиль"] = "👤 Профиль"
+_ALIAS["Магазин"] = "🛒 Магазин"
+_ALIAS["Пригласить"] = "👥 Пригласить"
+_ALIAS["Помощь"] = "ℹ️ Помощь"
+_ALIAS["Язык"] = "🌐 Язык"
+_ALIAS["Купить коины"] = "💎 Купить коины"
+_ALIAS["18+"] = "🔞 18+"
+
 # Текущий язык апдейта хранится в ContextVar (см. cur_lang()/set_cur_lang() вверху файла).
 
 
@@ -6571,7 +6584,7 @@ async def moder_panel_router(update, context):
     if text == "Обязательные каналы":
         await adm_channels_msg(update, context)
         return
-    if text == "Помощь":
+    if text == "ℹ️ Помощь":
         await update.message.reply_text(t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb())
         return
     await update.message.reply_text("Выберите действие", reply_markup=moder_menu_kb())
@@ -8251,17 +8264,17 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "adm_ch_name", "adm_ch_link", "adm_ch_confirm",
     }
     _NAV = {
-        "Моя ссылка": show_link_menu, "Чат-рулетка": show_roulette_entry,
-        "Профиль": show_profile, "Магазин": show_shop,
-        "Пригласить": show_referral, "Помощь": show_help,
-        "Язык": show_language_menu, "Купить коины": show_star_shop,
-        "18+": eighteen_plus_menu,
-        "Меню": go_home,
+        "🔗 Моя ссылка": show_link_menu, "🎲 Чат-рулетка": show_roulette_entry,
+        "👤 Профиль": show_profile, "🛒 Магазин": show_shop,
+        "👥 Пригласить": show_referral, "ℹ️ Помощь": show_help,
+        "🌐 Язык": show_language_menu, "💎 Купить коины": show_star_shop,
+        "🔞 18+": eighteen_plus_menu,
+        "🏠 Меню": go_home,
     }
     if (text in _NAV and state not in _NO_NAV
             and not (state and state.startswith("moder_q_"))
-            and not (state == "moder" and text == "Помощь")):
-        if text == "Магазин":
+            and not (state == "moder" and text == "ℹ️ Помощь")):
+        if text == "🛒 Магазин":
             context.user_data["state"] = None
         await _NAV[text](update, context)
         return
@@ -8513,7 +8526,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "Пригласить":
         await show_referral(update, context)
         return
-    if text == "Помощь" and state != "moder":
+    if text == "ℹ️ Помощь" and state != "moder":
         await show_help(update, context)
         return
     if text == "Язык":
@@ -8573,7 +8586,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await star_admin_router(update, context)
         return
     # 18+ меню
-    if text == "18+":
+    if text == "🔞 18+":
         await eighteen_plus_menu(update, context)
         return
     if text == "18+ магазин":
