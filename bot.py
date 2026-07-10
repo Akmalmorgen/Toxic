@@ -3126,9 +3126,9 @@ def t(key, **kw):
 
 def language_menu_kb():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇷🇺</tg-emoji> Русский"), KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇺🇿</tg-emoji> O'zbekcha")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5208510177048807117\">🇬🇧</tg-emoji> English")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("🇷🇺 Русский"), KeyboardButton("🇺🇿 O'zbekcha")],
+        [KeyboardButton("🇬🇧 English")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True)
 
 
@@ -3153,16 +3153,26 @@ async def language_router(update, context):
     await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
 
 
-async def set_lang_context(update, context):
-    """Подставляет язык пользователя в ContextVar текущего апдейта."""
-    try:
-        uid = update.effective_user.id if update.effective_user else None
-        set_cur_lang(get_lang(uid) if uid else "ru")
-    except Exception:
-        set_cur_lang("ru")
-
-
-def main_menu_kb(tg_id):
+async def main_menu_kb(tg_id):
+    rows = [
+        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎲 Чат-рулетка")],
+        [KeyboardButton("👤 Профиль"), KeyboardButton("🛒 Магазин")],
+        [KeyboardButton("👥 Пригласить"), KeyboardButton("ℹ️ Помощь")],
+        [KeyboardButton("🌐 Язык")],
+    ]
+    # Кнопка покупки коинов за Stars
+    if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
+        rows.append([KeyboardButton("💎 Купить коины")])
+    # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
+    if is_adult(get_user(tg_id)):
+        rows.append([KeyboardButton("🔞 18+")])
+    if is_admin(tg_id):
+        rows.append([KeyboardButton("🛠 Админка")])
+    else:
+        u = get_user(tg_id)
+        if is_moder(u):
+            rows.append([KeyboardButton("🛡 Модерка")])
+    return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
     rows = [
         [KeyboardButton("<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> Моя ссылка"), KeyboardButton("<tg-emoji emoji-id=\"5084923566848213749\">🎲</tg-emoji> Чат-рулетка")],
         [KeyboardButton("<tg-emoji emoji-id=\"5208468047714600000\">👤</tg-emoji> Профиль"), KeyboardButton("<tg-emoji emoji-id=\"5273885265830619457\">🛒</tg-emoji> Магазин")],
@@ -3186,63 +3196,63 @@ def main_menu_kb(tg_id):
 
 def yes_no_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5337080053119336309\">✅</tg-emoji> Да"), KeyboardButton("❌ Отмена")],
+        [KeyboardButton("✅ Да"), KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">💎</tg-emoji> Коины"), KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">⏳</tg-emoji> VIP")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модер"), KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">📦</tg-emoji> Вручную")],
+        [KeyboardButton("💎 Коины"), KeyboardButton("⏳ VIP")],
+        [KeyboardButton("🛡 Модер"), KeyboardButton("📦 Вручную")],
         [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def admin_menu_kb():
     enabled = get_setting("18plus_enabled", "1") == "1"
-    toggle_label = "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ доступ: ВКЛ" if enabled else "<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> 18+ доступ: ВЫКЛ"
+    toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Статистика"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📤</tg-emoji> Выгрузить пользователей")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5215706742645599766\">💰</tg-emoji> Начислить коины"), KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">👑</tg-emoji> VIP по ID")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📢</tg-emoji> Обязательные каналы"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📣</tg-emoji> Рассылка")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5251203410396458957\">🛡</tg-emoji> Модеры"), KeyboardButton("<tg-emoji emoji-id=\"5390944410504535549\">🔨</tg-emoji> Бан / Разбан")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5388850695552132264\">⭐</tg-emoji> Коины за Stars"), KeyboardButton(toggle_label)],
-        [KeyboardButton("<tg-emoji emoji-id=\"5388850695552132264\">💎</tg-emoji> Цена раскрытия")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Рассылка")],
+        [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
+        [KeyboardButton("💎 Цена раскрытия")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def admin_vip_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5368529160870306132\">👑</tg-emoji> VIP всем"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👑</tg-emoji> VIP девушкам"), KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👑</tg-emoji> VIP парням")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Выдать VIP"), KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">➖</tg-emoji> Забрать VIP")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
+        [KeyboardButton("👑 VIP всем"), KeyboardButton("👑 VIP девушкам"), KeyboardButton("👑 VIP парням")],
+        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("➖ Забрать VIP")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Добавить товар")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Список товаров"), KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить товар")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
+        [KeyboardButton("➕ Добавить товар")],
+        [KeyboardButton("📊 Список товаров"), KeyboardButton("🗑 Удалить товар")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def star_admin_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5208485407972407333\">➕</tg-emoji> Добавить пакет коинов")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5445267414562389170\">🗑</tg-emoji> Удалить пакет коинов")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад"), KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">🏠</tg-emoji> Меню")],
+        [KeyboardButton("➕ Добавить пакет коинов")],
+        [KeyboardButton("🗑 Удалить пакет коинов")],
+        [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
 
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5355129326763264187\">🚩</tg-emoji> Жалобы"), KeyboardButton("<tg-emoji emoji-id=\"5390944410504535549\">🔨</tg-emoji> Бан / Разбан")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213126838461018519\">📊</tg-emoji> Статистика"), KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📤</tg-emoji> Выгрузить пользователей")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📢</tg-emoji> Обязательные каналы")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5399986618037711131\">ℹ️</tg-emoji> Помощь")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
+        [KeyboardButton("📢 Обязательные каналы")],
+        [KeyboardButton("ℹ️ Помощь")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -3254,23 +3264,23 @@ def moder_decision_kb(app_id):
 
 
 def gender_kb(with_back=False):
-    rows = [[KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👨</tg-emoji> Мужской"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👩</tg-emoji> Женский")]]
+    rows = [[KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")]]
     if with_back:
-        rows.append([KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")])
+        rows.append([KeyboardButton("⬅️ Назад")])
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
 def link_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5375511227210433241\">🔗</tg-emoji> Показать ссылку"), KeyboardButton("<tg-emoji emoji-id=\"5220046725493828505\">✏️</tg-emoji> Сменить ссылку")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("🔗 Показать ссылку"), KeyboardButton("✏️ Сменить ссылку")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def roulette_pref_reply_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5314678809373450691\">👨</tg-emoji> Парня"), KeyboardButton("<tg-emoji emoji-id=\"5316790060677341262\">👩</tg-emoji> Девушку"), KeyboardButton("<tg-emoji emoji-id=\"5368428705880219702\">🤷</tg-emoji> Любого")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку"), KeyboardButton("🤷 Любого")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -3278,22 +3288,22 @@ def eighteen_plus_age_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("18/20"), KeyboardButton("20/22"), KeyboardButton("22/25")],
         [KeyboardButton("25/30"), KeyboardButton("30+")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5202148364115786801\">🔞</tg-emoji> Мне нет 18")],
+        [KeyboardButton("🔞 Мне нет 18")],
         [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_consent_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"6325805795518715615\">✅</tg-emoji> Согласиться")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("✅ Согласиться")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
 def eighteen_plus_verify_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("<tg-emoji emoji-id=\"5215344475039084599\">📷</tg-emoji> Отправить фото")],
-        [KeyboardButton("<tg-emoji emoji-id=\"5213358684024877471\">⬅️</tg-emoji> Назад")],
+        [KeyboardButton("📷 Отправить фото")],
+        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
