@@ -1015,7 +1015,7 @@ async def try_delete_message(context, chat_id, message_id):
 
 # ====================== СИСТЕМА ЯЗЫКОВ (Ру / Узб / Англ) ======================
 LANGS = ("ru", "uz", "en")
-LANG_BUTTONS = {"🇷🇺 Русский": "ru", "🇺🇿 O'zbekcha": "uz", "🇬🇧 English": "en"}
+LANG_BUTTONS = {"Русский": "ru", "O'zbekcha": "uz", "English": "en"}
 
 # Реестр кнопок: каноническая русская метка -> перевод (uz, en). Эмодзи одинаковые во всех языках.
 BTN = {
@@ -1113,11 +1113,31 @@ BTN = {
     "18+ магазин": ("18+ do'kon", "18+ shop"),
 }
 # Обратная карта: метка на любом языке -> каноническая русская метка
+def _strip_emoji_prefix(s: str) -> str:
+    """Убирает ведущий эмодзи-символ(ы) и пробел из метки кнопки.
+    Нужно чтобы «🛒 Магазин» → «Магазин» для сравнений в роутере."""
+    import re
+    return re.sub(
+        r'^[\U0001F000-\U0001FFFF'
+        r'\u2300-\u2BFF'
+        r'\u3030\u303D\u3297\u3299'
+        r'\u00A9\u00AE\u203C\u2049\u20E3\u2122\u2139'
+        r'\u2194-\u2199\u21A9\u21AA'
+        r'\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716'
+        r'\u271D\u2721\u2728\u2733\u2734\u2744\u2747'
+        r'\u274C\u274E\u2753-\u2755\u2757\u2763\u2764'
+        r'\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935'
+        r'\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55'
+        r']+[\uFE0F]?\s*',
+        '', s
+    )
+
 _ALIAS = {}
 for _ru, (_uz, _en) in BTN.items():
-    _ALIAS[_ru] = _ru
-    _ALIAS[_uz] = _ru
-    _ALIAS[_en] = _ru
+    _canonical = _strip_emoji_prefix(_ru)
+    _ALIAS[_ru] = _canonical
+    _ALIAS[_uz] = _canonical
+    _ALIAS[_en] = _canonical
 
 # Текущий язык апдейта хранится в ContextVar (см. cur_lang()/set_cur_lang() вверху файла).
 
