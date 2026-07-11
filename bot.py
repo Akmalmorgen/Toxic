@@ -1057,6 +1057,7 @@ BTN = {
     "🔒 Отозвать доступ": ("🔒 Kirishni bekor qilish", "🔒 Revoke access"),
     "🔨 Бан / Разбан": ("🔨 Ban / Unban", "🔨 Ban / Unban"),
     "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
+    "💎 Цена раскрытия": ("💎 Ochish narxi", "💎 Reveal price"),
     "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
     "🏠 Меню": ("🏠 Menyu", "🏠 Menu"),
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
@@ -1159,12 +1160,18 @@ def set_lang(uid, lang):
 
 def canon(text):
     """Любая языковая метка кнопки -> каноническая русская (для маршрутизации).
-    Убирает декоративные обрамления перед поиском."""
+    Убирает декоративные обрамления перед поиском.
+    Fallback: strip emoji prefix so buttons not registered in BTN still route correctly."""
     if text is None:
         return None
-    # Простой текст без обрамлений
     t = text.strip()
-    return _ALIAS.get(t, _ALIAS.get(text, text))
+    # 1. Прямое попадание (с пробелами или без)
+    hit = _ALIAS.get(t) or _ALIAS.get(text)
+    if hit:
+        return hit
+    # 2. Эмодзи-префикс убираем и ищем снова
+    stripped = _strip_emoji_prefix(t)
+    return _ALIAS.get(stripped, stripped)
 
 
 # Стилизация кнопок — единый декор применяется после получения перевода
@@ -3185,8 +3192,8 @@ def admin_menu_kb():
     toggle_label = "🔞 18+ доступ: ВКЛ" if enabled else "🔞 18+ доступ: ВЫКЛ"
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
-        [KeyboardButton("💎 Начислить коины"), KeyboardButton("👑 VIP по ID")],
-        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📣 Рассылка")],
+        [KeyboardButton("💰 Начислить коины"), KeyboardButton("👑 VIP по ID")],
+        [KeyboardButton("📢 Обязательные каналы"), KeyboardButton("📢 Рассылка")],
         [KeyboardButton("🛡 Модеры"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("⭐ Коины за Stars"), KeyboardButton(toggle_label)],
         [KeyboardButton("💎 Цена раскрытия")],
@@ -3220,7 +3227,7 @@ def star_admin_kb():
 
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("⚠️ Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("ℹ️ Помощь")],
@@ -3815,9 +3822,16 @@ async def set_age_from_text(update, context):
     state = context.user_data.get("state")
     uid = update.effective_user.id
     user = get_user(uid)
-    # Отмена/назад — только в профиле
-    if ctext in ("Назад", "Отмена") and state == "set_age_profile":
-        await show_profile(update, context)
+    # Отмена/назад
+    if ctext in ("Назад", "Отмена"):
+        if state == "set_age_profile":
+            await show_profile(update, context)
+        else:
+            # Регистрация: сбрасываем и возвращаем в главное меню
+            context.user_data["state"] = None
+            await update.message.reply_text(
+                t("main_menu"), reply_markup=main_menu_kb(update.effective_user.id)
+            )
         return
     # Ожидаем число
     if not text.isdigit():
