@@ -3127,7 +3127,7 @@ async def show_language_menu(update, context):
 
 async def language_router(update, context):
     text = canon(update.message.text)
-    if canon(text) == "Наз��д":
+    if text in ("Назад", "Меню", "Отмена"):
         context.user_data["state"] = None
         await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
@@ -3692,12 +3692,12 @@ async def show_eighteen_plus_roulette(update, context):
 
 
 async def eighteen_plus_pref_router(update, context):
-    """Обр��ботка выбора пола в 18+ рулетке."""
+    """Обработка выбора пола в 18+ рулетке."""
     text = canon(update.message.text)
     if text == "Меню":
         await go_home(update, context)
         return
-    if text == "Назад":
+    if text in ("Назад", "Отмена"):
         # Шаг назад: к меню 18+
         context.user_data["state"] = "18plus_menu"
         await nav(update, context, t("age_gate_intro"), eighteen_plus_menu_kb(), parse_mode="HTML")
@@ -3721,7 +3721,7 @@ async def eighteen_plus_age_search_router(update, context):
     if text == "Меню":
         await go_home(update, context)
         return
-    if text == "Назад":
+    if text in ("Назад", "Отмена"):
         # Шаг назад: к выбору пола собеседника
         context.user_data["state"] = "18plus_pref"
         await nav(update, context, t("roulette_who"), eighteen_plus_roulette_pref_kb())
@@ -5043,7 +5043,7 @@ def age_back_kb():
 
 
 def searching_kb():
-    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("🛑 Отменить поиск")]], resize_keyboard=True))
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("⛔ Отменить поиск")]], resize_keyboard=True))
 
 
 def cancel_reply_kb():
@@ -5066,15 +5066,15 @@ def bcast_audience_kb():
 def in_chat_kb():
     """Reply-клавиатура управления чатом — закреплена ВНИЗУ экрана (не уезжает с перепиской)."""
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("➡️ Далее"), KeyboardButton("🛑 Стоп")],
+        [KeyboardButton("➡️ Далее"), KeyboardButton("⏹️ Стоп")],
     ], resize_keyboard=True))
 
 
 def left_chat_kb():
     """Reply-клавиатура после ухода собеседника: новый поиск / жалоба / меню."""
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔄 Новый поиск")],
-        [KeyboardButton("⚠️ Пожаловаться"), KeyboardButton("⬅️ Назад")],
+        [KeyboardButton("🔍 Новый поиск")],
+        [KeyboardButton("🚩 Пожаловаться"), KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -5104,7 +5104,7 @@ async def show_roulette_entry(update, context):
 
 async def roulette_pref_router(update, context):
     text = canon(update.message.text)
-    if text == "Назад":
+    if text in ("Назад", "Меню", "Отмена"):
         context.user_data["state"] = None
         await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
         return
@@ -5975,7 +5975,7 @@ async def moder_q_router(update, context):
     state = context.user_data.get("state")
     text = canon(update.message.text)
     uid = update.effective_user.id
-    if text == "Отмена":
+    if text in ("Отмена", "Назад", "Меню"):
         price = context.user_data.get("moder_price", 0)
         if price:
             conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (price, uid))
@@ -7605,7 +7605,7 @@ async def show_star_shop(update, context):
 async def star_shop_router(update, context):
     text = canon(update.message.text)
     uid = update.effective_user.id
-    if text == "Назад":
+    if text in ("Назад", "Меню", "Отмена"):
         context.user_data["state"] = None
         await nav(update, context, t("main_menu"), main_menu_kb(uid))
         return
