@@ -1238,24 +1238,24 @@ T = {
         "en": "🚫 You are blocked and cannot use the bot.",
     },
     "done": {
-        "ru": "Готово.",
-        "uz": "Tayyor.",
-        "en": "Done.",
+        "ru": "✅ Готово!",
+        "uz": "✅ Tayyor!",
+        "en": "✅ Done!",
     },
     "enter_number": {
-        "ru": "Введите число:",
-        "uz": "Raqam kiriting:",
-        "en": "Enter a number:",
+        "ru": "🔢 Введите число:",
+        "uz": "🔢 Raqam kiriting:",
+        "en": "🔢 Enter a number:",
     },
     "enter_days": {
-        "ru": "Введите число дней:",
-        "uz": "Kunlar sonini kiriting:",
-        "en": "Enter the number of days:",
+        "ru": "📅 Введите число дней:",
+        "uz": "📅 Kunlar sonini kiriting:",
+        "en": "📅 Enter the number of days:",
     },
     "choose_on_kb": {
-        "ru": "Выберите",
-        "uz": "Tanlang",
-        "en": "Choose",
+        "ru": "👇 Выберите",
+        "uz": "👇 Tanlang",
+        "en": "👇 Choose",
     },
     # === Ссылка (доп.) ===
     "link_section": {
@@ -1285,9 +1285,9 @@ T = {
     },
     # === Анонимка (доп.) ===
     "anon_cancelled_menu": {
-        "ru": "Отменено. Главное меню",
-        "uz": "Bekor qilindi. Asosiy menyu",
-        "en": "Cancelled. Main menu",
+        "ru": "↩️ Отменено. Главное меню",
+        "uz": "↩️ Bekor qilindi. Asosiy menyu",
+        "en": "↩️ Cancelled. Main menu",
     },
     # === Подписка (доп.) ===
     "sub_to_delete": {
@@ -1425,9 +1425,9 @@ T = {
         "en": "forever",
     },
     "you_were_banned": {
-        "ru": "На вас поступила жалоба — на {days} дн. вы не сможете попасть к этому собеседнику в рулетке.",
-        "uz": "Sizga shikoyat tushdi — {days} kun davomida ruletkada bu suhbatdoshga tusha olmaysiz.",
-        "en": "You were reported — for {days} days you won't be matched with this person in roulette.",
+        "ru": "⚠️ На вас поступила жалоба — на {days} дн. вы не сможете попасть к этому собеседнику в рулетке.",
+        "uz": "⚠️ Sizga shikoyat tushdi — {days} kun davomida ruletkada bu suhbatdoshga tusha olmaysiz.",
+        "en": "⚠️ You were reported — for {days} days you won't be matched with this person in roulette.",
     },
     "you_were_banned_forever": {
         "ru": "На вас поступила жалоба. Вы <b>навсегда</b> заблокированы для этого пользователя: писать ему нельзя. Другим — можно.",
@@ -1435,14 +1435,14 @@ T = {
         "en": "You were reported. You are <b>permanently</b> blocked for this user: you can't message them. Others are fine.",
     },
     "anon_deleted_notice": {
-        "ru": "Собеседник удалил своё анонимное сообщение.",
-        "uz": "Suhbatdosh o'zining anonim xabarini o'chirdi.",
-        "en": "The sender deleted their anonymous message.",
+        "ru": "🗑 Собеседник удалил своё анонимное сообщение.",
+        "uz": "🗑 Suhbatdosh o'zining anonim xabarini o'chirdi.",
+        "en": "🗑 The sender deleted their anonymous message.",
     },
     "no_contacts": {
-        "ru": "Нельзя отправлять ссылки, @юзернеймы, номера, ID и упоминания соцсетей/каналов. Сообщение не отправлено.",
-        "uz": "Havola, @username, raqam, ID va ijtimoiy tarmoq/kanal nomlarini yuborib bo'lmaydi. Xabar yuborilmadi.",
-        "en": "You can't send links, @usernames, numbers, IDs or social/channel mentions. Message not sent.",
+        "ru": "⛔ Нельзя отправлять ссылки, @юзернеймы, номера, ID и упоминания соцсетей/каналов. Сообщение не отправлено.",
+        "uz": "⛔ Havola, @username, raqam, ID va ijtimoiy tarmoq/kanal nomlarini yuborib bo'lmaydi. Xabar yuborilmadi.",
+        "en": "⛔ You can't send links, @usernames, numbers, IDs or social/channel mentions. Message not sent.",
     },
     "cant_ban_staff": {
         "ru": "Нельзя забанить администратора или модератора. Жалоба ��тклонена.",
@@ -1456,24 +1456,24 @@ T = {
         "en": "🎲 Who do you want to find?",
     },
     "roulette_chat_ended": {
-        "ru": "Чат завершён",
-        "uz": "Chat yakunlandi",
-        "en": "Chat ended",
+        "ru": "🔚 Чат завершён",
+        "uz": "🔚 Chat yakunlandi",
+        "en": "🔚 Chat ended",
     },
     "roulette_chat_stopped": {
-        "ru": "Чат завершён.",
-        "uz": "Chat yakunlandi.",
-        "en": "Chat ended.",
+        "ru": "🔚 Чат завершён.",
+        "uz": "🔚 Chat yakunlandi.",
+        "en": "🔚 Chat ended.",
     },
     "roulette_finding_new": {
-        "ru": "Ищем нового собеседника…",
-        "uz": "Yangi suhbatdosh qidirilmoqda…",
-        "en": "Looking for a new partner…",
+        "ru": "🔍 Ищем нового собеседника…",
+        "uz": "🔍 Yangi suhbatdosh qidirilmoqda…",
+        "en": "🔍 Looking for a new partner…",
     },
     "roulette_already_short": {
-        "ru": "Вы уже в чате.",
-        "uz": "Siz allaqachon chatdasiz.",
-        "en": "You are already in a chat.",
+        "ru": "💬 Вы уже в чате.",
+        "uz": "💬 Siz allaqachon chatdasiz.",
+        "en": "💬 You are already in a chat.",
     },
     "roulette_finding_partner": {
         "ru": "⏳ Идёт поиск собеседника…",
@@ -1481,14 +1481,14 @@ T = {
         "en": "⏳ Searching for a partner…",
     },
     "session_not_found": {
-        "ru": "Сессия не найдена.",
-        "uz": "Sessiya topilmadi.",
-        "en": "Session not found.",
+        "ru": "❓ Сессия не найдена.",
+        "uz": "❓ Sessiya topilmadi.",
+        "en": "❓ Session not found.",
     },
     "roulette_searching_new": {
-        "ru": "Ищем нового собеседника...",
-        "uz": "Yangi suhbatdosh qidirilmoqda...",
-        "en": "Looking for a new partner...",
+        "ru": "🔍 Ищем нового собеседника...",
+        "uz": "🔍 Yangi suhbatdosh qidirilmoqda...",
+        "en": "🔍 Looking for a new partner...",
     },
     "btn_next": {
         "ru": "Далее",
@@ -1513,24 +1513,24 @@ T = {
 
     # === Магазин (доп.) ===
     "shop_pick_item": {
-        "ru": "Выберите товар на клавиатуре",
-        "uz": "Klaviaturadan mahsulotni tanlang",
-        "en": "Choose an item on the keyboard",
+        "ru": "🛒 Выберите товар на клавиатуре",
+        "uz": "🛒 Klaviaturadan mahsulotni tanlang",
+        "en": "🛒 Choose an item on the keyboard",
     },
     "18plus_shop_pick_item": {
-        "ru": "Выберите товар 18+ на клавиатуре",
-        "uz": "18+ mahsulotini klaviaturadan tanlang",
-        "en": "Choose a 18+ item on the keyboard",
+        "ru": "🔞 Выберите товар 18+ на клавиатуре",
+        "uz": "🔞 18+ mahsulotini klaviaturadan tanlang",
+        "en": "🔞 Choose a 18+ item on the keyboard",
     },
     "item_unavailable": {
-        "ru": "Товар недоступен.",
-        "uz": "Mahsulot mavjud emas.",
-        "en": "Item unavailable.",
+        "ru": "❌ Товар недоступен.",
+        "uz": "❌ Mahsulot mavjud emas.",
+        "en": "❌ Item unavailable.",
     },
     "not_enough_coins": {
-        "ru": "Недостаточно коинов",
-        "uz": "Coinlar yetarli emas",
-        "en": "Not enough coins",
+        "ru": "💸 Недостаточно коинов",
+        "uz": "💸 Coinlar yetarli emas",
+        "en": "💸 Not enough coins",
     },
     "shop_buy_confirm": {
         "ru": "Купить «<b>{title}</b>» за {price}?",
@@ -1558,9 +1558,9 @@ T = {
         "en": "✅ <b>Purchase complete!</b> VIP active for <b>{days}</b> days",
     },
     "purchase_manual": {
-        "ru": "<b>Покупка совершена!</b> Админ свяжется с вами и выдаст товар.",
-        "uz": "<b>Xarid amalga oshirildi!</b> Admin siz bilan bog'lanib, mahsulotni beradi.",
-        "en": "<b>Purchase complete!</b> The admin will contact you and deliver the item.",
+        "ru": "✅ <b>Покупка совершена!</b> Админ свяжется с вами и выдаст товар.",
+        "uz": "✅ <b>Xarid amalga oshirildi!</b> Admin siz bilan bog'lanib, mahsulotni beradi.",
+        "en": "✅ <b>Purchase complete!</b> The admin will contact you and deliver the item.",
     },
     "purchase_18plus": {
         "ru": "<b>Доступ к 18+ чату открыт на {days} дн.!</b>\nЗаходи в «18+ → 18+ рулетка» и общайся.",
@@ -1710,24 +1710,24 @@ T = {
         "en": "The report was rejected by the administrator.",
     },
     "report_already_handled": {
-        "ru": "Жалоба уже обработана.",
-        "uz": "Shikoyat allaqachon ko'rib chiqilgan.",
-        "en": "The report has already been handled.",
+        "ru": "ℹ️ Жалоба уже обработана.",
+        "uz": "ℹ️ Shikoyat allaqachon ko'rib chiqilgan.",
+        "en": "ℹ️ The report has already been handled.",
     },
     "report_confirmed_staff": {
-        "ru": "Жалоба подтверждена, бан выдан",
-        "uz": "Shikoyat tasdiqlandi, ban berildi",
-        "en": "Report confirmed, ban issued",
+        "ru": "✅ Жалоба подтверждена, бан выдан",
+        "uz": "✅ Shikoyat tasdiqlandi, ban berildi",
+        "en": "✅ Report confirmed, ban issued",
     },
     "report_rejected_staff": {
-        "ru": "Жалоба отклонена",
-        "uz": "Shikoyat rad etildi",
-        "en": "Report rejected",
+        "ru": "❌ Жалоба отклонена",
+        "uz": "❌ Shikoyat rad etildi",
+        "en": "❌ Report rejected",
     },
     "staff_only": {
-        "ru": "Только для модерации.",
-        "uz": "Faqat moderatorlar uchun.",
-        "en": "Moderation only.",
+        "ru": "🛡 Только для модерации.",
+        "uz": "🛡 Faqat moderatorlar uchun.",
+        "en": "🛡 Moderation only.",
     },
     "moder_form_gender": {
         "ru": "<b>Анкета на модератора.</b>\n\nВаш п��л?",
@@ -1750,19 +1750,19 @@ T = {
         "en": "How much time can you give the bot? When are you online?",
     },
     "moder_form_cancelled": {
-        "ru": "Анкета отменена. Коины ({price}) возвращены.",
-        "uz": "Anketa bekor qilindi. Coinlar ({price}) qaytarildi.",
-        "en": "Application cancelled. Coins ({price}) refunded.",
+        "ru": "↩️ Анкета отменена. Коины ({price}) возвращены.",
+        "uz": "↩️ Anketa bekor qilindi. Coinlar ({price}) qaytarildi.",
+        "en": "↩️ Application cancelled. Coins ({price}) refunded.",
     },
     "moder_form_sent": {
-        "ru": "Анкета отправлена администратору. Ожидайте решения!",
-        "uz": "Anketa administratorga yuborildi. Qarorni kuting!",
-        "en": "Application sent to the administrator. Please wait for a decision!",
+        "ru": "📨 Анкета отправлена администратору. Ожидайте решения!",
+        "uz": "📨 Anketa administratorga yuborildi. Qarorni kuting!",
+        "en": "📨 Application sent to the administrator. Please wait for a decision!",
     },
     "moder_granted_user": {
-        "ru": "Вам выдана роль модератора! В меню появилась кнопка «Модерка».",
-        "uz": "Sizga moderator roli berildi! Menyuda «Moderator» tugmasi paydo bo'ldi.",
-        "en": "You've been granted the moderator role! A «Moderation» button appeared in the menu.",
+        "ru": "🛡 Вам выдана роль модератора! В меню появилась кнопка «Модерка».",
+        "uz": "🛡 Sizga moderator roli berildi! Menyuda «Moderator» tugmasi paydo bo'ldi.",
+        "en": "🛡 You've been granted the moderator role! A «Moderation» button appeared in the menu.",
     },
     "moder_granted_shop": {
         "ru": "<b>Вы теперь Модер!</b> Добро пожаловать в команду.\nЗа бонусом напишите админу @ToxIc_0707 — он всё выдаст.",
@@ -1770,24 +1770,24 @@ T = {
         "en": "<b>You're a Moder now!</b> Welcome to the team.\nFor a bonus, message the admin @ToxIc_0707 — he'll provide everything.",
     },
     "moder_rejected_user": {
-        "ru": "К сожалению, заявка на модера отклонена. Коины ({coins}) возвращены.",
-        "uz": "Afsuski, moderlik arizasi rad etildi. Coinlar ({coins}) qaytarildi.",
-        "en": "Unfortunately, your moder application was rejected. Coins ({coins}) refunded.",
+        "ru": "❌ К сожалению, заявка на модера отклонена. Коины ({coins}) возвращены.",
+        "uz": "❌ Afsuski, moderlik arizasi rad etildi. Coinlar ({coins}) qaytarildi.",
+        "en": "❌ Unfortunately, your moder application was rejected. Coins ({coins}) refunded.",
     },
     "moder_taken_user": {
-        "ru": "Роль модератора снята.",
-        "uz": "Moderator roli olib tashlandi.",
-        "en": "The moderator role has been removed.",
+        "ru": "🛡 Роль модератора снята.",
+        "uz": "🛡 Moderator roli olib tashlandi.",
+        "en": "🛡 The moderator role has been removed.",
     },
     "admin_only": {
-        "ru": "Только для админа.",
-        "uz": "Faqat admin uchun.",
-        "en": "Admin only.",
+        "ru": "🔒 Только для админа.",
+        "uz": "🔒 Faqat admin uchun.",
+        "en": "🔒 Admin only.",
     },
     "cleanup_started": {
-        "ru": "Очистка…",
-        "uz": "Tozalash…",
-        "en": "Cleanup…",
+        "ru": "🧹 Очистка…",
+        "uz": "🧹 Tozalash…",
+        "en": "🧹 Cleanup…",
     },
     "cleanup_done": {
         "ru": "Готово. Проверено: {checked}, удалено: {removed}",
@@ -1840,9 +1840,9 @@ T = {
         "en": "<b>You've been granted VIP for {days} days!</b>\nEnjoy the perks.",
     },
     "vip_taken_user": {
-        "ru": "Ваш VIP-статус был снят администратором.",
-        "uz": "VIP holatingiz administrator tomonidan olib tashlandi.",
-        "en": "Your VIP status was revoked by the administrator.",
+        "ru": "👑 Ваш VIP-статус был снят администратором.",
+        "uz": "👑 VIP holatingiz administrator tomonidan olib tashlandi.",
+        "en": "👑 Your VIP status was revoked by the administrator.",
     },
     "vip_bulk_ask_days": {
         "ru": "На сколько дней выдать VIP <b>{target}</b>? (число)",
@@ -1870,29 +1870,29 @@ T = {
         "en": "<b>The 18+ section is temporarily unavailable</b>\n\nThe administrator paused the 18+ chat. Check back later",
     },
     "moder_app_already": {
-        "ru": "Заявка уже обработана.",
-        "uz": "Ariza allaqachon ko'rib chiqilgan.",
-        "en": "The application has already been handled.",
+        "ru": "ℹ️ Заявка уже обработана.",
+        "uz": "ℹ️ Ariza allaqachon ko'rib chiqilgan.",
+        "en": "ℹ️ The application has already been handled.",
     },
     "moder_granted_staff": {
-        "ru": "Модерка выдана.",
-        "uz": "Moderlik berildi.",
-        "en": "Moderation granted.",
+        "ru": "✅ Модерка выдана.",
+        "uz": "✅ Moderlik berildi.",
+        "en": "✅ Moderation granted.",
     },
     "moder_rejected_staff": {
-        "ru": "Заявка отклонена, коины возвращены.",
-        "uz": "Ariza rad etildi, coinlar qaytarildi.",
-        "en": "Application rejected, coins refunded.",
+        "ru": "❌ Заявка отклонена, коины возвращены.",
+        "uz": "❌ Ariza rad etildi, coinlar qaytarildi.",
+        "en": "❌ Application rejected, coins refunded.",
     },
     "gender_set_short": {
-        "ru": "Пол сохранён: {g}",
-        "uz": "Jins saqlandi: {g}",
-        "en": "Gender saved: {g}",
+        "ru": "✅ Пол сохранён: {g}",
+        "uz": "✅ Jins saqlandi: {g}",
+        "en": "✅ Gender saved: {g}",
     },
     "gender_needed_for_search": {
-        "ru": "Для поиска нужно указать пол. Выбери:",
-        "uz": "Qidiruv uchun jinsingizni tanlang:",
-        "en": "Please select your gender to start searching:",
+        "ru": "👤 Для поиска нужно указать пол. Выбери:",
+        "uz": "👤 Qidiruv uchun jinsingizni tanlang:",
+        "en": "👤 Please select your gender to start searching:",
     },
     "ref_friend_joined": {
         "ru": "🎉 По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b>",
@@ -2277,74 +2277,77 @@ T = {
         "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu",
     },
     "lang_choose": {
-        "ru": "Выберите язык интерфейса:",
-        "uz": "Interfeys tilini tanlang:",
-        "en": "Choose the interface language:",
+        "ru": "🌐 Выберите язык интерфейса:",
+        "uz": "🌐 Interfeys tilini tanlang:",
+        "en": "🌐 Choose the interface language:",
     },
     "lang_set": {
-        "ru": "Язык изменён на Русский\n\nГлавное меню",
-        "uz": "Til O'zbekchaga o'zgartirildi\n\nAsosiy menyu",
-        "en": "Language changed to English\n\nMain menu",
+        "ru": "🌐 Язык изменён на Русский ✅\n\nГлавное меню",
+        "uz": "🌐 Til O'zbekchaga o'zgartirildi ✅\n\nAsosiy menyu",
+        "en": "🌐 Language changed to English ✅\n\nMain menu",
     },
     "welcome": {
         "ru": (
-            "<b>Привет, {name}! 👋</b>\n"
+            "🔥 <b>Привет, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — это анонимность без границ ✨\n"
-            "<i>Тебе пишут тайно, а ты отвечаешь кому угодно 💬</i>\n\n"
-            "<blockquote>🔗 Личная ссылка для анонимок\n"
-            "🎲 Чат-рулетка по интересам\n"
-            "🕵️ Никто не узнает, кто ты</blockquote>\n"
-            "Поехали — выбери свой пол 🚀"
+            "Добро пожаловать в <b>𐌽ꤕ𐌗ተ</b> — место, где говорят честно и анонимно 🕶\n\n"
+            "<blockquote>🔗 Получай анонимки по своей ссылке\n"
+            "🎲 Чат-рулетка — новые знакомства каждый раз\n"
+            "🤐 Полная анонимность — никто не знает, кто ты\n"
+            "💎 VIP, коины и бонусы за приглашённых друзей</blockquote>\n\n"
+            "👇 <b>Первый шаг — выбери свой пол</b>"
         ),
         "uz": (
-            "<b>Salom, {name}! 👋</b>\n"
+            "🔥 <b>Salom, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — chegarasiz anonimlik ✨\n"
-            "<i>Sizga yashirin yozishadi, siz esa istalgan kishiga javob berasiz 💬</i>\n\n"
-            "<blockquote>🔗 Anonim xabarlar uchun shaxsiy havola\n"
-            "🎲 Qiziqish bo'yicha chat-ruletka\n"
-            "🕵️ Hech kim siz kimligingizni bilmaydi</blockquote>\n"
-            "Boshladik — jinsingizni tanlang 🚀"
+            "Xush kelibsiz <b>𐌽ꤕ𐌗ተ</b> ga — halol va anonim muloqot makoni 🕶\n\n"
+            "<blockquote>🔗 Havolangiz orqali anonim xabar oling\n"
+            "🎲 Chat-ruletka — har safar yangi tanishuvlar\n"
+            "🤐 To'liq anonimlik — hech kim kim ekanligingizni bilmaydi\n"
+            "💎 VIP, coinlar va do'stlar uchun bonuslar</blockquote>\n\n"
+            "👇 <b>Birinchi qadam — jinsingizni tanlang</b>"
         ),
         "en": (
-            "<b>Hi, {name}! 👋</b>\n"
+            "🔥 <b>Hi, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<b>𐌽ꤕ𐌗ተ</b> — anonymity without limits ✨\n"
-            "<i>People message you secretly, and you reply to anyone 💬</i>\n\n"
-            "<blockquote>🔗 Personal link for anonymous messages\n"
-            "🎲 Chat roulette by interest\n"
-            "🕵️ No one will know who you are</blockquote>\n"
-            "Let's go — choose your gender 🚀"
+            "Welcome to <b>𐌽ꤕ𐌗ተ</b> — where people speak freely and anonymously 🕶\n\n"
+            "<blockquote>🔗 Get anonymous messages via your personal link\n"
+            "🎲 Chat roulette — new people every time\n"
+            "🤐 Full anonymity — no one knows who you are\n"
+            "💎 VIP, coins and bonuses for inviting friends</blockquote>\n\n"
+            "👇 <b>First step — choose your gender</b>"
         ),
     },
     "welcome_back": {
         "ru": (
-            "<b>С возвращением, {name}! 🎊</b>\n"
+            "🎉 <b>С возвращением, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Рады видеть тебя снова в</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
-            "<blockquote>🔗 Делись ссылкой — лови анонимки\n"
-            "🎲 Заходи в чат-рулетку\n"
-            "👥 Зови друзей — забирай награды</blockquote>\n"
-            "Главное меню 🏠"
+            "Снова рады видеть тебя в <b>𐌽ꤕ𐌗ተ</b> 💫\n\n"
+            "<blockquote>🔗 Делись ссылкой — получай анонимки\n"
+            "🎲 Прыгай в чат-рулетку\n"
+            "👥 Зови друзей — получай бонусы\n"
+            "🛒 Загляни в магазин — там кое-что новое</blockquote>\n\n"
+            "🏠 Главное меню"
         ),
         "uz": (
-            "<b>Qaytganingiz bilan, {name}! 🎊</b>\n"
+            "🎉 <b>Qaytganingiz bilan, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Sizni</i> <b>𐌽ꤕ𐌗ተ</b> <i>da yana ko'rganimizdan xursandmiz</i> 💫\n"
-            "<blockquote>🔗 Havolani ulashing — anonim xabarlar oling\n"
+            "Sizni <b>𐌽ꤕ𐌗ተ</b> da yana ko'rganimizdan xursandmiz 💫\n\n"
+            "<blockquote>🔗 Havolani ulashing — anonim xabar oling\n"
             "🎲 Chat-ruletkaga kiring\n"
-            "👥 Do'stlarni chaqiring — mukofot oling</blockquote>\n"
-            "Asosiy menyu 🏠"
+            "👥 Do'stlarni chaqiring — bonus oling\n"
+            "🛒 Do'konni ko'rib chiqing</blockquote>\n\n"
+            "🏠 Asosiy menyu"
         ),
         "en": (
-            "<b>Welcome back, {name}! 🎊</b>\n"
+            "🎉 <b>Welcome back, {name}!</b> 👋\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "<i>Glad to see you again in</i> <b>𐌽ꤕ𐌗ተ</b> 💫\n"
+            "Great to see you again in <b>𐌽ꤕ𐌗ተ</b> 💫\n\n"
             "<blockquote>🔗 Share your link — get anonymous messages\n"
             "🎲 Jump into chat roulette\n"
-            "👥 Invite friends — claim rewards</blockquote>\n"
-            "Main menu 🏠"
+            "👥 Invite friends — earn bonuses\n"
+            "🛒 Check the shop for new items</blockquote>\n\n"
+            "🏠 Main menu"
         ),
     },
     "help": {
