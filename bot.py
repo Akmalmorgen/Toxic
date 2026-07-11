@@ -6632,17 +6632,47 @@ async def adm_stats_msg(update, context):
         a = str(r["age"]).strip()
         if a.isdigit() and int(a) >= 18:
             adults += 1
-    # Размер БД
+    # Размер и заполненность БД
+    def _fmt(b):
+        if b >= 1024 * 1024 * 1024:
+            return f"{b / 1024 / 1024 / 1024:.2f} ГБ"
+        if b >= 1024 * 1024:
+            return f"{b / 1024 / 1024:.2f} МБ"
+        if b >= 1024:
+            return f"{b / 1024:.1f} КБ"
+        return f"{b} Б"
     try:
-        db_bytes = os.path.getsize(DB_PATH)
-        if db_bytes >= 1024 * 1024:
-            db_size_str = f"{db_bytes / 1024 / 1024:.1f} МБ"
-        elif db_bytes >= 1024:
-            db_size_str = f"{db_bytes / 1024:.1f} КБ"
+        if USE_PG:
+            # PostgreSQL / Neon — размер БД и таблиц
+            r = conn.execute(
+                "SELECT pg_database_size(current_database()) AS total,"
+                "       (SELECT SUM(pg_total_relation_size(relid)) FROM pg_stat_user_tables) AS used"
+            ).fetchone()
+            total_bytes = int(r[0] or 0)
+            used_bytes  = int(r[1] or 0)
+            free_bytes  = max(0, total_bytes - used_bytes)
+            fill_pct    = round(used_bytes / total_bytes * 100) if total_bytes else 0
         else:
-            db_size_str = f"{db_bytes} Б"
-    except Exception:
-        db_size_str = "—"
+            # SQLite — через PRAGMA
+            page_size  = conn.execute("PRAGMA page_size").fetchone()[0]
+            page_count = conn.execute("PRAGMA page_count").fetchone()[0]
+            free_pages = conn.execute("PRAGMA freelist_count").fetchone()[0]
+            used_pages  = page_count - free_pages
+            total_bytes = page_count * page_size
+            used_bytes  = used_pages * page_size
+            free_bytes  = free_pages * page_size
+            fill_pct    = round(used_pages / page_count * 100) if page_count else 0
+        bar_filled = fill_pct // 10
+        bar = "█" * bar_filled + "░" * (10 - bar_filled)
+        db_line = (
+            f"💾 <b>База данных</b>\n"
+            f"   Всего:    <b>{_fmt(total_bytes)}</b>\n"
+            f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
+            f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
+            f"   [{bar}] {fill_pct}%"
+        )
+    except Exception as _e:
+        db_line = f"💾 Размер БД: — (<i>{_e}</i>)"
     reveal_stars = get_setting_int("reveal_stars", 1)
     kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
     await update.message.reply_text(
@@ -6661,7 +6691,8 @@ async def adm_stats_msg(update, context):
         f"🎲 Сессий рулетки: <b>{sessions_count}</b>\n"
         f"🔞 Из них 18+: <b>{sessions_18}</b>\n"
         "────────────\n"
-        f"💾 Размер БД: <b>{db_size_str}</b>\n"
+        f"{db_line}\n"
+        "────────────\n"
         f"⭐ Цена раскрытия: <b>{reveal_stars} Star</b>"
         "</blockquote>",
         parse_mode="HTML",
