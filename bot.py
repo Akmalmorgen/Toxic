@@ -6632,22 +6632,37 @@ async def adm_stats_msg(update, context):
         a = str(r["age"]).strip()
         if a.isdigit() and int(a) >= 18:
             adults += 1
+    # Размер БД
+    try:
+        db_bytes = os.path.getsize(DB_PATH)
+        if db_bytes >= 1024 * 1024:
+            db_size_str = f"{db_bytes / 1024 / 1024:.1f} МБ"
+        elif db_bytes >= 1024:
+            db_size_str = f"{db_bytes / 1024:.1f} КБ"
+        else:
+            db_size_str = f"{db_bytes} Б"
+    except Exception:
+        db_size_str = "—"
+    reveal_stars = get_setting_int("reveal_stars", 1)
     kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
     await update.message.reply_text(
-        "<b>Статистика бота</b>\n"
+        "<b>📊 Статистика бота</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "<blockquote>"
-        f"Пользователей: <b>{users_count}</b>\n"
-        f"Совершеннолетних (18+): <b>{adults}</b>\n"
-        f"VIP сейчас: <b>{vip_count}</b>\n"
-        f"Модераторов: <b>{moders_count}</b>\n"
-        "────────────���\n"
-        f"Анон-ссылок создано: <b>{anon_links}</b>\n"
-        f"Реф-ссылок (приглашений): <b>{ref_links}</b>\n"
-        "─���───────────\n"
-        f"Анон-сообщений: <b>{msgs_count}</b>\n"
-        f"Сессий рулетки: <b>{sessions_count}</b>\n"
-        f"Из них 18+: <b>{sessions_18}</b>"
+        f"👥 Пользователей: <b>{users_count}</b>\n"
+        f"🔞 Совершеннолетних (18+): <b>{adults}</b>\n"
+        f"👑 VIP сейчас: <b>{vip_count}</b>\n"
+        f"🛡 Модераторов: <b>{moders_count}</b>\n"
+        "────────────\n"
+        f"🔗 Анон-ссылок создано: <b>{anon_links}</b>\n"
+        f"📨 Реф-ссылок (приглашений): <b>{ref_links}</b>\n"
+        "────────────\n"
+        f"💬 Анон-сообщений: <b>{msgs_count}</b>\n"
+        f"🎲 Сессий рулетки: <b>{sessions_count}</b>\n"
+        f"🔞 Из них 18+: <b>{sessions_18}</b>\n"
+        "────────────\n"
+        f"💾 Размер БД: <b>{db_size_str}</b>\n"
+        f"⭐ Цена раскрытия: <b>{reveal_stars} Star</b>"
         "</blockquote>",
         parse_mode="HTML",
         reply_markup=kb,
@@ -7081,6 +7096,28 @@ async def process_bcast_audience_text(update, context):
         reply_markup=cancel_reply_kb(),
     )
 
+
+
+async def process_adm_reveal_price(update, context):
+    text = update.message.text.strip()
+    if canon(text) == "Отмена":
+        context.user_data["state"] = None
+        await update.message.reply_text("↩️ Отменено.", reply_markup=admin_menu_kb())
+        return
+    try:
+        val = int(text)
+        if val < 1:
+            raise ValueError
+    except ValueError:
+        await update.message.reply_text("Введите целое число ≥ 1:", reply_markup=cancel_reply_kb())
+        return
+    set_setting("reveal_stars", val)
+    context.user_data["state"] = None
+    await update.message.reply_text(
+        f"✅ Цена раскрытия обновлена: <b>{val} Star</b>",
+        parse_mode="HTML",
+        reply_markup=admin_menu_kb(),
+    )
 
 
 async def process_adm_coins_wizard(update, context):
@@ -7632,7 +7669,8 @@ async def on_reveal_pay(update, context):
         return
     # Убираем кнопки подтверждения
     await query.edit_message_text(t("reveal_paying"))
-    # Отправляем инвойс на 1 Star
+    # Отправляем инвойс — цена берётся из настроек (по умолчанию 1 Star)
+    reveal_stars = max(1, get_setting_int("reveal_stars", 1))
     await context.bot.send_invoice(
         chat_id=query.from_user.id,
         title=t("reveal_title"),
@@ -7640,7 +7678,7 @@ async def on_reveal_pay(update, context):
         payload=f"reveal:{mid}",
         provider_token="",
         currency="XTR",
-        prices=[LabeledPrice(label="", amount=1)],
+        prices=[LabeledPrice(label="", amount=reveal_stars)],
     )
 
 
@@ -8367,6 +8405,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state and state.startswith("adm_coins_"):
         await process_adm_coins_wizard(update, context)
         return
+    if state == "adm_reveal_price":
+        await process_adm_reveal_price(update, context)
+        return
     if state in ("adm_channels_menu", "adm_ch_name", "adm_ch_link", "adm_ch_confirm", "adm_ch_delete"):
         await adm_channels_router(update, context)
         return
@@ -8431,6 +8472,17 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
         if text == "Коины за Stars":
             await show_star_admin(update, context)
+            return
+        if text == "Цена раскрытия":
+            cur = get_setting_int("reveal_stars", 1)
+            context.user_data["state"] = "adm_reveal_price"
+            await update.message.reply_text(
+                f"⭐ <b>Цена раскрытия отправителя</b>\n\n"
+                f"Сейчас: <b>{cur} Star</b>\n\n"
+                f"Введите новое число (целое, минимум 1):",
+                parse_mode="HTML",
+                reply_markup=cancel_reply_kb(),
+            )
             return
         if text == "VIP по ID":
             context.user_data["state"] = "admin_vip"
