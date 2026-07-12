@@ -3159,7 +3159,7 @@ def main_menu_kb(tg_id):
     ]
     # Кнопка покупки коинов за Stars — стилизована как premium
     if conn.execute("SELECT 1 FROM star_packages WHERE active=1 LIMIT 1").fetchone():
-        star_label = styled(tr_btn("Купить коины"), "premium")
+        star_label = styled(tr_btn("💎 Купить коины"), "premium")
         rows.append([KeyboardButton(star_label)])
     # Кнопка 18+ — только у подтверждённых совершеннолетних (возраст >= 18)
     if is_adult(get_user(tg_id)):
@@ -3181,9 +3181,9 @@ def yes_no_kb():
 
 def reward_type_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("💎 Коины"), KeyboardButton("👑 VIP")],
-        [KeyboardButton("🛡 Модер"), KeyboardButton("✨ Вручную")],
-        [KeyboardButton("⬅️ Отмена")],
+        [KeyboardButton("💎 Коины"), KeyboardButton("⏳ VIP")],
+        [KeyboardButton("🛡 Модер"), KeyboardButton("📦 Вручную")],
+        [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
@@ -3203,8 +3203,8 @@ def admin_menu_kb():
 
 def admin_vip_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👥 VIP всем"), KeyboardButton("👩 VIP девушкам"), KeyboardButton("👨 VIP парням")],
-        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("❌ Забрать VIP")],
+        [KeyboardButton("👑 VIP всем"), KeyboardButton("👑 VIP девушкам"), KeyboardButton("👑 VIP парням")],
+        [KeyboardButton("➕ Выдать VIP"), KeyboardButton("➖ Забрать VIP")],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
@@ -3251,7 +3251,7 @@ def gender_kb(with_back=False):
 
 def link_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👁 Показать ссылку"), KeyboardButton("🔄 Сменить ссылку")],
+        [KeyboardButton("🔗 Показать ссылку"), KeyboardButton("✏️ Сменить ссылку")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
@@ -3341,7 +3341,7 @@ async def go_home(update, context):
 
 def profile_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("✏️ Сменить пол"), KeyboardButton("📅 Изменить возраст")],
+        [KeyboardButton("✏️ Сменить пол"), KeyboardButton("✏️ Изменить возраст")],
         [KeyboardButton("🎁 Подарить коины")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
@@ -6276,11 +6276,11 @@ async def shop_edit_list(update, context):
 
 
 def shop_edit_item_kb(item):
-    rows = [[KeyboardButton("📝 Название"), KeyboardButton("💵 Цена")]]
+    rows = [[KeyboardButton("📝 Название"), KeyboardButton("💰 Цена")]]
     if item["reward_type"] == "coins":
-        rows.append([KeyboardButton("💰 Сумма коинов")])
+        rows.append([KeyboardButton("💎 Сумма коинов")])
     elif item["reward_type"] == "vip" or item["is_vip"]:
-        rows.append([KeyboardButton("⏰ Срок VIP")])
+        rows.append([KeyboardButton("⏳ Срок VIP")])
     elif item["reward_type"] == "eighteenplus":
         rows.append([KeyboardButton("⏱ Срок доступа")])
     rows.append([KeyboardButton("🗑 Удалить товар")])
@@ -6412,7 +6412,7 @@ async def show_moder_menu(update, context):
 
 def admin_moder_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("👮 Выдать модера"), KeyboardButton("🚫 Забрать модера")],
+        [KeyboardButton("➕ Выдать модера"), KeyboardButton("➖ Забрать модера")],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
 
@@ -7252,7 +7252,7 @@ async def ad_preview_and_offer(update, context):
     await update.message.reply_text(
         "Разослать рекламу всем пользователям?",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
-            [[KeyboardButton("📢 Отправить всем")], [KeyboardButton("❌ Отмена")]],
+            [[KeyboardButton("📤 Отправить всем")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
         )),
     )
