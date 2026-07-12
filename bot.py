@@ -1112,6 +1112,8 @@ BTN = {
     "🔞 Товар 18+": ("🔞 18+ mahsulot", "🔞 18+ item"),
     "18+ рулетка": ("18+ ruletka", "18+ roulette"),
     "18+ магазин": ("18+ do'kon", "18+ shop"),
+    "🔞 18+ рулетка": ("🔞 18+ ruletka", "🔞 18+ roulette"),
+    "🛒 18+ магазин": ("🛒 18+ do'kon", "🛒 18+ shop"),
 }
 # Обратная карта: метка на любом языке -> каноническая русская метка
 def _strip_emoji_prefix(s: str) -> str:
@@ -1850,6 +1852,16 @@ T = {
         "ru": "👑 Ваш VIP-статус был снят администратором.",
         "uz": "👑 VIP holatingiz administrator tomonidan olib tashlandi.",
         "en": "👑 Your VIP status was revoked by the administrator.",
+    },
+    "vip_bulk_menu_title": {
+        "ru": "🎯 <b>Массовый VIP — {target}</b>\n\nВыберите действие:",
+        "uz": "🎯 <b>Ommaviy VIP — {target}</b>\n\nAmalni tanlang:",
+        "en": "🎯 <b>Bulk VIP — {target}</b>\n\nChoose an action:",
+    },
+    "vip_bulk_revoke_done": {
+        "ru": "✅ VIP снят у <b>{target}</b> ({count} чел.)",
+        "uz": "✅ <b>{target}</b>dan VIP olib tashlandi ({count} kishi)",
+        "en": "✅ VIP revoked from <b>{target}</b> ({count} users)",
     },
     "vip_bulk_ask_days": {
         "ru": "На сколько дней выдать VIP <b>{target}</b>? (число)",
@@ -3207,6 +3219,23 @@ def admin_vip_kb():
         [KeyboardButton("➕ Выдать VIP"), KeyboardButton("➖ Забрать VIP")],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
     ], resize_keyboard=True))
+
+
+def vip_bulk_menu_kb(bulk_filter):
+    """Подменю массового VIP: выдать или забрать у конкретной группы."""
+    if bulk_filter == "all":
+        give_label = "➕ Выдать VIP всем"
+        take_label = "➖ Забрать у всех"
+    elif bulk_filter == "female":
+        give_label = "➕ Выдать VIP девушкам"
+        take_label = "➖ Забрать у девушек"
+    else:
+        give_label = "➕ Выдать VIP парням"
+        take_label = "➖ Забрать у парней"
+    return ReplyKeyboardMarkup([
+        [KeyboardButton(give_label), KeyboardButton(take_label)],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True)
 
 
 def eighteen_plus_admin_kb():
@@ -6715,12 +6744,74 @@ async def adm_stats_msg(update, context):
 
 
 async def admin_vip_router(update, context):
-    """Админ: выдать/забрать VIP по ID пользователя."""
+    """Админ: выдать/забрать VIP по ID или массово (всем/девушкам/парням)."""
     text = canon(update.message.text.strip())
     state = context.user_data.get("state")
     uid = update.effective_user.id
     if not is_admin(uid):
         return
+
+    # ── Подменю массового VIP (своя обработка «Назад» → обратно в admin_vip_kb) ──
+    if state == "vip_bulk_menu":
+        bulk_filter = context.user_data.get("vip_bulk_filter", "all")
+        if text == "Назад":
+            context.user_data["state"] = "admin_vip"
+            await update.message.reply_text(
+                t("admin_vip_menu"), parse_mode="HTML", reply_markup=admin_vip_kb()
+            )
+            return
+        if text == "Меню":
+            context.user_data["state"] = None
+            await go_home(update, context)
+            return
+        # Выдать VIP группе → спросить количество дней
+        _BULK_GIVE = {
+            "Выдать VIP всем":      ("all",    "всем"),
+            "Выдать VIP девушкам":  ("female", "девушкам (Ж)"),
+            "Выдать VIP парням":    ("male",   "парням (М)"),
+        }
+        if text in _BULK_GIVE:
+            filt, label = _BULK_GIVE[text]
+            context.user_data["vip_bulk_filter"] = filt
+            context.user_data["state"] = "vip_bulk_days"
+            await update.message.reply_text(
+                t("vip_bulk_ask_days", target=label), parse_mode="HTML",
+                reply_markup=cancel_reply_kb()
+            )
+            return
+        # Забрать VIP у группы → немедленно
+        _BULK_TAKE = {
+            "Забрать у всех":    ("all",    "всех"),
+            "Забрать у девушек": ("female", "девушек (Ж)"),
+            "Забрать у парней":  ("male",   "парней (М)"),
+        }
+        if text in _BULK_TAKE:
+            filt, label = _BULK_TAKE[text]
+            q = {"all": "", "female": " WHERE gender='f'", "male": " WHERE gender='m'"}[filt]
+            count = conn.execute(f"SELECT COUNT(*) as c FROM users{q}").fetchone()["c"]
+            conn.execute(f"UPDATE users SET vip_until=NULL{q}")
+            rows = conn.execute(f"SELECT tg_id FROM users{q}").fetchall()
+            conn.commit()
+            context.user_data["state"] = "admin_vip"
+            context.user_data.pop("vip_bulk_filter", None)
+            _sl = cur_lang()
+            for r in rows:
+                try:
+                    set_cur_lang(get_lang(r["tg_id"]))
+                    await context.bot.send_message(r["tg_id"], t("vip_taken_user"), parse_mode="HTML")
+                except TelegramError:
+                    pass
+                await asyncio.sleep(0.03)
+            set_cur_lang(_sl)
+            await update.message.reply_text(
+                t("vip_bulk_revoke_done", target=label, count=count),
+                parse_mode="HTML", reply_markup=admin_vip_kb()
+            )
+            return
+        await update.message.reply_text(t("choose_on_kb"), reply_markup=vip_bulk_menu_kb(bulk_filter))
+        return
+
+    # ── Глобальная навигация Назад / Меню для остальных состояний ──
     if text in ("Назад", "Меню"):
         context.user_data["state"] = None
         if text == "Меню":
@@ -6728,6 +6819,7 @@ async def admin_vip_router(update, context):
         else:
             await show_admin_menu(update, context)
         return
+
     if state == "admin_vip":
         if text == "Выдать VIP":
             context.user_data["state"] = "vip_give_id"
@@ -6737,23 +6829,24 @@ async def admin_vip_router(update, context):
             context.user_data["state"] = "vip_take_id"
             await update.message.reply_text(t("vip_ask_id"), parse_mode="HTML", reply_markup=cancel_reply_kb())
             return
-        if text == "VIP всем":
-            context.user_data["vip_bulk_filter"] = "all"
-            context.user_data["state"] = "vip_bulk_days"
-            await update.message.reply_text(t("vip_bulk_ask_days", target="всем"), parse_mode="HTML", reply_markup=cancel_reply_kb())
-            return
-        if text == "VIP девушкам":
-            context.user_data["vip_bulk_filter"] = "female"
-            context.user_data["state"] = "vip_bulk_days"
-            await update.message.reply_text(t("vip_bulk_ask_days", target="девушкам (Ж)"), parse_mode="HTML", reply_markup=cancel_reply_kb())
-            return
-        if text == "VIP парням":
-            context.user_data["vip_bulk_filter"] = "male"
-            context.user_data["state"] = "vip_bulk_days"
-            await update.message.reply_text(t("vip_bulk_ask_days", target="парням (М)"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        # Массовые кнопки → открываем подменю
+        _BULK_OPEN = {
+            "VIP всем":      ("all",    "всем"),
+            "VIP девушкам":  ("female", "девушкам (Ж)"),
+            "VIP парням":    ("male",   "парням (М)"),
+        }
+        if text in _BULK_OPEN:
+            filt, label = _BULK_OPEN[text]
+            context.user_data["vip_bulk_filter"] = filt
+            context.user_data["state"] = "vip_bulk_menu"
+            await update.message.reply_text(
+                t("vip_bulk_menu_title", target=label), parse_mode="HTML",
+                reply_markup=vip_bulk_menu_kb(filt)
+            )
             return
         await update.message.reply_text(t("choose_on_kb"), reply_markup=admin_vip_kb())
         return
+
     if text == "Отмена":
         context.user_data["state"] = "admin_vip"
         await update.message.reply_text(t("done"), reply_markup=admin_vip_kb())
@@ -6813,43 +6906,25 @@ async def admin_vip_router(update, context):
         days = int(text)
         bulk_filter = context.user_data.get("vip_bulk_filter", "all")
         new_until = (now_dt() + timedelta(days=days)).isoformat()
-        if bulk_filter == "all":
-            conn.execute("UPDATE users SET vip_until=?", (new_until,))
-            target_label = "всем"
-        elif bulk_filter == "female":
-            conn.execute("UPDATE users SET vip_until=? WHERE gender='f'", (new_until,))
-            target_label = "девушкам (Ж)"
-        else:
-            conn.execute("UPDATE users SET vip_until=? WHERE gender='m'", (new_until,))
-            target_label = "парням (М)"
+        q = {"all": "", "female": " WHERE gender='f'", "male": " WHERE gender='m'"}[bulk_filter]
+        label_map = {"all": "всем", "female": "девушкам (Ж)", "male": "парням (М)"}
+        conn.execute(f"UPDATE users SET vip_until=?{q}", (new_until,))
         conn.commit()
-        if bulk_filter == "all":
-            count = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
-        elif bulk_filter == "female":
-            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='f'").fetchone()["c"]
-        else:
-            count = conn.execute("SELECT COUNT(*) as c FROM users WHERE gender='m'").fetchone()["c"]
-        if bulk_filter == "all":
-            rows = conn.execute("SELECT tg_id FROM users").fetchall()
-        elif bulk_filter == "female":
-            rows = conn.execute("SELECT tg_id FROM users WHERE gender='f'").fetchall()
-        else:
-            rows = conn.execute("SELECT tg_id FROM users WHERE gender='m'").fetchall()
+        count = conn.execute(f"SELECT COUNT(*) as c FROM users{q}").fetchone()["c"]
+        rows = conn.execute(f"SELECT tg_id FROM users{q}").fetchall()
         context.user_data["state"] = "admin_vip"
         context.user_data.pop("vip_bulk_filter", None)
-        notified = 0
         _sl = cur_lang()
         for r in rows:
             try:
                 set_cur_lang(get_lang(r["tg_id"]))
                 await context.bot.send_message(r["tg_id"], t("vip_granted_user", days=days), parse_mode="HTML")
-                notified += 1
             except TelegramError:
                 pass
             await asyncio.sleep(0.03)
         set_cur_lang(_sl)
         await update.message.reply_text(
-            t("vip_bulk_done", target=target_label, days=days, count=count),
+            t("vip_bulk_done", target=label_map[bulk_filter], days=days, count=count),
             parse_mode="HTML", reply_markup=admin_vip_kb(),
         )
         return
@@ -8444,7 +8519,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "admin_moder":
         await admin_moder_router(update, context)
         return
-    if state in ("admin_vip", "vip_give_id", "vip_give_days", "vip_take_id", "vip_bulk_days"):
+    if state in ("admin_vip", "vip_give_id", "vip_give_days", "vip_take_id", "vip_bulk_days", "vip_bulk_menu"):
         await admin_vip_router(update, context)
         return
     if state and state.startswith("adm_coins_"):
