@@ -8882,7 +8882,6 @@ async def _h_cmd_next(message: Message):
 
 # Карта callback-хендлеров
 _CALLBACKS = [
-    ("back_main", on_back_main, True),
     ("reply:", on_reply_button, False),
     ("del:", on_delete_button, False),
     ("subcheck:", on_subcheck_button, False),
