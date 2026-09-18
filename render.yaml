@@ -3,20 +3,31 @@ services:
     name: toxicuz-bot
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
     startCommand: python main.py
-    # Render помечает сервис «healthy» когда GET / возвращает 200.
-    # Бот поднимает keep-alive HTTP-сервер на PORT — этого достаточно.
     healthCheckPath: /
     envVars:
+      # ===== ОБЯЗАТЕЛЬНЫЕ =====
       - key: BOT_TOKEN
         sync: false
       - key: ADMIN_IDS
         sync: false
-      # ОБЯЗАТЕЛЬНО: строка подключения к PostgreSQL (например Neon).
-      # Без неё бот упадёт на SQLite и будет терять все данные при рестарте.
-      # Формат: postgresql://user:password@host/dbname?sslmode=require
+
+      # ===== РЕКОМЕНДУЕМЫЕ =====
       - key: DATABASE_URL
         sync: false
+
+      # ===== ОПЦИОНАЛЬНЫЕ =====
       - key: ADMIN_ACCESS_KEY
         sync: false
+
+      # ===== СЛУЖЕБНЫЕ =====
+      - key: PYTHON_VERSION
+        value: "3.12.11"
+      - key: PYTHONUNBUFFERED
+        value: "1"
