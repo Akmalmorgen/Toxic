@@ -1255,18 +1255,31 @@ def tr_btn(ru_label: str, lang: str | None = None, kind: str = "default") -> str
     return styled(base, kind) if kind != "default" else base
 
 
-def tr_kb(markup, lang: str | None = None):
-    """Переводит reply-клавиатуру на нужный язык, сохраняя структуру."""
+def tr_kb(markup, lang=None):
+    """Переводит reply-клавиатуру на нужный язык, сохраняя структуру и эмодзи."""
     lang = lang or cur_lang()
-    if lang == "ru" or not isinstance(markup, ReplyKeyboardMarkup):
+    if not isinstance(markup, ReplyKeyboardMarkup):
         return markup
+
     new_rows = []
     for row in markup.keyboard:
         new_row = []
         for b in row:
             txt = b.text
-            new_row.append(KeyboardButton(tr_btn(canon(txt), lang)))
+            if lang == "ru":
+                # Русский — оставляем как есть, с эмодзи
+                new_row.append(KeyboardButton(txt))
+            else:
+                # Ищем перевод по ПОЛНОМУ тексту кнопки (с эмодзи)
+                pair = BTN.get(txt)
+                if pair:
+                    translated = pair[0] if lang == "uz" else pair[1]
+                    new_row.append(KeyboardButton(translated))
+                else:
+                    # Перевод не найден — оставляем оригинал (с эмодзи)
+                    new_row.append(KeyboardButton(txt))
         new_rows.append(new_row)
+
     return ReplyKeyboardMarkup(
         new_rows,
         resize_keyboard=markup.resize_keyboard,
