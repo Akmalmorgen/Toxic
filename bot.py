@@ -8880,7 +8880,131 @@ async def _h_cmd_next(message: Message):
     await modmsg_start(_mu(message), Ctx(message.from_user.id))
 
 
-# Карта callback-хендлеров
+# ============================ ПРОПУЩЕННЫЕ ФУНКЦИИ (фикс) ============================
+
+# --- Подписка на вход ---
+async def on_subgate_check(update, context):
+    """Проверка подписки для входа в бота (callback 'subgate')."""
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    chans = await get_mandatory_channels()
+    if chans and not await user_subscribed_all(context, uid, chans):
+        await query.answer(t("sub_not_found"), show_alert=True)
+        return
+    try:
+        await query.message.delete()
+    except TelegramError:
+        pass
+    await deliver_start_menu(context, uid)
+
+
+# --- Помощь ---
+async def show_help(update, context):
+    """Кнопка «ℹ️ Помощь» — показывает справку."""
+    uid = update.effective_user.id
+    await nav(update, context, t("help"), main_menu_kb(uid), parse_mode="HTML")
+
+
+# --- Реклама (ad) ---
+def ad_markup(ad):
+    if ad.get("button_text") and ad.get("button_url"):
+        return InlineKeyboardMarkup([[InlineKeyboardButton(ad["button_text"], url=ad["button_url"])]])
+    return None
+
+
+def save_ad(ad):
+    conn.execute(
+        "INSERT INTO ad_config (id, text, button_text, button_url) VALUES (1, ?, ?, ?) "
+        "ON CONFLICT(id) DO UPDATE SET text=excluded.text, button_text=excluded.button_text, button_url=excluded.button_url",
+        (ad.get("text"), ad.get("button_text"), ad.get("button_url")),
+    )
+    conn.commit()
+
+
+async def ad_preview_and_offer(update, context):
+    ad = context.user_data["ad"]
+    save_ad(ad)
+    context.user_data["state"] = "adm_ad_send"
+    await update.message.reply_text("Так реклама будет выглядеть у пользователей:")
+    await update.message.reply_text(ad["text"], reply_markup=ad_markup(ad))
+    await update.message.reply_text(
+        "Разослать рекламу всем пользователям?",
+        reply_markup=tr_kb(ReplyKeyboardMarkup(
+            [[KeyboardButton("📤 Отправить всем")], [KeyboardButton("❌ Отмена")]],
+            resize_keyboard=True,
+        )),
+    )
+
+
+async def process_adm_ad_wizard(update, context):
+    state = context.user_data["state"]
+    raw_text = (update.message.text or "").strip()
+    ctext = canon(raw_text)
+    if ctext == "Отмена":
+        context.user_data["state"] = None
+        await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
+        return
+    if state == "adm_ad_menu":
+        if ctext == "Создать новую":
+            context.user_data["state"] = "adm_ad_text"
+            context.user_data["ad"] = {}
+            await update.message.reply_text("Текст рекламы:", reply_markup=cancel_reply_kb())
+        elif ctext == "Удалить рекламу":
+            conn.execute("DELETE FROM ad_config WHERE id=1")
+            conn.commit()
+            context.user_data["state"] = None
+            await update.message.reply_text("Реклама удалена.", reply_markup=admin_menu_kb())
+        else:
+            await update.message.reply_text("Выберите действие на клавиатуре")
+        return
+    ad = context.user_data.get("ad", {})
+    if state == "adm_ad_text":
+        ad["text"] = raw_text
+        context.user_data["state"] = "adm_ad_button_text"
+        await update.message.reply_text("Текст кнопки (или «-» если без кнопки):", reply_markup=cancel_reply_kb())
+    elif state == "adm_ad_button_text":
+        ad["button_text"] = None if raw_text == "-" else raw_text
+        if ad["button_text"]:
+            context.user_data["state"] = "adm_ad_button_url"
+            await update.message.reply_text("Ссылка для кнопки:", reply_markup=cancel_reply_kb())
+        else:
+            await ad_preview_and_offer(update, context)
+    elif state == "adm_ad_button_url":
+        ad["button_url"] = raw_text
+        await ad_preview_and_offer(update, context)
+
+
+async def process_ad_send(update, context):
+    text = canon(update.message.text)
+    if text == "Отмена":
+        context.user_data["state"] = None
+        await update.message.reply_text("Реклама сохранена, рассылка отменена.", reply_markup=admin_menu_kb())
+        return
+    if text != "Отправить всем":
+        await update.message.reply_text("Выберите действие на клавиатуре")
+        return
+    ad = conn.execute("SELECT * FROM ad_config WHERE id=1").fetchone()
+    markup = None
+    if ad and ad["button_text"] and ad["button_url"]:
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton(ad["button_text"], url=ad["button_url"])]])
+    rows = conn.execute("SELECT tg_id FROM users").fetchall()
+    sent, failed = 0, 0
+    for r in rows:
+        try:
+            await context.bot.send_message(r["tg_id"], ad["text"], reply_markup=markup)
+            sent += 1
+        except TelegramError:
+            failed += 1
+        await asyncio.sleep(0.03)
+    context.user_data["state"] = None
+    await update.message.reply_text(
+        f"Реклама разослана. Доставлено: {sent}, не удалось: {failed}",
+        reply_markup=admin_menu_kb(),
+    )
+
+
+# ============================ CALLBACK-ХЕНДЛЕРЫ ============================
 _CALLBACKS = [
     ("reply:", on_reply_button, False),
     ("del:", on_delete_button, False),
