@@ -18,12 +18,8 @@ services:
       - key: ADMIN_IDS
         sync: false
 
-      # ===== РЕКОМЕНДУЕМЫЕ =====
+      # ===== РЕКОМЕНДУЕМАЯ (без неё всё сотрётся при рестарте) =====
       - key: DATABASE_URL
-        sync: false
-
-      # ===== ОПЦИОНАЛЬНЫЕ =====
-      - key: ADMIN_ACCESS_KEY
         sync: false
 
       # ===== СЛУЖЕБНЫЕ =====
