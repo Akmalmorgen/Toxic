@@ -145,11 +145,14 @@ def LabeledPrice(label=None, amount=None, **kw):
 bot = Bot(BOT_TOKEN, default=DefaultBotProperties())
 dp = Dispatcher()
 
+_HTML_TAG_RE = re.compile(
+    r'<(b|i|u|s|code|pre|a|blockquote|tg-emoji|span|strong|em)[\s>/]',
+    re.IGNORECASE,
+)
+
 
 def _needs_html(text):
-    """Тексты с премиум-эмодзи (<tg-emoji>) требуют parse_mode=HTML.
-    Пользовательский контент сюда НЕ попадает — он идёт через copy_message."""
-    return isinstance(text, str) and "<tg-emoji" in text
+    return isinstance(text, str) and bool(_HTML_TAG_RE.search(text))
 
 
 class _BotProxy:
