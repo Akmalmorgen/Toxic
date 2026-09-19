@@ -6870,9 +6870,7 @@ async def adm_stats_msg(update, context):
         a = str(r["age"]).strip()
         if a.isdigit() and int(a) >= 18:
             adults += 1
-
-    # Размер и заполненность БД
-def _fmt(b):
+        def _fmt(b):
     if b >= 1024 ** 3:
         return f"{b / 1024 ** 3:.2f} ГБ"
     if b >= 1024 ** 2:
@@ -6883,9 +6881,7 @@ def _fmt(b):
 
 try:
     if USE_PG:
-        # Neon Free лимит — 512 МБ. Считаем процент от лимита, а не от текущего размера.
         PG_LIMIT_BYTES = 512 * 1024 * 1024
-
         r = conn.execute(
             "SELECT pg_database_size(current_database()) AS sz"
         ).fetchone()
@@ -6894,7 +6890,6 @@ try:
         free_bytes = max(0, total_bytes - used_bytes)
         fill_pct = round(used_bytes / total_bytes * 100, 2) if total_bytes else 0
     else:
-        # SQLite — через PRAGMA
         page_size = conn.execute("PRAGMA page_size").fetchone()[0]
         page_count = conn.execute("PRAGMA page_count").fetchone()[0]
         free_pages = conn.execute("PRAGMA freelist_count").fetchone()[0]
@@ -6909,7 +6904,7 @@ try:
 
     if USE_PG:
         db_line = (
-            f"💾 <b>База данных</b>\n"
+            f"💾 <b>База данных (Neon Free)</b>\n"
             f"   Лимит:    <b>{_fmt(total_bytes)}</b>\n"
             f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
             f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
