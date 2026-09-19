@@ -6864,62 +6864,62 @@ async def adm_stats_msg(update, context):
     ).fetchone()["c"]
     ref_links = conn.execute("SELECT COUNT(*) c FROM referrals").fetchone()["c"]
 
-    # Совершеннолетние — считаем в Python (age текстом)
     adults = 0
     for r in conn.execute("SELECT age FROM users WHERE age IS NOT NULL").fetchall():
         a = str(r["age"]).strip()
         if a.isdigit() and int(a) >= 18:
             adults += 1
-        def _fmt(b):
-    if b >= 1024 ** 3:
-        return f"{b / 1024 ** 3:.2f} ГБ"
-    if b >= 1024 ** 2:
-        return f"{b / 1024 ** 2:.2f} МБ"
-    if b >= 1024:
-        return f"{b / 1024:.1f} КБ"
-    return f"{b} Б"
 
-try:
-    if USE_PG:
-        PG_LIMIT_BYTES = 512 * 1024 * 1024
-        r = conn.execute(
-            "SELECT pg_database_size(current_database()) AS sz"
-        ).fetchone()
-        used_bytes = int(r[0] or 0)
-        total_bytes = PG_LIMIT_BYTES
-        free_bytes = max(0, total_bytes - used_bytes)
-        fill_pct = round(used_bytes / total_bytes * 100, 2) if total_bytes else 0
-    else:
-        page_size = conn.execute("PRAGMA page_size").fetchone()[0]
-        page_count = conn.execute("PRAGMA page_count").fetchone()[0]
-        free_pages = conn.execute("PRAGMA freelist_count").fetchone()[0]
-        used_pages = page_count - free_pages
-        used_bytes = used_pages * page_size
-        total_bytes = page_count * page_size
-        free_bytes = free_pages * page_size
-        fill_pct = round(used_pages / page_count * 100, 2) if page_count else 0
+    def _fmt(b):
+        if b >= 1024 ** 3:
+            return f"{b / 1024 ** 3:.2f} ГБ"
+        if b >= 1024 ** 2:
+            return f"{b / 1024 ** 2:.2f} МБ"
+        if b >= 1024:
+            return f"{b / 1024:.1f} КБ"
+        return f"{b} Б"
 
-    bar_filled = min(10, int(fill_pct // 10))
-    bar = "█" * bar_filled + "░" * (10 - bar_filled)
+    try:
+        if USE_PG:
+            PG_LIMIT_BYTES = 512 * 1024 * 1024
+            r = conn.execute(
+                "SELECT pg_database_size(current_database()) AS sz"
+            ).fetchone()
+            used_bytes = int(r[0] or 0)
+            total_bytes = PG_LIMIT_BYTES
+            free_bytes = max(0, total_bytes - used_bytes)
+            fill_pct = round(used_bytes / total_bytes * 100, 2) if total_bytes else 0
+        else:
+            page_size = conn.execute("PRAGMA page_size").fetchone()[0]
+            page_count = conn.execute("PRAGMA page_count").fetchone()[0]
+            free_pages = conn.execute("PRAGMA freelist_count").fetchone()[0]
+            used_pages = page_count - free_pages
+            used_bytes = used_pages * page_size
+            total_bytes = page_count * page_size
+            free_bytes = free_pages * page_size
+            fill_pct = round(used_pages / page_count * 100, 2) if page_count else 0
 
-    if USE_PG:
-        db_line = (
-            f"💾 <b>База данных (Neon Free)</b>\n"
-            f"   Лимит:    <b>{_fmt(total_bytes)}</b>\n"
-            f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
-            f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
-            f"   [{bar}] {fill_pct}% от лимита"
-        )
-    else:
-        db_line = (
-            f"💾 <b>База данных (SQLite)</b>\n"
-            f"   Всего:    <b>{_fmt(total_bytes)}</b>\n"
-            f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
-            f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
-            f"   [{bar}] {fill_pct}%"
-        )
-except Exception as _e:
-    db_line = f"💾 Размер БД: — (<i>{_e}</i>)"
+        bar_filled = min(10, int(fill_pct // 10))
+        bar = "█" * bar_filled + "░" * (10 - bar_filled)
+
+        if USE_PG:
+            db_line = (
+                f"💾 <b>База данных (Neon Free)</b>\n"
+                f"   Лимит:    <b>{_fmt(total_bytes)}</b>\n"
+                f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
+                f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
+                f"   [{bar}] {fill_pct}% от лимита"
+            )
+        else:
+            db_line = (
+                f"💾 <b>База данных (SQLite)</b>\n"
+                f"   Всего:    <b>{_fmt(total_bytes)}</b>\n"
+                f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
+                f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
+                f"   [{bar}] {fill_pct}%"
+            )
+    except Exception as _e:
+        db_line = f"💾 Размер БД: — (<i>{_e}</i>)"
 
     reveal_stars = get_setting_int("reveal_stars", 1)
     kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
