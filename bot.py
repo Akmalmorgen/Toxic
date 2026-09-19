@@ -9136,9 +9136,9 @@ def run_safe_cleanup():
     try:
         six_h = (now_dt() - timedelta(hours=6)).isoformat()
         ten_min = (now_dt() - timedelta(minutes=120)).isoformat()
-        old_sessions = (now_dt() - timedelta(days=90)).isoformat()
-        old_anon = (now_dt() - timedelta(days=180)).isoformat()
-        del_anon = (now_dt() - timedelta(days=7)).isoformat()
+        old_sessions = (now_dt() - timedelta(days=30)).isoformat()
+        old_anon = (now_dt() - timedelta(days=90)).isoformat()
+        del_anon = (now_dt() - timedelta(days=1)).isoformat()
         old_reports = (now_dt() - timedelta(days=30)).isoformat()
 
         conn.execute("DELETE FROM link_flow WHERE updated_at < ?", (six_h,))
