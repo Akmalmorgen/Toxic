@@ -8284,85 +8284,7 @@ async def sex_room_router(update, context):
     await update.message.reply_text("Пиши текст, голосовое или фото:", reply_markup=sex_room_kb())
 
 
-async def sex_rename_router(update, context):
-    text = canon(update.message.text.strip())
-    uid = update.effective_user.id
-    if text in ("Отмена", "Назад"):
-        context.user_data["state"] = "sex_room"
-        await update.message.reply_text(t("main_menu"), reply_markup=sex_room_kb())
-        return
-    new_title = (update.message.text or "").strip()
-    if len(new_title) < 2 or len(new_title) > 40:
-        await update.message.reply_text("Название 2-40 символов:", reply_markup=cancel_reply_kb())
-        return
-    room_id = context.user_data.get("sex_room_id")
-    conn.execute("UPDATE sex_rooms SET title=? WHERE id=?", (new_title, room_id))
-    conn.commit()
-    context.user_data["state"] = "sex_room"
-    await update.message.reply_text(
-        t("sex_room_renamed", title=html.escape(new_title)),
-        parse_mode="HTML", reply_markup=sex_room_kb(),
-    )
-
-
-async def sex_approve_cmd(update, context, user_id):
-    uid = update.effective_user.id
-    u = get_user(uid)
-    if not is_moder(u):
-        return
-    room = conn.execute("SELECT * FROM sex_rooms ORDER BY id LIMIT 1").fetchone()
-    if not room:
-        await update.message.reply_text(t("sex_no_room"))
-        return
-    req = conn.execute(
-        "SELECT * FROM sex_exit_requests WHERE room_id=? AND user_id=? AND status='pending'",
-        (room["id"], user_id),
-    ).fetchone()
-    if not req:
-        await update.message.reply_text("Запрос не найден.")
-        return
-    conn.execute("UPDATE sex_exit_requests SET status='approved' WHERE id=?", (req["id"],))
-    conn.execute("DELETE FROM sex_members WHERE room_id=? AND user_id=?", (room["id"], user_id))
-    conn.commit()
-    try:
-        _sl = cur_lang()
-        set_cur_lang(get_lang(user_id))
-        await context.bot.send_message(user_id, t("sex_exit_approved"))
-        set_cur_lang(_sl)
-    except TelegramError:
-        pass
-    await update.message.reply_text(f"✅ Выход одобрен для {user_id}.", reply_markup=sex_room_kb())
-
-
-# ============================ CALLBACKS ============================
-_CALLBACKS = [
-    ("reply:", on_reply_button, False),
-    ("del:", on_delete_button, False),
-    ("subcheck:", on_subcheck_button, False),
-    ("subgate", on_subgate_check, True),
-    ("report_anon:", on_report_anon, False),
-    ("reveal:", on_reveal_button, False),
-    ("reveal_pay:", on_reveal_pay, False),
-    ("reveal_cancel", on_reveal_cancel, True),
-    ("repadm:", on_report_admin_decision, False),
-    ("roulette_cancel", on_roulette_cancel, True),
-    ("roulette_report:", on_roulette_report, False),
-    ("modapp:", on_moder_app_decision, False),
-    ("claim_vip", on_claim_vip, True),
-    ("claim_moder", on_claim_moder, True),
-    ("ref_info", on_ref_info, True),
-    ("tgban:", on_tg_ban, False),
-    ("refund_pick:", on_refund_pick, False),
-    ("refund_do:", on_refund_do, False),
-    ("refund_cancel", on_refund_cancel, True),
-    ("anon_watch_leave", on_anon_watch_leave, True),
-    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
-    ("nreply:", on_next_reply, False),
-    ("nreport:", on_next_report, False),
-]
-
-
-# ============================ НАВИГАЦИЯ В ШАПКЕ ============================
+# ============================ НАВИГАЦИЯ В ШАПКЕ (ДО _CALLBACKS!) ============================
 async def on_subgate_check(update, context):
     query = update.callback_query
     await query.answer()
@@ -8376,6 +8298,20 @@ async def on_subgate_check(update, context):
     except TelegramError:
         pass
     await deliver_start_menu(context, uid)
+
+
+async def on_roulette_cancel(update, context):
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+    conn.commit()
+    try:
+        await query.edit_message_text(t("roulette_stop"))
+    except TelegramError:
+        pass
+    context.user_data["state"] = "roulette_pref"
+    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
 
 
 async def on_roulette_report(update, context):
@@ -8407,6 +8343,34 @@ async def show_help(update, context):
 async def process_adm_ad_wizard(update, context):
     context.user_data["state"] = None
     await update.message.reply_text("Функция недоступна.", reply_markup=admin_menu_kb())
+
+
+# ============================ CALLBACKS ============================
+_CALLBACKS = [
+    ("reply:", on_reply_button, False),
+    ("del:", on_delete_button, False),
+    ("subcheck:", on_subcheck_button, False),
+    ("subgate", on_subgate_check, True),
+    ("report_anon:", on_report_anon, False),
+    ("reveal:", on_reveal_button, False),
+    ("reveal_pay:", on_reveal_pay, False),
+    ("reveal_cancel", on_reveal_cancel, True),
+    ("repadm:", on_report_admin_decision, False),
+    ("roulette_cancel", on_roulette_cancel, True),
+    ("roulette_report:", on_roulette_report, False),
+    ("modapp:", on_moder_app_decision, False),
+    ("claim_vip", on_claim_vip, True),
+    ("claim_moder", on_claim_moder, True),
+    ("ref_info", on_ref_info, True),
+    ("tgban:", on_tg_ban, False),
+    ("refund_pick:", on_refund_pick, False),
+    ("refund_do:", on_refund_do, False),
+    ("refund_cancel", on_refund_cancel, True),
+    ("anon_watch_leave", on_anon_watch_leave, True),
+    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+    ("nreply:", on_next_reply, False),
+    ("nreport:", on_next_report, False),
+]
 
 
 # ============================ TEXT ROUTER ============================
