@@ -8476,6 +8476,7 @@ async def on_roulette_report(update, context):
     context.user_data["report_ref_id"] = session_id
     context.user_data["reported_id"] = reported_id
     await query.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
+    
 
 # ============================ CALLBACKS ============================
 _CALLBACKS = [
@@ -8506,45 +8507,6 @@ _CALLBACKS = [
 
 
 # ============================ НАВИГАЦИЯ В ШАПКЕ ============================
-async def on_subgate_check(update, context):
-    """Проверка подписки на входе."""
-    query = update.callback_query
-    await query.answer()
-    uid = query.from_user.id
-    chans = await get_mandatory_channels()
-    if chans and not await user_subscribed_all(context, uid, chans):
-        await query.answer(t("sub_not_found"), show_alert=True)
-        return
-    try:
-        await query.message.delete()
-    except TelegramError:
-        pass
-    await deliver_start_menu(context, uid)
-
-
-async def on_roulette_report(update, context):
-    """Жалоба из рулетки по инлайн-кнопке."""
-    query = update.callback_query
-    await query.answer()
-    session_id = int(query.data.split(":")[1])
-    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (session_id,)).fetchone()
-    if not session:
-        await query.answer(t("session_not_found"), show_alert=True)
-        return
-    reporter_id = query.from_user.id
-    if reporter_id == session["user1_id"]:
-        reported_id = session["user2_id"]
-    elif reporter_id == session["user2_id"]:
-        reported_id = session["user1_id"]
-    else:
-        return
-    context.user_data["state"] = "awaiting_report_reason"
-    context.user_data["report_context"] = "roulette"
-    context.user_data["report_ref_id"] = session_id
-    context.user_data["reported_id"] = reported_id
-    await query.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
-
-
 async def show_help(update, context):
     """Кнопка Помощь."""
     uid = update.effective_user.id
