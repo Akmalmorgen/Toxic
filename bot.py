@@ -8441,56 +8441,41 @@ async def sex_room_router(update, context):
     await update.message.reply_text("Пиши текст, голосовое или фото:", reply_markup=sex_room_kb())
 
 
-async def sex_rename_router(update, context):
-    text = canon(update.message.text.strip())
-    uid = update.effective_user.id
-    if text in ("Отмена", "Назад"):
-        context.user_data["state"] = "sex_room"
-        await update.message.reply_text(t("main_menu"), reply_markup=sex_room_kb())
+async def on_subgate_check(update, context):
+    query = update.callback_query
+    await query.answer()
+    uid = query.from_user.id
+    chans = await get_mandatory_channels()
+    if chans and not await user_subscribed_all(context, uid, chans):
+        await query.answer(t("sub_not_found"), show_alert=True)
         return
-    new_title = (update.message.text or "").strip()
-    if len(new_title) < 2 or len(new_title) > 40:
-        await update.message.reply_text("Название 2-40 символов:", reply_markup=cancel_reply_kb())
-        return
-    room_id = context.user_data.get("sex_room_id")
-    conn.execute("UPDATE sex_rooms SET title=? WHERE id=?", (new_title, room_id))
-    conn.commit()
-    context.user_data["state"] = "sex_room"
-    await update.message.reply_text(
-        t("sex_room_renamed", title=html.escape(new_title)),
-        parse_mode="HTML", reply_markup=sex_room_kb(),
-    )
-
-
-async def sex_approve_cmd(update, context, user_id):
-    """Модер одобряет выход девушки. Вызывается из text_router по /sex_approve."""
-    uid = update.effective_user.id
-    u = get_user(uid)
-    if not is_moder(u):
-        return
-    room = conn.execute("SELECT * FROM sex_rooms ORDER BY id LIMIT 1").fetchone()
-    if not room:
-        await update.message.reply_text(t("sex_no_room"))
-        return
-    req = conn.execute(
-        "SELECT * FROM sex_exit_requests WHERE room_id=? AND user_id=? AND status='pending'",
-        (room["id"], user_id),
-    ).fetchone()
-    if not req:
-        await update.message.reply_text("Запрос не найден.")
-        return
-    conn.execute("UPDATE sex_exit_requests SET status='approved' WHERE id=?", (req["id"],))
-    conn.execute("DELETE FROM sex_members WHERE room_id=? AND user_id=?", (room["id"], user_id))
-    conn.commit()
     try:
-        _sl = cur_lang()
-        set_cur_lang(get_lang(user_id))
-        await context.bot.send_message(user_id, t("sex_exit_approved"))
-        set_cur_lang(_sl)
+        await query.message.delete()
     except TelegramError:
         pass
-    await update.message.reply_text(f"✅ Выход одобрен для {user_id}.", reply_markup=sex_room_kb())
+    await deliver_start_menu(context, uid)
 
+
+async def on_roulette_report(update, context):
+    query = update.callback_query
+    await query.answer()
+    session_id = int(query.data.split(":")[1])
+    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (session_id,)).fetchone()
+    if not session:
+        await query.answer(t("session_not_found"), show_alert=True)
+        return
+    reporter_id = query.from_user.id
+    if reporter_id == session["user1_id"]:
+        reported_id = session["user2_id"]
+    elif reporter_id == session["user2_id"]:
+        reported_id = session["user1_id"]
+    else:
+        return
+    context.user_data["state"] = "awaiting_report_reason"
+    context.user_data["report_context"] = "roulette"
+    context.user_data["report_ref_id"] = session_id
+    context.user_data["reported_id"] = reported_id
+    await query.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
 
 # ============================ CALLBACKS ============================
 _CALLBACKS = [
