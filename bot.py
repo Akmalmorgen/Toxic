@@ -1,7 +1,7 @@
 # ===================== БЛОК 1 / 14 — ИМПОРТЫ, ENV, БД =====================
 """
 𐌽ꤕ𐌗ተ — анонимный Telegram-бот.
-Anon + Chat-Roulette + Nearby + Shop + Stars + Admin.
+Anon + Chat-Roulette + 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 + Shop + Stars + Admin.
 Стек: aiogram v3, SQLite / PostgreSQL (Neon).
 """
 from __future__ import annotations
@@ -88,7 +88,6 @@ if not ADMIN_IDS:
 boot.info("✅ BOT_TOKEN получен (bot_id=%s)", BOT_TOKEN.split(":", 1)[0])
 boot.info("✅ Админов: %d", len(ADMIN_IDS))
 
-# Первый админ (главный) — используется для возврата Stars
 SUPER_ADMIN_ID = min(ADMIN_IDS) if ADMIN_IDS else 0
 
 
@@ -290,12 +289,9 @@ REF_MODER_DAYS = 7
 LINK_REWARD_EVERY = 10
 LINK_REWARD_COINS = 20
 
-# Возврат Stars
 STARS_REFUND_PERCENT = 50
-
 CREATOR_USERNAME = "@ToxIc_0707"
 
-# Джанитор
 INACTIVE_DAYS = 14
 JANITOR_WAKE_HOURS = 6
 JANITOR_PERIOD_DAYS = 14
@@ -449,10 +445,9 @@ else:
 
 def db():
     return conn
-# ===================== БЛОК 2 / 14 — СХЕМА БД =====================
+    # ===================== БЛОК 2 / 14 — СХЕМА БД =====================
 
 def init_db():
-    """Создаёт все таблицы. Безопасно для повторного вызова."""
     cur = conn.cursor()
     cur.executescript("""
     CREATE TABLE IF NOT EXISTS users (
@@ -616,7 +611,7 @@ def init_db():
         value TEXT
     );
 
-    -- ============ ПОБЛИЗОСТИ ============
+    -- ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — анкеты ============
     CREATE TABLE IF NOT EXISTS nearby_profiles (
         user_id INTEGER PRIMARY KEY,
         name TEXT,
@@ -645,7 +640,23 @@ def init_db():
         UNIQUE(user1_id, user2_id)
     );
 
-    -- ============ /sex — комнаты для девушек ============
+    -- ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — личные сообщения ============
+    CREATE TABLE IF NOT EXISTS nearby_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_id INTEGER NOT NULL,
+        to_id INTEGER NOT NULL,
+        content_type TEXT NOT NULL,
+        text TEXT,
+        voice_file_id TEXT,
+        parent_id INTEGER,
+        owner_chat_message_id INTEGER,
+        sender_chat_message_id INTEGER,
+        answered INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+    );
+
+    -- ============ /sex ============
     CREATE TABLE IF NOT EXISTS sex_rooms (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -695,7 +706,6 @@ def init_db():
 
 
 def migrate():
-    """Безопасно добавляет недостающие колонки."""
     alters = [
         "ALTER TABLE users ADD COLUMN first_name TEXT",
         "ALTER TABLE users ADD COLUMN is_moder INTEGER NOT NULL DEFAULT 0",
@@ -744,7 +754,6 @@ def migrate():
 
 
 def ensure_indexes():
-    """Индексы для горячих запросов."""
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_sessions_active_u1 ON roulette_sessions(active, user1_id)",
         "CREATE INDEX IF NOT EXISTS idx_sessions_active_u2 ON roulette_sessions(active, user2_id)",
@@ -765,6 +774,9 @@ def ensure_indexes():
         "CREATE INDEX IF NOT EXISTS idx_nearby_likes_to ON nearby_likes(to_id)",
         "CREATE INDEX IF NOT EXISTS idx_nearby_match_u1 ON nearby_matches(user1_id)",
         "CREATE INDEX IF NOT EXISTS idx_nearby_match_u2 ON nearby_matches(user2_id)",
+        "CREATE INDEX IF NOT EXISTS idx_nbmsg_to ON nearby_messages(to_id)",
+        "CREATE INDEX IF NOT EXISTS idx_nbmsg_from ON nearby_messages(from_id)",
+        "CREATE INDEX IF NOT EXISTS idx_nbmsg_parent ON nearby_messages(parent_id)",
         "CREATE INDEX IF NOT EXISTS idx_sex_members_room ON sex_members(room_id)",
         "CREATE INDEX IF NOT EXISTS idx_sex_messages_room ON sex_messages(room_id)",
         "CREATE INDEX IF NOT EXISTS idx_anon_watchers_target ON anon_watchers(target_id)",
@@ -848,7 +860,6 @@ def ensure_user(tg_id: int, username: str | None, first_name: str | None = None)
 
 
 def touch_user(uid: int) -> None:
-    """Отмечает активность. Пишем не чаще раза в час."""
     try:
         u = get_user(uid)
         if not u:
@@ -867,7 +878,6 @@ def touch_user(uid: int) -> None:
 
 
 def resolve_user_ref(text: str | None) -> int | None:
-    """Ищет пользователя по tg_id или @username."""
     if not text:
         return None
     s = text.strip()
@@ -1033,7 +1043,7 @@ LANG_BUTTONS = {"Русский": "ru", "O'zbekcha": "uz", "English": "en"}
 BTN = {
     "🔗 Моя ссылка": ("🔗 Havolam", "🔗 My link"),
     "🎲 Чат-рулетка": ("🎲 Chat-ruletka", "🎲 Chat roulette"),
-    "📍 Поблизости": ("📍 Yaqin-atrofda", "📍 Nearby"),
+    "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭": ("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭", "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"),
     "👤 Профиль": ("👤 Profil", "👤 Profile"),
     "🛒 Магазин": ("🛒 Do'kon", "🛒 Shop"),
     "👥 Пригласить": ("👥 Taklif qilish", "👥 Invite"),
@@ -1121,11 +1131,37 @@ BTN = {
     "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
     "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
     "🚪 Выйти": ("🚪 Chiqish", "🚪 Exit"),
-    # Поблизости
-    "🔍 Смотреть анкеты": ("🔍 Anketalarni ko'rish", "🔍 Browse profiles"),
-    "💕 Мои мэтчи": ("💕 Mening matchlarim", "💕 My matches"),
-    "✏️ Редактировать анкету": ("✏️ Anketani tahrirlash", "✏️ Edit profile"),
-    "📷 Отправить фото": ("📷 Foto yuborish", "📷 Send photo"),
+
+    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — меню ============
+    "🔥 Смотреть анкеты": ("🔥 Anketalarni ko'rish", "🔥 Browse profiles"),
+    "👤 Моя анкета": ("👤 Mening anketam", "👤 My profile"),
+
+    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — карточка ============
+    "❤️ Лайк": ("❤️ Layk", "❤️ Like"),
+    "👎 Дизлайк": ("👎 Dizlayk", "👎 Dislike"),
+    "💬 Написать": ("💬 Yozish", "💬 Write"),
+    "⛔ Жалоба": ("⛔ Shikoyat", "⛔ Report"),
+    "💤 Выйти": ("💤 Chiqish", "💤 Exit"),
+
+    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — моя анкета ============
+    "📝 Имя": ("📝 Ism", "📝 Name"),
+    "🎂 Возраст": ("🎂 Yosh", "🎂 Age"),
+    "📄 О себе": ("📄 O'zim haqimda", "📄 About me"),
+    "📷 Фото": ("📷 Foto", "📷 Photo"),
+    "👁 Предпросмотр": ("👁 Ko'rib chiqish", "👁 Preview"),
+    "🎯 Кого ищу": ("🎯 Kimni qidiraman", "🎯 Looking for"),
+    "⚧ Пол": ("⚧ Jins", "⚧ Gender"),
+
+    # Inline-кнопки под сообщениями
+    "↩️ Ответить": ("↩️ Javob berish", "↩️ Reply"),
+
+    # Голые эмодзи (кэш/старые)
+    "❤️": ("❤️", "❤️"),
+    "👎": ("👎", "👎"),
+    "💬": ("💬", "💬"),
+    "⛔": ("⛔", "⛔"),
+    "💤": ("💤", "💤"),
+
     # /sex
     "💬 Комната": ("💬 Xona", "💬 Room"),
     "👥 Участники": ("👥 Ishtirokchilar", "👥 Members"),
@@ -1158,10 +1194,24 @@ def _strip_emoji_prefix(s: str) -> str:
 
 _ALIAS = {}
 for _ru, (_uz, _en) in BTN.items():
-    _canonical = _strip_emoji_prefix(_ru)
+    _canonical = _strip_emoji_prefix(_ru) or _ru
     _ALIAS[_ru] = _canonical
     _ALIAS[_uz] = _canonical
     _ALIAS[_en] = _canonical
+
+_ALIAS["𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
+_ALIAS["Next Meet"] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
+_ALIAS["Next..."] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
+
+_EMOJI_BUTTONS = {
+    "❤️": "❤️", "❤": "❤️",
+    "👎": "👎",
+    "💬": "💬",
+    "⛔": "⛔",
+    "💤": "💤",
+}
+for _k, _v in _EMOJI_BUTTONS.items():
+    _ALIAS[_k] = _v
 
 
 def canon(text: str | None) -> str | None:
@@ -1172,6 +1222,8 @@ def canon(text: str | None) -> str | None:
     if hit:
         return hit
     stripped = _strip_emoji_prefix(t)
+    if not stripped:
+        return t
     return _ALIAS.get(stripped, stripped)
 
 
@@ -1278,6 +1330,87 @@ T = {
     "choose_on_kb": {"ru": "👇 Выберите", "uz": "👇 Tanlang", "en": "👇 Choose"},
     "cancelled": {"ru": "Отменено.", "uz": "Bekor qilindi.", "en": "Cancelled."},
 
+    # ============================ NEXT MEET ============================
+    "next_brand": {
+        "ru": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
+        "uz": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
+        "en": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
+    },
+    "next_menu_title": {
+        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
+    },
+    "next_create_title": {
+        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nСоздай анкету, чтобы тебя видели другие.\n\n",
+        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nAnketa yarating.\n\n",
+        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nCreate a profile to be seen.\n\n",
+    },
+    "next_profile_card": {
+        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 Кого ищу: <b>{looking}</b>\n\n📄 {bio}\n\n👇 Выбери действие:",
+        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 <b>{looking}</b>\n\n📄 {bio}\n\n👇 Amalni tanlang:",
+        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 Looking for: <b>{looking}</b>\n\n📄 {bio}\n\n👇 Choose action:",
+    },
+    "next_ask_name": {"ru": "✏️ Введи <b>имя</b> (2-30 символов):", "uz": "✏️ <b>Ismingizni</b> kiriting:", "en": "✏️ Enter your <b>name</b>:"},
+    "next_ask_age": {"ru": "✏️ Сколько тебе <b>лет</b>? (12-99)", "uz": "✏️ <b>Yoshingiz</b> nechada? (12-99)", "en": "✏️ How old are you? (12-99)"},
+    "next_ask_gender": {"ru": "✏️ Твой <b>пол</b>:", "uz": "✏️ <b>Jinsingiz</b>:", "en": "✏️ Your <b>gender</b>:"},
+    "next_ask_looking": {"ru": "✏️ <b>Кого ищешь</b>?", "uz": "✏️ <b>Kimni qidirasiz</b>?", "en": "✏️ <b>Who are you looking for</b>?"},
+    "next_ask_bio": {"ru": "📄 Расскажи <b>о себе</b> (5-200 символов):", "uz": "📄 <b>O'zingiz haqida</b> (5-200 belgi):", "en": "📄 <b>About you</b> (5-200 chars):"},
+    "next_ask_photo": {"ru": "📷 Отправь <b>фото</b> (или «-» чтобы убрать):", "uz": "📷 <b>Foto</b> yuboring (yoki «-»):", "en": "📷 Send your <b>photo</b> (or «-»):"},
+
+    "next_name_invalid": {"ru": "❌ Имя 2-30 символов. Попробуй снова:", "uz": "❌ Ism 2-30 belgi. Qayta:", "en": "❌ Name 2-30 chars:"},
+    "next_age_invalid": {"ru": "❌ Возраст 12-99. Попробуй снова:", "uz": "❌ Yosh 12-99:", "en": "❌ Age 12-99:"},
+    "next_bio_invalid": {"ru": "❌ 5-200 символов. Попробуй снова:", "uz": "❌ 5-200 belgi:", "en": "❌ 5-200 chars:"},
+    "next_photo_required": {"ru": "📷 Отправь именно фото или «-»:", "uz": "📷 Foto yuboring yoki «-»:", "en": "📷 Send photo or «-»:"},
+
+    "next_saved": {"ru": "✅ <b>Сохранено!</b>", "uz": "✅ <b>Saqlandi!</b>", "en": "✅ <b>Saved!</b>"},
+    "next_profile_saved": {"ru": "✅ <b>Анкета создана!</b>\n\nТеперь можешь смотреть других.", "uz": "✅ <b>Anketa yaratildi!</b>", "en": "✅ <b>Profile created!</b>"},
+    "next_create_need_all": {
+        "ru": "Сначала заполни все поля анкеты.",
+        "uz": "Avval anketani to'ldiring.",
+        "en": "Fill all profile fields first.",
+    },
+    "next_preview": {
+        "ru": "👁 <b>Предпросмотр анкеты</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 Кого ищу: <b>{looking}</b>\n\n📄 {bio}",
+        "uz": "👁 <b>Anketa ko'rinishi</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 <b>{looking}</b>\n\n📄 {bio}",
+        "en": "👁 <b>Profile preview</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 Looking for: <b>{looking}</b>\n\n📄 {bio}",
+    },
+
+    "next_match_title": {"ru": "💕 <b>Взаимная симпатия!</b>\n━━━━━━━━━━━━━━━━━━━━", "uz": "💕 <b>O'zaro yoqdi!</b>\n━━━━━━━━━━━━━━━━━━━━", "en": "💕 <b>Mutual like!</b>\n━━━━━━━━━━━━━━━━━━━━"},
+    "next_match_contact": {"ru": "Собеседник: <b>{name}</b>\n\n{contact}", "uz": "Suhbatdosh: <b>{name}</b>\n\n{contact}", "en": "Partner: <b>{name}</b>\n\n{contact}"},
+
+    "next_msg_prompt": {
+        "ru": "💬 <b>Написать сообщение</b>\n\nОтправь текст или голосовое (до 15 сек).\n\n<i>«Отмена» — вернуться к анкете</i>",
+        "uz": "💬 <b>Xabar yozish</b>\n\nMatn yoki ovozli yuboring.",
+        "en": "💬 <b>Write a message</b>\n\nSend text or voice (up to 15s).",
+    },
+    "next_msg_sent": {"ru": "✅ <b>Отправлено</b>", "uz": "✅ <b>Yuborildi</b>", "en": "✅ <b>Sent</b>"},
+    "next_msg_failed": {"ru": "❌ Не удалось отправить", "uz": "❌ Yuborib bo'lmadi", "en": "❌ Failed to send"},
+    "next_reply_prompt": {"ru": "↩️ <b>Ответить</b>\n\nОтправь текст или голосовое:", "uz": "↩️ <b>Javob berish</b>\n\nMatn yoki ovozli yuboring:", "en": "↩️ <b>Reply</b>\n\nSend text or voice:"},
+    "next_msg_inbox_hint": {"ru": "Новое сообщение пришло в чат ⬆️", "uz": "Yangi xabar chatda ⬆️", "en": "New message above ⬆️"},
+
+    "next_banned_write": {"ru": "⛔ Ты не можешь писать этому пользователю.", "uz": "⛔ Siz bu foydalanuvchiga yoza olmaysiz.", "en": "⛔ You can't write to this user."},
+    "next_report_confirm": {"ru": "⛔ <b>Жалоба отправлена</b>\nАдминистратор рассмотрит её.", "uz": "⛔ <b>Shikoyat yuborildi</b>", "en": "⛔ <b>Report sent</b>"},
+    "next_banned_admin": {"ru": "🔨 Пользователь <b>{name}</b> заблокирован в поиске анкет <b>навсегда</b>.", "uz": "🔨 <b>{name}</b> qidiruvda abadiy ban qilindi.", "en": "🔨 User <b>{name}</b> banned from search <b>forever</b>."},
+    "next_banned_user": {"ru": "🚫 Вы заблокированы в поиске анкет за нарушение правил.", "uz": "🚫 Siz qidiruvda banlangansiz.", "en": "🚫 You are banned from search."},
+    "next_only_text_voice": {"ru": "Только текст или голосовое.", "uz": "Faqat matn yoki ovozli.", "en": "Text or voice only."},
+
+    "next_search_stopped": {
+        "ru": "💤 <b>Ты вышел из поиска.</b>\n\nГлавное меню 👇",
+        "uz": "💤 <b>Qidiruvdan chiqdingiz.</b>\n\nAsosiy menyu 👇",
+        "en": "💤 <b>You left the search.</b>\n\nMain menu 👇",
+    },
+    "next_no_profiles": {
+        "ru": "😔 <b>Анкет пока нет.</b>\n\nЗаходи позже!",
+        "uz": "😔 <b>Hozircha anketalar yo'q.</b>",
+        "en": "😔 <b>No profiles yet.</b>",
+    },
+    "next_view_header": {
+        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
+        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
+        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
+    },
+
     # ============================ ЯЗЫК ============================
     "lang_choose": {
         "ru": "🌐 Выберите язык интерфейса:",
@@ -1298,7 +1431,7 @@ T = {
             "Добро пожаловать в <b>𐌽ꤕ𐌗ተ</b> — место, где говорят честно и анонимно 🕶\n\n"
             "<blockquote>🔗 Получай анонимки по своей ссылке\n"
             "🎲 Чат-рулетка — новые знакомства каждый раз\n"
-            "📍 Поблизости — анкеты и мэтчи\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — анкеты и мэтчи\n"
             "🤐 Полная анонимность — никто не знает, кто ты\n"
             "💎 VIP, коины и бонусы за приглашённых друзей</blockquote>\n\n"
             "👇 <b>Первый шаг — выбери свой пол</b>"
@@ -1309,7 +1442,7 @@ T = {
             "Xush kelibsiz <b>𐌽ꤕ𐌗ተ</b> ga 🕶\n\n"
             "<blockquote>🔗 Havolangiz orqali anonim xabar oling\n"
             "🎲 Chat-ruletka — yangi tanishuvlar\n"
-            "📍 Yaqin-atrofda — anketalar va matchlar\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — anketalar va matchlar\n"
             "🤐 To'liq anonimlik\n"
             "💎 VIP, coinlar va bonuslar</blockquote>\n\n"
             "👇 <b>Birinchi qadam — jinsingizni tanlang</b>"
@@ -1320,7 +1453,7 @@ T = {
             "Welcome to <b>𐌽ꤕ𐌗ተ</b> — speak freely and anonymously 🕶\n\n"
             "<blockquote>🔗 Get anonymous messages via your link\n"
             "🎲 Chat roulette — new people every time\n"
-            "📍 Nearby — profiles and matches\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — profiles and matches\n"
             "🤐 Full anonymity\n"
             "💎 VIP, coins and bonuses for inviting friends</blockquote>\n\n"
             "👇 <b>First step — choose your gender</b>"
@@ -1333,8 +1466,8 @@ T = {
             "Снова рады видеть тебя в <b>𐌽ꤕ𐌗ተ</b> 💫\n\n"
             "<blockquote>🔗 Делись ссылкой — получай анонимки\n"
             "🎲 Прыгай в чат-рулетку\n"
-            "👥 Зови друзей — получай бонусы\n"
-            "🛒 Загляни в магазин</blockquote>\n\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — найди мэтч\n"
+            "👥 Зови друзей — получай бонусы</blockquote>\n\n"
             "🏠 Главное меню"
         ),
         "uz": (
@@ -1343,8 +1476,8 @@ T = {
             "Sizni yana ko'rganimizdan xursandmiz 💫\n\n"
             "<blockquote>🔗 Havolani ulashing\n"
             "🎲 Chat-ruletkaga kiring\n"
-            "👥 Do'stlarni chaqiring\n"
-            "🛒 Do'konni ko'rib chiqing</blockquote>\n\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — match toping\n"
+            "👥 Do'stlarni chaqiring</blockquote>\n\n"
             "🏠 Asosiy menyu"
         ),
         "en": (
@@ -1353,8 +1486,8 @@ T = {
             "Great to see you again 💫\n\n"
             "<blockquote>🔗 Share your link\n"
             "🎲 Jump into chat roulette\n"
-            "👥 Invite friends\n"
-            "🛒 Check the shop</blockquote>\n\n"
+            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — find a match\n"
+            "👥 Invite friends</blockquote>\n\n"
             "🏠 Main menu"
         ),
     },
@@ -1385,13 +1518,15 @@ T = {
             "• VIP находит пару быстрее"
             "</blockquote>\n\n"
 
-            "<b>📍 ПОБЛИЗОСТИ</b>\n"
+            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n"
             "<blockquote>"
             "Анкеты и мэтчи по интересам.\n"
-            "• <b>«Смотреть анкеты»</b> — листаешь профили, ставишь ❤️ или 👎\n"
-            "• Взаимный ❤️ = <b>мэтч</b> — открывается ЛС собеседника\n"
-            "• <b>«Мои мэтчи»</b> — список тех, с кем совпало\n"
-            "• <b>«Редактировать анкету»</b> — имя, возраст, пол, о себе, фото"
+            "• <b>«Смотреть анкеты»</b> — листаешь профили: ❤️ Лайк, 👎 Дизлайк\n"
+            "• <b>💬 Написать</b> — сразу текст или голосовое в ЛС\n"
+            "• <b>⛔ Жалоба</b> — отправляется админу\n"
+            "• <b>💤 Выйти</b> — прекратить поиск и вернуться в меню\n"
+            "• Взаимный ❤️ = <b>мэтч</b> — открывается контакт\n"
+            "• <b>«Моя анкета»</b> — редактируй имя/возраст/пол/о себе/фото по отдельности"
             "</blockquote>\n\n"
 
             "<b>👤 ПРОФИЛЬ</b>\n"
@@ -1449,7 +1584,7 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>🔗 Havolam</b> — anonim xabarlar uchun shaxsiy havola.\n"
             "<b>🎲 Chat-ruletka</b> — tasodifiy suhbatdosh.\n"
-            "<b>📍 Yaqin-atrofda</b> — anketalar va matchlar.\n"
+            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b> — anketalar va matchlar.\n"
             "<b>👤 Profil</b> — ma'lumotlaringiz.\n"
             "<b>🛒 Do'kon</b> — VIP va coinlar.\n"
             "<b>👥 Taklif qilish</b> — do'stlar uchun bonuslar.\n"
@@ -1461,7 +1596,7 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>🔗 My link</b> — personal link for anonymous messages.\n"
             "<b>🎲 Chat roulette</b> — random partner.\n"
-            "<b>📍 Nearby</b> — profiles and matches.\n"
+            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b> — profiles and matches.\n"
             "<b>👤 Profile</b> — your data.\n"
             "<b>🛒 Shop</b> — VIP and coins.\n"
             "<b>👥 Invite</b> — referral bonuses.\n"
@@ -1533,107 +1668,31 @@ T = {
     "vip_none": {"ru": "—", "uz": "—", "en": "—"},
     "vip_until": {"ru": "до {date}", "uz": "{date} gacha", "en": "until {date}"},
     "vip_forever": {"ru": "навсегда", "uz": "abadiy", "en": "forever"},
-    "choose_action": {
-        "ru": "Выберите действие на клавиатуре",
-        "uz": "Klaviaturadan amalni tanlang",
-        "en": "Choose an action on the keyboard",
-    },
-    "choose_new_gender": {
-        "ru": "Выберите новый пол:",
-        "uz": "Yangi jinsni tanlang:",
-        "en": "Choose new gender:",
-    },
-    "gender_saved": {
-        "ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню",
-        "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu",
-        "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu",
-    },
-    "gender_set_short": {
-        "ru": "✅ Пол сохранён: {g}",
-        "uz": "✅ Jins saqlandi: {g}",
-        "en": "✅ Gender saved: {g}",
-    },
-    "gender_needed_for_search": {
-        "ru": "👤 Для поиска нужно указать пол. Выбери:",
-        "uz": "👤 Qidiruv uchun jinsingizni tanlang:",
-        "en": "👤 Please select your gender to start searching:",
-    },
+    "choose_action": {"ru": "Выберите действие на клавиатуре", "uz": "Klaviaturadan amalni tanlang", "en": "Choose an action on the keyboard"},
+    "choose_new_gender": {"ru": "Выберите новый пол:", "uz": "Yangi jinsni tanlang:", "en": "Choose new gender:"},
+    "gender_saved": {"ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню", "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu", "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu"},
+    "gender_set_short": {"ru": "✅ Пол сохранён: {g}", "uz": "✅ Jins saqlandi: {g}", "en": "✅ Gender saved: {g}"},
+    "gender_needed_for_search": {"ru": "👤 Для поиска нужно указать пол. Выбери:", "uz": "👤 Qidiruv uchun jinsingizni tanlang:", "en": "👤 Please select your gender to start searching:"},
 
     # ============================ ВОЗРАСТ ============================
-    "age_register_ask": {
-        "ru": "<b>Сколько вам лет?</b>\n\nНапишите возраст числом (например: 21).",
-        "uz": "<b>Yoshingiz nechada?</b>\n\nYoshingizni raqam bilan yozing (masalan: 21).",
-        "en": "<b>How old are you?</b>\n\nType your age as a number (e.g. 21).",
-    },
-    "age_enter_number": {
-        "ru": "Введите ваш возраст числом (например: 21):",
-        "uz": "Yoshingizni raqam bilan kiriting (masalan: 21):",
-        "en": "Enter your age as a number (e.g. 21):",
-    },
-    "age_saved": {
-        "ru": "Возраст сохранён: <b>{age}</b>\n\nГлавное меню",
-        "uz": "Yosh saqlandi: <b>{age}</b>\n\nAsosiy menyu",
-        "en": "Age saved: <b>{age}</b>\n\nMain menu",
-    },
+    "age_register_ask": {"ru": "<b>Сколько вам лет?</b>\n\nНапишите возраст числом (например: 21).", "uz": "<b>Yoshingiz nechada?</b>\n\nYoshingizni raqam bilan yozing (masalan: 21).", "en": "<b>How old are you?</b>\n\nType your age as a number (e.g. 21)."},
+    "age_enter_number": {"ru": "Введите ваш возраст числом (например: 21):", "uz": "Yoshingizni raqam bilan kiriting (masalan: 21):", "en": "Enter your age as a number (e.g. 21):"},
+    "age_saved": {"ru": "Возраст сохранён: <b>{age}</b>\n\nГлавное меню", "uz": "Yosh saqlandi: <b>{age}</b>\n\nAsosiy menyu", "en": "Age saved: <b>{age}</b>\n\nMain menu"},
 
     # ============================ ПОДАРОК КОИНОВ ============================
     "giftcoins_ask_id": {
-        "ru": (
-            "<b>Подарить коины другу</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "Коины спишутся с твоего баланса и придут другу.\n\n"
-            "Введите <b>Telegram ID</b> или <b>@username</b> друга\n"
-            "<i>(друг должен быть запущен в боте)</i>"
-        ),
-        "uz": (
-            "<b>Do'stga coin sovg'a qilish</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "Coinlar balansingizdan yechiladi.\n\n"
-            "Do'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting"
-        ),
-        "en": (
-            "<b>Gift coins to a friend</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "Coins are deducted from your balance.\n\n"
-            "Enter the friend's <b>Telegram ID</b> or <b>@username</b>"
-        ),
+        "ru": "<b>Подарить коины другу</b>\n━━━━━━━━━━━━━━━━━━━━\nКоины спишутся с твоего баланса и придут другу.\n\nВведите <b>Telegram ID</b> или <b>@username</b> друга\n<i>(друг должен быть запущен в боте)</i>",
+        "uz": "<b>Do'stga coin sovg'a qilish</b>\n━━━━━━━━━━━━━━━━━━━━\nCoinlar balansingizdan yechiladi.\n\nDo'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting",
+        "en": "<b>Gift coins to a friend</b>\n━━━━━━━━━━━━━━━━━━━━\nCoins are deducted from your balance.\n\nEnter the friend's <b>Telegram ID</b> or <b>@username</b>",
     },
-    "giftcoins_ask_amount": {
-        "ru": "Сколько коинов подарить? (твой баланс: <b>{balance}</b>)",
-        "uz": "Qancha coin sovg'a qilasiz? (balansingiz: <b>{balance}</b>)",
-        "en": "How many coins to gift? (your balance: <b>{balance}</b>)",
-    },
-    "giftcoins_amount_number": {
-        "ru": "Введите положительное число коинов:",
-        "uz": "Musbat coin sonini kiriting:",
-        "en": "Enter a positive number of coins:",
-    },
-    "giftcoins_not_enough": {
-        "ru": "Недостаточно коинов. Твой баланс: <b>{balance}</b>. Введите меньшую сумму:",
-        "uz": "Coin yetarli emas. Balansingiz: <b>{balance}</b>. Kamroq kiriting:",
-        "en": "Not enough coins. Your balance: <b>{balance}</b>. Enter a smaller amount:",
-    },
-    "giftcoins_sent": {
-        "ru": "<b>Готово!</b> Подарено <b>{amount}</b> пользователю <code>{id}</code>",
-        "uz": "<b>Tayyor!</b> <code>{id}</code> ga <b>{amount}</b> sovg'a qilindi",
-        "en": "<b>Done!</b> Gifted <b>{amount}</b> to user <code>{id}</code>",
-    },
-    "giftcoins_received": {
-        "ru": "<b>Вам подарили {amount}!</b>\nКто-то перевёл тебе коины. Трать в магазине",
-        "uz": "<b>Sizga {amount} sovg'a qilindi!</b>\nKimdir coin yubordi. Do'konda sarflang",
-        "en": "<b>You received {amount} as a gift!</b>\nSomeone sent you coins. Spend in the shop",
-    },
-    "gift_user_not_found": {
-        "ru": "Пользователь не найден (он должен быть запущен в боте). Введите ID или @username:",
-        "uz": "Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:",
-        "en": "User not found (they must be in the bot). Enter ID or @username:",
-    },
-    "gift_not_self": {
-        "ru": "Нельзя подарить самому себе. Введите ID друга:",
-        "uz": "O'zingizga sovg'a qila olmaysiz. Do'stning ID sini kiriting:",
-        "en": "You can't gift yourself. Enter a friend's ID:",
-    },
-}
+    "giftcoins_ask_amount": {"ru": "Сколько коинов подарить? (твой баланс: <b>{balance}</b>)", "uz": "Qancha coin sovg'a qilasiz? (balansingiz: <b>{balance}</b>)", "en": "How many coins to gift? (your balance: <b>{balance}</b>)"},
+    "giftcoins_amount_number": {"ru": "Введите положительное число коинов:", "uz": "Musbat coin sonini kiriting:", "en": "Enter a positive number of coins:"},
+    "giftcoins_not_enough": {"ru": "Недостаточно коинов. Твой баланс: <b>{balance}</b>. Введите меньшую сумму:", "uz": "Coin yetarli emas. Balansingiz: <b>{balance}</b>. Kamroq kiriting:", "en": "Not enough coins. Your balance: <b>{balance}</b>. Enter a smaller amount:"},
+    "giftcoins_sent": {"ru": "<b>Готово!</b> Подарено <b>{amount}</b> пользователю <code>{id}</code>", "uz": "<b>Tayyor!</b> <code>{id}</code> ga <b>{amount}</b> sovg'a qilindi", "en": "<b>Done!</b> Gifted <b>{amount}</b> to user <code>{id}</code>"},
+    "giftcoins_received": {"ru": "<b>Вам подарили {amount}!</b>\nКто-то перевёл тебе коины. Трать в магазине", "uz": "<b>Sizga {amount} sovg'a qilindi!</b>\nKimdir coin yubordi. Do'konda sarflang", "en": "<b>You received {amount} as a gift!</b>\nSomeone sent you coins. Spend in the shop"},
+    "gift_user_not_found": {"ru": "Пользователь не найден (он должен быть запущен в боте). Введите ID или @username:", "uz": "Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:", "en": "User not found (they must be in the bot). Enter ID or @username:"},
+    "gift_not_self": {"ru": "Нельзя подарить самому себе. Введите ID друга:", "uz": "O'zingizga sovg'a qila olmaysiz. Do'stning ID sini kiriting:", "en": "You can't gift yourself. Enter a friend's ID:"},
+    }
 # ===================== БЛОК 5 / 14 — СЛОВАРЬ T (часть 2) =====================
 T.update({
 
@@ -2256,56 +2315,6 @@ T.update({
         ),
     },
 
-    # ============================ ПОБЛИЗОСТИ ============================
-    "nearby_title": {
-        "ru": "📍 <b>Поблизости</b>\n━━━━━━━━━━━━━━━━━━━━\nВыбери действие:",
-        "uz": "📍 <b>Yaqin-atrofda</b>\n━━━━━━━━━━━━━━━━━━━━\nAmalni tanlang:",
-        "en": "📍 <b>Nearby</b>\n━━━━━━━━━━━━━━━━━━━━\nChoose an action:",
-    },
-    "nearby_create_title": {
-        "ru": "📍 <b>Анкета Поблизости</b>\n━━━━━━━━━━━━━━━━━━━━\nСоздай анкету, чтобы тебя видели другие.\n\n",
-        "uz": "📍 <b>Yaqin-atrofda anketasi</b>\n━━━━━━━━━━━━━━━━━━━━\n",
-        "en": "📍 <b>Nearby profile</b>\n━━━━━━━━━━━━━━━━━━━━\nCreate a profile to be seen.\n\n",
-    },
-    "nearby_ask_name": {"ru": "✏️ <b>Шаг 1/5</b> — напиши своё <b>имя</b>:", "uz": "✏️ <b>1/5</b> — <b>ismingiz</b>:", "en": "✏️ <b>Step 1/5</b> — your <b>name</b>:"},
-    "nearby_ask_age": {"ru": "✏️ <b>Шаг 2/5</b> — сколько тебе <b>лет</b>? (число)", "uz": "✏️ <b>2/5</b> — <b>yoshingiz</b>?", "en": "✏️ <b>Step 2/5</b> — your <b>age</b>?"},
-    "nearby_ask_gender": {"ru": "✏️ <b>Шаг 3/5</b> — твой <b>пол</b>:", "uz": "✏️ <b>3/5</b> — <b>jinsingiz</b>:", "en": "✏️ <b>Step 3/5</b> — your <b>gender</b>:"},
-    "nearby_ask_looking": {"ru": "✏️ <b>Шаг 4/5</b> — <b>кого ищешь</b>?", "uz": "✏️ <b>4/5</b> — <b>kimni qidirasiz</b>?", "en": "✏️ <b>Step 4/5</b> — <b>who are you looking for</b>?"},
-    "nearby_ask_bio": {"ru": "✏️ <b>Шаг 5/5</b> — расскажи <b>о себе</b> (до 200 символов):", "uz": "✏️ <b>5/5</b> — <b>o'zingiz haqida</b> (200 ta belgigacha):", "en": "✏️ <b>Step 5/5</b> — <b>about you</b> (up to 200 chars):"},
-    "nearby_ask_photo": {
-        "ru": "📷 Последний шаг — отправь своё <b>фото</b>\n(или напиши «-» чтобы пропустить)",
-        "uz": "📷 Oxirgi qadam — <b>foto</b> yuboring\n(yoki «-» yozing)",
-        "en": "📷 Last step — send your <b>photo</b>\n(or type «-» to skip)",
-    },
-    "nearby_name_invalid": {"ru": "Имя 2-30 символов:", "uz": "Ism 2-30 belgi:", "en": "Name 2-30 chars:"},
-    "nearby_age_invalid": {"ru": "Возраст 12-99:", "uz": "Yosh 12-99:", "en": "Age 12-99:"},
-    "nearby_bio_invalid": {"ru": "Опиши 5-200 символов:", "uz": "5-200 belgi yozing:", "en": "Describe 5-200 chars:"},
-    "nearby_photo_required": {"ru": "📷 Отправь именно фото или «-» чтобы пропустить:", "uz": "📷 Foto yuboring yoki «-»:", "en": "📷 Send photo or «-»:"},
-    "nearby_profile_saved": {
-        "ru": "✅ <b>Анкета создана!</b>\n\nТеперь можешь смотреть анкеты других.",
-        "uz": "✅ <b>Anketa yaratildi!</b>\n\nBoshqalarni ko'rishingiz mumkin.",
-        "en": "✅ <b>Profile created!</b>\n\nNow you can browse others.",
-    },
-    "nearby_no_more": {
-        "ru": "😔 <b>Пока никого нет</b>\n\nВозможно, анкет мало. Зайди позже!",
-        "uz": "😔 <b>Hozircha hech kim yo'q</b>\n\nKeyinroq kiring!",
-        "en": "😔 <b>No one yet</b>\n\nCome back later!",
-    },
-    "nearby_match_title": {"ru": "💕 <b>Взаимная симпатия!</b>\n━━━━━━━━━━━━━━━━━━━━", "uz": "💕 <b>O'zaro yoqdi!</b>\n━━━━━━━━━━━━━━━━━━━━", "en": "💕 <b>Mutual like!</b>\n━━━━━━━━━━━━━━━━━━━━"},
-    "nearby_match_contact": {"ru": "Собеседник: <b>{name}</b>\n\n{contact}", "uz": "Suhbatdosh: <b>{name}</b>\n\n{contact}", "en": "Partner: <b>{name}</b>\n\n{contact}"},
-    "nearby_match_footer": {"ru": "Мы сообщили о мэтче боту @{bot}", "uz": "@{bot} botga xabar berdik", "en": "Reported match to bot @{bot}"},
-    "nearby_no_matches": {
-        "ru": "💕 <b>Мои мэтчи</b>\n\nПока никого нет 😔\nЛайкай анкеты — будут взаимные!",
-        "uz": "💕 <b>Mening matchlarim</b>\n\nHozircha yo'q 😔",
-        "en": "💕 <b>My matches</b>\n\nNone yet 😔",
-    },
-    "nearby_matches_list": {"ru": "💕 <b>Мои мэтчи ({n})</b>\n━━━━━━━━━━━━━━━━━━━━", "uz": "💕 <b>Matchlarim ({n})</b>", "en": "💕 <b>My matches ({n})</b>"},
-    "nearby_matches_footer": {
-        "ru": "Напиши в ЛС — это единственный способ связаться после мэтча.",
-        "uz": "Lichkaga yozing — bog'lanishning yagona yo'li.",
-        "en": "DM them — the only way to contact after a match.",
-    },
-
     # ============================ /sex ============================
     "sex_only_moder": {"ru": "🛡 Только для модераторов.", "uz": "🛡 Faqat moderatorlar uchun.", "en": "🛡 Moderators only."},
     "sex_room_exists": {"ru": "💬 Комната уже создана: <b>{title}</b>", "uz": "💬 Xona allaqachon yaratilgan: <b>{title}</b>", "en": "💬 Room already exists: <b>{title}</b>"},
@@ -2376,7 +2385,7 @@ T.update({
 })
 # ===================== БЛОК 6 / 14 — t(), КЛАВИАТУРЫ, УТИЛИТЫ =====================
 
-# ---- Гармонизация эмодзи (перенос из ru в uz/en) ----
+# ---- Гармонизация эмодзи ----
 def _harmonize_translations():
     for _key, _block in T.items():
         if not isinstance(_block, dict):
@@ -2399,7 +2408,6 @@ _harmonize_translations()
 
 
 def t(key: str, **kw) -> str:
-    """Перевод строки на текущий язык."""
     d = T.get(key, {})
     s = d.get(cur_lang()) or d.get("ru") or key
     return s.format(**kw) if kw else s
@@ -2408,7 +2416,7 @@ def t(key: str, **kw) -> str:
 # ============================ ГЛАВНЫЕ КЛАВИАТУРЫ ============================
 def main_menu_kb(tg_id: int):
     rows = [
-        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("📍 Поблизости")],
+        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭")],
         [KeyboardButton("🎲 Чат-рулетка"), KeyboardButton("👤 Профиль")],
         [KeyboardButton("🛒 Магазин"), KeyboardButton("👥 Пригласить")],
         [KeyboardButton("ℹ️ Помощь"), KeyboardButton("🌐 Язык")],
@@ -2530,23 +2538,52 @@ def left_chat_kb():
     ], resize_keyboard=True))
 
 
-# ============================ ПОБЛИЗОСТИ ============================
-def nearby_menu_kb():
+# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — МЕНЮ ============================
+def next_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔍 Смотреть анкеты"), KeyboardButton("💕 Мои мэтчи")],
-        [KeyboardButton("✏️ Редактировать анкету")],
+        [KeyboardButton("🔥 Смотреть анкеты")],
+        [KeyboardButton("👤 Моя анкета")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
-def nearby_gender_kb():
+# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — КАРТОЧКА ============================
+def next_reaction_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("❤️ Лайк"), KeyboardButton("👎 Дизлайк")],
+        [KeyboardButton("💬 Написать"), KeyboardButton("⛔ Жалоба")],
+        [KeyboardButton("💤 Выйти")],
+    ], resize_keyboard=True))
+
+
+# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — МОЯ АНКЕТА ============================
+def next_edit_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("📝 Имя"), KeyboardButton("🎂 Возраст")],
+        [KeyboardButton("📄 О себе"), KeyboardButton("📷 Фото")],
+        [KeyboardButton("🎯 Кого ищу"), KeyboardButton("⚧ Пол")],
+        [KeyboardButton("👁 Предпросмотр")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
+def next_cancel_kb():
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True))
+
+
+def next_edit_back_kb():
+    """Клавиатура при редактировании поля — Отмена возвращает в Мою анкету."""
+    return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True))
+
+
+def next_gender_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👨 Мужской"), KeyboardButton("👩 Женский")],
         [KeyboardButton("❌ Отмена")],
     ], resize_keyboard=True))
 
 
-def nearby_looking_kb():
+def next_looking_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👨 Парня"), KeyboardButton("👩 Девушку")],
         [KeyboardButton("🤷 Любого")],
@@ -2554,18 +2591,12 @@ def nearby_looking_kb():
     ], resize_keyboard=True))
 
 
-def nearby_browse_kb():
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔍 Смотреть анкеты")],
-        [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True))
-
-
-def nearby_matches_kb():
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🔍 Смотреть анкеты")],
-        [KeyboardButton("⬅️ Назад")],
-    ], resize_keyboard=True))
+# ============================ Inline под сообщениями Next ============================
+def next_reply_inline_kb(mid: int):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("↩️ Ответить", callback_data=f"nreply:{mid}")],
+        [InlineKeyboardButton("⛔ Жалоба", callback_data=f"nreport:{mid}")],
+    ])
 
 
 # ============================ РЕФЕРАЛЫ ============================
@@ -2964,24 +2995,29 @@ def item_title(item) -> str:
 # ============================ НАВИГАЦИЯ ============================
 async def clean_screen(update, context):
     """Удаляет нажатие пользователя + прошлые сообщения меню."""
-    try:
-        await update.message.delete()
-    except TelegramError as e:
-        log.debug("clean_screen: %s", e)
+    if update.message is not None:
+        try:
+            await update.message.delete()
+        except TelegramError as e:
+            log.debug("clean_screen msg: %s", e)
+
     for mid in context.user_data.pop("extra_msg_ids", []):
         await try_delete_message(context, update.effective_chat.id, mid)
+
     mid = context.user_data.pop("last_menu_msg_id", None)
     if mid:
         await try_delete_message(context, update.effective_chat.id, mid)
 
+    nid = context.user_data.pop("next_card_id", None)
+    if nid:
+        await try_delete_message(context, update.effective_chat.id, nid)
+
 
 def track_extra(context, msg):
-    """Запоминает доп. сообщение (карточку ссылки и т.п.) для удаления."""
     context.user_data.setdefault("extra_msg_ids", []).append(msg.message_id)
 
 
 async def send_menu(update, context, text, reply_markup=None, parse_mode=None):
-    """Отправляет новое меню и запоминает его ID."""
     msg = await context.bot.send_message(
         update.effective_chat.id, text,
         reply_markup=reply_markup, parse_mode=parse_mode,
@@ -2991,13 +3027,11 @@ async def send_menu(update, context, text, reply_markup=None, parse_mode=None):
 
 
 async def nav(update, context, text, reply_markup=None, parse_mode=None):
-    """Удаляет прошлый экран и показывает новый."""
     await clean_screen(update, context)
     return await send_menu(update, context, text, reply_markup, parse_mode)
 
 
 async def go_home(update, context):
-    """Возврат в главное меню + очистка."""
     context.user_data["state"] = None
     await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
 
@@ -3101,7 +3135,6 @@ async def grant_daily_bonus(uid: int, context):
 
 # ============================ АВТО-МЕНЮ ============================
 async def deliver_start_menu(context, uid: int, greet: bool = True):
-    """Показывает меню с учётом регистрации."""
     user = get_user(uid)
     if not user:
         return
@@ -3151,7 +3184,6 @@ def is_banned_pair(u1, u2) -> bool:
 
 
 async def relay_roulette_message(update, context) -> bool:
-    """Пересылает сообщение собеседнику в рулетке."""
     session = get_active_session(update.effective_user.id)
     if not session:
         return False
@@ -3185,7 +3217,6 @@ async def relay_roulette_message(update, context) -> bool:
     except TelegramError as e:
         log.warning("relay_roulette to %s: %s", other_id, e)
 
-    # Трансляция наблюдателям /tg
     await relay_to_spectators(
         context, session, update.effective_user.id,
         update.effective_chat.id, update.message.message_id,
@@ -3202,7 +3233,6 @@ def valid_link_code(code: str) -> bool:
 
 
 def can_change_link(user_row):
-    """Смена ссылки: VIP — всегда, обычным — раз в 3 дня."""
     if is_vip(user_row):
         return True, None
     if not user_row["link_changed_at"]:
@@ -3220,7 +3250,6 @@ def can_change_link(user_row):
 
 # ============================ PURGE / DEAD ACCOUNT ============================
 def user_is_disposable(uid: int) -> bool:
-    """True, если аккаунт пустой и его безопасно удалить."""
     if is_admin(uid):
         return False
     u = get_user(uid)
@@ -3235,11 +3264,16 @@ def user_is_disposable(uid: int) -> bool:
         pass
     if conn.execute("SELECT 1 FROM star_purchases WHERE user_id=? LIMIT 1", (uid,)).fetchone():
         return False
+    if conn.execute("SELECT 1 FROM nearby_profiles WHERE user_id=? LIMIT 1", (uid,)).fetchone():
+        return False
+    if conn.execute(
+        "SELECT 1 FROM nearby_matches WHERE user1_id=? OR user2_id=? LIMIT 1", (uid, uid)
+    ).fetchone():
+        return False
     return True
 
 
 def purge_user(uid: int, force: bool = False) -> bool:
-    """Удаляет пользователя. Без force — только пустые."""
     try:
         if is_admin(uid):
             return False
@@ -3265,6 +3299,15 @@ def purge_user(uid: int, force: bool = False) -> bool:
             "WHERE active=1 AND (user1_id=? OR user2_id=?)",
             (now_iso(), uid, uid),
         )
+
+        conn.execute("DELETE FROM nearby_profiles WHERE user_id=?", (uid,))
+        conn.execute("DELETE FROM nearby_likes WHERE from_id=? OR to_id=?", (uid, uid))
+        conn.execute("DELETE FROM nearby_matches WHERE user1_id=? OR user2_id=?", (uid, uid))
+        conn.execute("DELETE FROM nearby_messages WHERE from_id=? OR to_id=?", (uid, uid))
+
+        conn.execute("DELETE FROM anon_watchers WHERE mod_id=? OR target_id=?", (uid, uid))
+        conn.execute("DELETE FROM anon_messages WHERE from_id=? OR to_id=?", (uid, uid))
+
         conn.commit()
 
         if partner_ids:
@@ -3308,9 +3351,9 @@ def safe_purge_dead(uid: int) -> bool:
 
 
 # ============================ ГЛОБАЛЬНЫЕ БУФЕРЫ ============================
-BCAST_ALBUMS = {}                        # (uid, media_group_id) -> album data
-SPECTATORS = {}                          # mod_id -> session_id
-SESSION_SPECTATORS = defaultdict(set)    # session_id -> {mod_id}
+BCAST_ALBUMS = {}
+SPECTATORS = {}
+SESSION_SPECTATORS = defaultdict(set)
 # ===================== БЛОК 8 / 14 — /START И ПРОФИЛЬ =====================
 
 # ============================ /start ============================
@@ -3337,7 +3380,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await handle_incoming_link(update, context, code)
             return
 
-    # Гейт подписки на вход
     if get_setting("subgate_enabled", "0") == "1" and not is_admin(tg_user.id):
         chans = await get_mandatory_channels()
         if chans and not await user_subscribed_all(context, tg_user.id, chans):
@@ -3347,7 +3389,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # Регистрация — пол
     if not user["gender"]:
         context.user_data["state"] = "set_gender_first"
         name = tg_user.first_name or "друг"
@@ -3357,7 +3398,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Регистрация — возраст
     if user["age"] is None:
         context.user_data["state"] = "set_age_first"
         await update.message.reply_text(
@@ -3366,7 +3406,6 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Кулдаун приветствия — 10 минут
     name = tg_user.first_name or "друг"
     show_greet = True
     try:
@@ -3509,366 +3548,6 @@ async def show_profile(update, context):
         vip_status = t("vip_none")
         coins_display = user['coins']
 
-    # Время в рулетке
-    secs = 0
-    for s in conn.execute(
-        "SELECT started_at, ended_at FROM roulette_sessions WHERE user1_id=? OR user2_id=?",
-        (uid, uid),
-    ).fetchall():
-        try:
-            start = datetime.fromisoformat(s["started_at"])
-            end = datetime.fromisoformat(s["ended_at"]) if s["ended_at"] else now_dt()
-            secs += max(0, (end - start).total_seconds())
-        except (ValueError, TypeError):
-            continue
-
-    sent = conn.execute(
-        "SELECT COUNT(*) c FROM anon_messages WHERE from_id=? AND msg_type IN ('question','valentine')",
-        (uid,),
-    ).fetchone()["c"]
-    received = conn.execute(
-        "SELECT COUNT(*) c FROM anon_messages WHERE to_id=? AND msg_type IN ('question','valentine')",
-        (uid,),
-    ).fetchone()["c"]
-    stars_spent = conn.execute(
-        "SELECT COALESCE(SUM(stars),0) s FROM star_purchases WHERE user_id=? AND refunded=0",
-        (uid,),
-    ).fetchone()["s"]
-
-    invited = conn.execute(
-        "SELECT COUNT(*) c FROM referrals WHERE referrer_id=? AND active=1", (uid,)
-    ).fetchone()["c"]
-    if invited > 0:
-        higher = conn.execute(
-            "SELECT COUNT(*) c FROM (SELECT referrer_id, COUNT(*) c FROM referrals "
-            "WHERE active=1 GROUP BY referrer_id) WHERE c > ?",
-            (invited,),
-        ).fetchone()["c"]
-        rank = f"#{higher + 1}"
-    else:
-        rank = "—"
-
-    try:
-        reg_date = datetime.fromisoformat(user["created_at"]).strftime("%d.%m.%Y")
-    except (ValueError, TypeError):
-        reg_date = "—"
-
-    name = user["first_name"] or "—"
-    if user["username"]:
-        name += f" (@{user['username']})"
-
-    _age_int = user_age_int(user)
-    age_display = str(_age_int) if _age_int is not None else "—"
-
-    text = t(
-        "profile_full",
-        id=uid, name=html.escape(name),
-        gender=gender_label(user['gender']),
-        age=age_display,
-        roulette_time=fmt_duration(secs),
-        sent=sent, received=received,
-        invited=invited, rank=rank,
-        coins=coins_display, vip=vip_status,
-        stars=stars_spent, reg_date=reg_date,
-    )
-
-    await clean_screen(update, context)
-    context.user_data["state"] = "profile"
-    await send_menu(update, context, text, profile_kb(), parse_mode="HTML")
-
-
-async def profile_router(update, context):
-    text = canon(update.message.text)
-    uid = update.effective_user.id
-
-    if text == "Назад":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(uid))
-        return
-
-    if text == "Сменить пол":
-        context.user_data["state"] = "set_gender_profile"
-        await clean_screen(update, context)
-        await send_menu(update, context, t("choose_new_gender"), gender_kb(with_back=True))
-        return
-
-    if text == "Изменить возраст":
-        context.user_data["state"] = "set_age_profile"
-        await clean_screen(update, context)
-        await send_menu(update, context, t("age_register_ask"), age_back_kb(), parse_mode="HTML")
-        return
-
-    if text == "Подарить коины":
-        context.user_data["state"] = "giftcoins_id"
-        await clean_screen(update, context)
-        await send_menu(update, context, t("giftcoins_ask_id"), cancel_reply_kb(), parse_mode="HTML")
-        return
-
-    await context.bot.send_message(uid, t("choose_action"), reply_markup=profile_kb())
-
-
-# ============================ ПОДАРОК КОИНОВ ============================
-async def gift_coins_router(update, context):
-    state = context.user_data.get("state")
-    text = (update.message.text or "").strip()
-    uid = update.effective_user.id
-
-    if canon(text) in ("Отмена", "Назад"):
-        context.user_data["state"] = None
-        await show_profile(update, context)
-        return
-
-    if state == "giftcoins_id":
-        target = resolve_user_ref(text)
-        if target is None:
-            await update.message.reply_text(t("gift_user_not_found"), reply_markup=cancel_reply_kb())
-            return
-        if target == uid:
-            await update.message.reply_text(t("gift_not_self"), reply_markup=cancel_reply_kb())
-            return
-        context.user_data["giftcoins_target"] = target
-        context.user_data["state"] = "giftcoins_amount"
-        bal = get_user(uid)["coins"] or 0
-        await update.message.reply_text(
-            t("giftcoins_ask_amount", balance=bal),
-            parse_mode="HTML", reply_markup=cancel_reply_kb(),
-        )
-        return
-
-    if state == "giftcoins_amount":
-        if not text.isdigit() or int(text) <= 0:
-            await update.message.reply_text(t("giftcoins_amount_number"), reply_markup=cancel_reply_kb())
-            return
-        amount = int(text)
-        user = get_user(uid)
-        if not is_unlimited(user) and (user["coins"] or 0) < amount:
-            await update.message.reply_text(
-                t("giftcoins_not_enough", balance=user["coins"] or 0),
-                reply_markup=cancel_reply_kb(),
-            )
-            return
-        target = context.user_data.get("giftcoins_target")
-        if not is_unlimited(user):
-            conn.execute("UPDATE users SET coins = coins - ? WHERE tg_id=?", (amount, uid))
-        conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (amount, target))
-        conn.commit()
-        context.user_data["state"] = None
-        context.user_data.pop("giftcoins_target", None)
-        try:
-            _sl = cur_lang()
-            set_cur_lang(get_lang(target))
-            await context.bot.send_message(
-                target, t("giftcoins_received", amount=amount),
-                parse_mode="HTML", reply_markup=main_menu_kb(target),
-            )
-            set_cur_lang(_sl)
-        except TelegramError:
-            pass
-        await nav(
-            update, context,
-            t("giftcoins_sent", id=target, amount=amount),
-            main_menu_kb(uid), parse_mode="HTML",
-        )
-        return
-        # ===================== БЛОК 8 / 14 — /START И ПРОФИЛЬ =====================
-
-# ============================ /start ============================
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    tg_user = update.effective_user
-    existed = get_user(tg_user.id) is not None
-    user = ensure_user(tg_user.id, tg_user.username, tg_user.first_name)
-
-    if is_banned(user) and not is_admin(tg_user.id):
-        await update.message.reply_text(t("banned"))
-        return
-
-    if not existed and not is_admin(tg_user.id):
-        await notify_admins_new_user(context, tg_user)
-
-    await grant_daily_bonus(tg_user.id, context)
-
-    args = context.args or []
-    if args:
-        code = args[0]
-        if code.startswith("ref_"):
-            await handle_referral(update, context, code, existed)
-        else:
-            await handle_incoming_link(update, context, code)
-            return
-
-    # Гейт подписки на вход
-    if get_setting("subgate_enabled", "0") == "1" and not is_admin(tg_user.id):
-        chans = await get_mandatory_channels()
-        if chans and not await user_subscribed_all(context, tg_user.id, chans):
-            await update.message.reply_text(
-                t("subgate_start"), parse_mode="HTML",
-                reply_markup=subscribe_gate_kb(chans),
-            )
-            return
-
-    # Регистрация — пол
-    if not user["gender"]:
-        context.user_data["state"] = "set_gender_first"
-        name = tg_user.first_name or "друг"
-        await update.message.reply_text(
-            t("welcome", name=html.escape(name)),
-            parse_mode="HTML", reply_markup=gender_kb(),
-        )
-        return
-
-    # Регистрация — возраст
-    if user["age"] is None:
-        context.user_data["state"] = "set_age_first"
-        await update.message.reply_text(
-            t("age_register_ask"), parse_mode="HTML",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return
-
-    # Кулдаун приветствия — 10 минут
-    name = tg_user.first_name or "друг"
-    show_greet = True
-    try:
-        last_greet_raw = user["last_greet"] if "last_greet" in user.keys() else None
-        if last_greet_raw:
-            try:
-                if now_dt() - datetime.fromisoformat(last_greet_raw) < timedelta(minutes=WELCOME_COOLDOWN_MIN):
-                    show_greet = False
-            except (ValueError, TypeError):
-                pass
-    except (KeyError, IndexError):
-        pass
-
-    if show_greet:
-        conn.execute("UPDATE users SET last_greet=? WHERE tg_id=?", (now_iso(), tg_user.id))
-        conn.commit()
-        await update.message.reply_text(
-            t("welcome_back", name=html.escape(name)),
-            parse_mode="HTML", reply_markup=main_menu_kb(tg_user.id),
-        )
-    else:
-        await update.message.reply_text(
-            t("main_menu"),
-            reply_markup=main_menu_kb(tg_user.id),
-        )
-
-
-# ============================ ЯЗЫК ============================
-async def show_language_menu(update, context):
-    context.user_data["state"] = "language"
-    await nav(update, context, t("lang_choose"), language_menu_kb())
-
-
-async def language_router(update, context):
-    text = canon(update.message.text)
-    if text in ("Назад", "Меню", "Отмена"):
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
-        return
-    lang = LANG_BUTTONS.get(text)
-    if not lang:
-        await update.message.reply_text(t("pick_on_kb"), reply_markup=language_menu_kb())
-        return
-    set_lang(update.effective_user.id, lang)
-    set_cur_lang(lang)
-    context.user_data["state"] = None
-    await nav(update, context, t("lang_set"), main_menu_kb(update.effective_user.id))
-
-
-# ============================ ГЕНДЕР ============================
-async def set_gender_from_text(update, context):
-    text = canon(update.message.text)
-    state = context.user_data.get("state")
-
-    if text == "Назад":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
-        return
-
-    gender = {"Мужской": "m", "Женский": "f"}.get(text)
-    if not gender:
-        await update.message.reply_text(
-            t("pick_on_kb"),
-            reply_markup=gender_kb(state == "set_gender_profile"),
-        )
-        return
-
-    conn.execute("UPDATE users SET gender=? WHERE tg_id=?", (gender, update.effective_user.id))
-    conn.commit()
-
-    g = {"m": {"ru": "Мужской", "uz": "Erkak", "en": "Male"},
-         "f": {"ru": "Женский", "uz": "Ayol", "en": "Female"}}[gender][cur_lang()]
-
-    user = get_user(update.effective_user.id)
-
-    if state == "set_gender_first" and not user["age"]:
-        context.user_data["state"] = "set_age_first"
-        await update.message.reply_text(t("gender_set_short", g=g), parse_mode="HTML")
-        await update.message.reply_text(
-            t("age_register_ask"), parse_mode="HTML",
-            reply_markup=ReplyKeyboardRemove(),
-        )
-        return
-
-    context.user_data["state"] = None
-    await update.message.reply_text(
-        t("gender_saved", g=g), parse_mode="HTML",
-        reply_markup=main_menu_kb(update.effective_user.id),
-    )
-
-
-# ============================ ВОЗРАСТ ============================
-async def set_age_from_text(update, context):
-    text = (update.message.text or "").strip()
-    ctext = canon(text)
-    state = context.user_data.get("state")
-    uid = update.effective_user.id
-
-    if ctext in ("Назад", "Отмена"):
-        if state == "set_age_profile":
-            await show_profile(update, context)
-        else:
-            context.user_data["state"] = None
-            await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
-        return
-
-    if not text.isdigit():
-        await update.message.reply_text(t("age_enter_number"), parse_mode="HTML")
-        return
-
-    new_age = int(text)
-    if new_age < 5 or new_age > 99:
-        await update.message.reply_text(t("age_enter_number"), parse_mode="HTML")
-        return
-
-    conn.execute("UPDATE users SET age=? WHERE tg_id=?", (str(new_age), uid))
-    conn.commit()
-    context.user_data["state"] = None
-    await update.message.reply_text(
-        t("age_saved", age=new_age), parse_mode="HTML",
-        reply_markup=main_menu_kb(uid),
-    )
-
-
-# ============================ ПРОФИЛЬ ============================
-async def show_profile(update, context):
-    uid = update.effective_user.id
-    user = get_user(uid)
-
-    if is_unlimited(user):
-        vip_status = t("vip_forever")
-        coins_display = "∞"
-    elif is_vip(user):
-        try:
-            vip_status = t("vip_until", date=user['vip_until'][:10])
-        except (TypeError, KeyError):
-            vip_status = t("vip_none")
-        coins_display = user['coins']
-    else:
-        vip_status = t("vip_none")
-        coins_display = user['coins']
-
-    # Время в рулетке
     secs = 0
     for s in conn.execute(
         "SELECT started_at, ended_at FROM roulette_sessions WHERE user1_id=? OR user2_id=?",
@@ -4054,7 +3733,6 @@ async def link_menu_router(update, context):
 
 
 async def show_my_link(update, context):
-    """Показывает активную ссылку (и старую, если ещё жива)."""
     user = get_user(update.effective_user.id)
     if not user["custom_link"]:
         context.user_data["state"] = "awaiting_link_code"
@@ -4062,11 +3740,9 @@ async def show_my_link(update, context):
         return
 
     await clean_screen(update, context)
-
     link = await build_start_link(context, user["custom_link"])
     text = t("link_show", link=html.escape(link))
 
-    # Старая ссылка (если ещё активна — 24 часа)
     try:
         old = user["old_link"]
         old_until = user["old_link_until"]
@@ -4122,7 +3798,6 @@ async def process_link_code(update, context, code):
         await update.message.reply_text(t("link_taken"), reply_markup=link_code_kb())
         return
 
-    # Сохраняем старую ссылку на 24 часа
     user = get_user(uid)
     old_link = user["custom_link"] if user else None
     old_until = None
@@ -4160,7 +3835,6 @@ async def handle_incoming_link(update, context, code):
         await update.message.reply_text(t("banned"))
         return
 
-    # Ищем владельца: сначала по активной, потом по старой (если жива)
     owner = conn.execute("SELECT * FROM users WHERE custom_link=?", (code,)).fetchone()
     if not owner:
         owner = conn.execute(
@@ -4336,9 +4010,7 @@ async def deliver_anon(context, author_id, recipient_id, msg_type, content_type,
     except TelegramError:
         pass
 
-    # Трансляция наблюдателям /anon
     await relay_to_anon_watchers(context, recipient_id, mid)
-
     return mid
 
 
@@ -4621,6 +4293,25 @@ async def process_report_reason(update, context):
             f"Содержание: {content_preview}",
             reply_markup=kb,
         )
+    elif ctx in ("nearby", "nearby_msg"):
+        reported = get_user(reported_id)
+        preview = ""
+        if ctx == "nearby_msg":
+            m = conn.execute("SELECT * FROM nearby_messages WHERE id=?", (ref_id,)).fetchone()
+            if m:
+                preview = m["text"] if m["content_type"] == "text" else "[голосовое]"
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🔨 Бан в поиске", callback_data=f"repadm:ok:{report_id}"),
+            InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{report_id}"),
+        ]])
+        await notify_staff(
+            context,
+            f"⛔ Жалоба #{report_id} (𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭)\n"
+            f"Причина: {reason}\n"
+            f"На: {user_mention(reported)}\n"
+            f"{('Сообщение: ' + preview) if preview else ''}",
+            reply_markup=kb,
+        )
     else:
         kb = InlineKeyboardMarkup([[
             InlineKeyboardButton("Бан 30 дн.", callback_data=f"repadm:ok:{report_id}"),
@@ -4634,11 +4325,15 @@ async def process_report_reason(update, context):
 
 
 async def on_report_admin_decision(update, context):
+    """ФИКС: один query.answer() — с алертом если не staff, без него если всё ок."""
     query = update.callback_query
-    await query.answer()
+
     if not is_staff(query.from_user.id):
         await query.answer(t("staff_only"), show_alert=True)
         return
+
+    # Единственный answer (без алерта) — после проверки прав
+    await query.answer()
 
     _, decision, report_id = query.data.split(":")
     report_id = int(report_id)
@@ -4655,7 +4350,13 @@ async def on_report_admin_decision(update, context):
             return
 
         is_anon = report["context"] == "anon"
-        until = ANON_BAN_FOREVER if is_anon else (now_dt() + timedelta(days=ROULETTE_BAN_DAYS)).isoformat()
+        is_nearby = report["context"] in ("nearby", "nearby_msg")
+
+        if is_anon or is_nearby:
+            until = ANON_BAN_FOREVER
+        else:
+            until = (now_dt() + timedelta(days=ROULETTE_BAN_DAYS)).isoformat()
+
         conn.execute(
             "INSERT INTO bans (owner_id, banned_id, until, created_at) VALUES (?, ?, ?, ?)",
             (report["reporter_id"], report["reported_id"], until, now_iso()),
@@ -4666,11 +4367,16 @@ async def on_report_admin_decision(update, context):
         try:
             _sl = cur_lang()
             set_cur_lang(get_lang(report["reporter_id"]))
-            await context.bot.send_message(
-                report["reporter_id"],
-                t("report_confirmed_forever") if is_anon
-                else t("report_confirmed_user", days=ROULETTE_BAN_DAYS),
-            )
+            if is_anon:
+                await context.bot.send_message(report["reporter_id"], t("report_confirmed_forever"))
+            elif is_nearby:
+                await context.bot.send_message(
+                    report["reporter_id"], t("next_report_confirm"), parse_mode="HTML",
+                )
+            else:
+                await context.bot.send_message(
+                    report["reporter_id"], t("report_confirmed_user", days=ROULETTE_BAN_DAYS),
+                )
             set_cur_lang(_sl)
         except TelegramError:
             pass
@@ -4678,11 +4384,16 @@ async def on_report_admin_decision(update, context):
         try:
             _sl2 = cur_lang()
             set_cur_lang(get_lang(report["reported_id"]))
-            await context.bot.send_message(
-                report["reported_id"],
-                t("you_were_banned_forever") if is_anon
-                else t("you_were_banned", days=ROULETTE_BAN_DAYS),
-            )
+            if is_nearby:
+                await context.bot.send_message(
+                    report["reported_id"], t("next_banned_user"), parse_mode="HTML",
+                )
+            elif is_anon:
+                await context.bot.send_message(report["reported_id"], t("you_were_banned_forever"))
+            else:
+                await context.bot.send_message(
+                    report["reported_id"], t("you_were_banned", days=ROULETTE_BAN_DAYS),
+                )
             set_cur_lang(_sl2)
         except TelegramError:
             pass
@@ -4755,7 +4466,6 @@ async def handle_referral(update, context, code: str, existed: bool):
 
 
 async def reward_link_activity(context, uid: int, kind: str):
-    """Бонус +20 коинов за каждые 10 действий по ссылке. VIP — без бонуса."""
     u = get_user(uid)
     if not u or is_vip(u):
         return
@@ -4788,432 +4498,371 @@ async def reward_link_activity(context, uid: int, kind: str):
     else:
         conn.execute(f"UPDATE users SET {col_total}=? WHERE tg_id=?", (total, uid))
         conn.commit()
-        # ===================== БЛОК 10 / 14 — РУЛЕТКА И ПОБЛИЗОСТИ =====================
+        # ===================== БЛОК 10 / 14 — 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 =====================
 
-# ============================ РУЛЕТКА: ВХОД ============================
-async def show_roulette_entry(update, context):
-    user = get_user(update.effective_user.id)
-    active = get_active_session(user["tg_id"])
-    await clean_screen(update, context)
-
-    if active:
-        UD[user["tg_id"]]["state"] = "rchat"
-        await context.bot.send_message(
-            update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb(),
-        )
-        return
-
-    in_queue = conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (user["tg_id"],)).fetchone()
-    if in_queue:
-        await context.bot.send_message(
-            update.effective_chat.id, t("roulette_searching"), reply_markup=searching_kb(),
-        )
-        return
-
-    context.user_data["state"] = "roulette_pref"
-    await send_menu(update, context, t("roulette_who"), roulette_pref_reply_kb())
+NEXT_BRAND = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
 
 
-async def roulette_pref_router(update, context):
-    text = canon(update.message.text)
+# ============================ ХЕЛПЕР ОТРИСОВКИ ============================
+async def _next_show(update, context, text, kb, parse_mode="HTML", photo_id=None):
+    """Удаляет нажатие юзера + прошлую карточку Next, шлёт новую."""
+    chat_id = update.effective_chat.id
 
-    if text in ("Назад", "Меню", "Отмена"):
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
-        return
-
-    pref = {"Парня": "m", "Девушку": "f", "Любого": "any"}.get(text)
-    if not pref:
-        await context.bot.send_message(
-            update.effective_chat.id, t("pick_on_kb"), reply_markup=roulette_pref_reply_kb(),
-        )
-        return
-
-    user = get_user(update.effective_user.id)
-    if not user["gender"]:
-        context.user_data["state"] = "set_gender_first"
-        await context.bot.send_message(
-            update.effective_chat.id, t("gender_needed_for_search"),
-            reply_markup=gender_kb(with_back=False),
-        )
-        return
-
-    conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
-    conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
-        "VALUES (?, ?, ?, ?, 'normal', ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
-        "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
-    )
-    conn.commit()
-    context.user_data["state"] = None
-    await clean_screen(update, context)
-    await context.bot.send_message(
-        update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb(),
-    )
-
-
-async def on_roulette_cancel(update, context):
-    query = update.callback_query
-    await query.answer()
-    uid = query.from_user.id
-    conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
-    conn.commit()
-    try:
-        await query.edit_message_text(t("roulette_stop"))
-    except TelegramError:
-        pass
-    context.user_data["state"] = "roulette_pref"
-    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
-
-
-# ============================ МАТЧМЕЙКЕР ============================
-async def roulette_matchmaker(context):
-    rows = conn.execute(
-        "SELECT * FROM roulette_queue WHERE mode='normal' ORDER BY is_vip DESC, joined_at ASC"
-    ).fetchall()
-    matched_ids = set()
-
-    for i, a in enumerate(rows):
-        if a["user_id"] in matched_ids:
-            continue
-        for b in rows[i + 1:]:
-            if b["user_id"] in matched_ids:
-                continue
-            if not compatible(a, b):
-                continue
-            if is_banned_pair(a["user_id"], b["user_id"]):
-                continue
-
-            conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
-            conn.execute(
-                "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) "
-                "VALUES (?, ?, 1, 'normal', ?)",
-                (a["user_id"], b["user_id"], now_iso()),
-            )
-            conn.commit()
-            matched_ids.add(a["user_id"])
-            matched_ids.add(b["user_id"])
-
-            for uid in (a["user_id"], b["user_id"]):
-                try:
-                    _sl = cur_lang()
-                    set_cur_lang(get_lang(uid))
-                    await context.bot.send_message(
-                        uid, t("roulette_found"),
-                        parse_mode="HTML", reply_markup=in_chat_kb(),
-                    )
-                    UD[uid]["state"] = "rchat"
-                    set_cur_lang(_sl)
-                except TelegramError:
-                    pass
-            break
-
-
-# ============================ ЗАВЕРШЕНИЕ СЕССИЙ ============================
-async def end_roulette_session(context, ender_id, requeue_ender=False):
-    session = get_active_session(ender_id)
-    if not session:
-        return None
-
-    other_id = session["user2_id"] if session["user1_id"] == ender_id else session["user1_id"]
-    conn.execute(
-        "UPDATE roulette_sessions SET active=0, ended_by=?, ended_at=? WHERE id=?",
-        (ender_id, now_iso(), session["id"]),
-    )
-    conn.commit()
-
-    await handle_spectators_on_end(context, session["id"])
-
-    UD[other_id]["state"] = "rleft"
-    UD[other_id]["last_session"] = session["id"]
-
-    _sl = cur_lang()
-    set_cur_lang(get_lang(other_id))
-    try:
-        await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
-    except TelegramError as e:
-        log.warning("end_roulette_session to %s: %s", other_id, e)
-    set_cur_lang(_sl)
-
-    if requeue_ender:
-        user = get_user(ender_id)
-        if not user or not user["gender"]:
-            return session
-        pref = user["search_pref"] or "any"
-        conn.execute(
-            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
-            "VALUES (?, ?, ?, ?, 'normal', ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
-            "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-            (ender_id, user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
-        )
-        conn.commit()
-
-    return session
-
-
-async def force_end_session(context, session_id):
-    s = conn.execute("SELECT * FROM roulette_sessions WHERE id=? AND active=1", (session_id,)).fetchone()
-    if not s:
-        return
-
-    conn.execute("UPDATE roulette_sessions SET active=0, ended_at=? WHERE id=?", (now_iso(), session_id))
-    conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (s["user1_id"], s["user2_id"]))
-    conn.commit()
-
-    await handle_spectators_on_end(context, session_id)
-
-    for uid in (s["user1_id"], s["user2_id"]):
-        st = (UD.get(uid) or {}).get("state")
-        if st in ("rchat", "nearby_chat"):
-            UD[uid]["state"] = "rleft"
-            UD[uid]["last_session"] = session_id
-            try:
-                _sl = cur_lang()
-                set_cur_lang(get_lang(uid))
-                await context.bot.send_message(uid, t("roulette_left"), reply_markup=left_chat_kb())
-                set_cur_lang(_sl)
-            except TelegramError:
-                pass
-
-
-async def end_dead_sessions(context):
-    rows = conn.execute("SELECT * FROM roulette_sessions WHERE active=1").fetchall()
-    ended = 0
-    for s in rows:
-        if get_user(s["user1_id"]) is None or get_user(s["user2_id"]) is None:
-            await force_end_session(context, s["id"])
-            ended += 1
-    if ended:
-        log.info("end_dead_sessions: завершено %d", ended)
-
-
-# ============================ ОБСЛУЖИВАНИЕ ОЧЕРЕДИ ============================
-_QUEUE_REMIND = {}
-
-
-async def queue_maintenance(context):
-    now = now_dt()
-    rows = conn.execute("SELECT * FROM roulette_queue").fetchall()
-    alive_ids = set()
-
-    for r in rows:
-        uid = r["user_id"]
-        alive_ids.add(uid)
+    if update.message is not None:
         try:
-            joined = datetime.fromisoformat(r["joined_at"])
-        except (ValueError, TypeError):
-            continue
-        mins = (now - joined).total_seconds() / 60.0
+            await update.message.delete()
+        except TelegramError:
+            pass
 
-        if mins >= SEARCH_TIMEOUT_MIN:
-            conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
-            conn.commit()
-            _QUEUE_REMIND.pop(uid, None)
-            if UD.get(uid):
-                UD[uid]["state"] = None
-            try:
-                _sl = cur_lang()
-                set_cur_lang(get_lang(uid))
-                await context.bot.send_message(
-                    uid, t("search_timeout", min=SEARCH_TIMEOUT_MIN),
-                    parse_mode="HTML", reply_markup=main_menu_kb(uid),
-                )
-                set_cur_lang(_sl)
-            except TelegramError:
-                pass
-        else:
-            last = _QUEUE_REMIND.get(uid, joined)
-            if (now - last).total_seconds() / 60.0 >= SEARCH_REMIND_MIN:
-                _QUEUE_REMIND[uid] = now
-                try:
-                    _sl = cur_lang()
-                    set_cur_lang(get_lang(uid))
-                    await context.bot.send_message(
-                        uid, t("search_still", min=int(mins)),
-                        parse_mode="HTML", reply_markup=searching_kb(),
-                    )
-                    set_cur_lang(_sl)
-                except TelegramError:
-                    pass
+    prev = context.user_data.pop("next_card_id", None)
+    if prev:
+        await try_delete_message(context, chat_id, prev)
 
-    for gone in [k for k in _QUEUE_REMIND if k not in alive_ids]:
-        _QUEUE_REMIND.pop(gone, None)
+    if photo_id:
+        try:
+            msg = await context.bot.send_photo(
+                chat_id, photo_id,
+                caption=text, parse_mode=parse_mode, reply_markup=kb,
+            )
+            context.user_data["next_card_id"] = msg.message_id
+            return msg
+        except TelegramError:
+            pass
 
-
-# ============================ КНОПКИ ЧАТА ============================
-async def _requeue_and_search(context, uid: int):
-    user = get_user(uid)
-    conn.execute(
-        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
-        "VALUES (?, ?, ?, ?, 'normal', ?) "
-        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
-        "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
-        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
+    msg = await context.bot.send_message(
+        chat_id, text, parse_mode=parse_mode, reply_markup=kb,
     )
-    conn.commit()
-    UD[uid]["state"] = None
-    await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
+    context.user_data["next_card_id"] = msg.message_id
+    return msg
 
 
-async def rchat_next(update, context):
-    uid = update.effective_user.id
-    await end_roulette_session(context, uid, requeue_ender=False)
-    context.user_data["state"] = None
-
-    user = get_user(uid)
-    if not user or not user["gender"]:
-        await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
-        return
-    await _requeue_and_search(context, uid)
-
-
-async def rchat_stop(update, context):
-    uid = update.effective_user.id
-    await end_roulette_session(context, uid, requeue_ender=False)
-    context.user_data["state"] = "roulette_pref"
-    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
-
-
-async def rleft_research(update, context):
-    uid = update.effective_user.id
-    context.user_data["state"] = None
-    context.user_data.pop("last_session", None)
-    if get_active_session(uid):
-        return
-    if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
-        await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
-        return
-    await _requeue_and_search(context, uid)
-
-
-async def rleft_report(update, context):
-    uid = update.effective_user.id
-    sid = context.user_data.get("last_session")
-    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (sid,)).fetchone() if sid else None
-    if not session:
-        context.user_data["state"] = None
-        await update.message.reply_text(t("session_not_found"), reply_markup=main_menu_kb(uid))
-        return
-    reported_id = session["user2_id"] if uid == session["user1_id"] else session["user1_id"]
-    context.user_data["state"] = "awaiting_report_reason"
-    context.user_data["report_context"] = "roulette"
-    context.user_data["report_ref_id"] = sid
-    context.user_data["reported_id"] = reported_id
-    context.user_data.pop("last_session", None)
-    await update.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
-
-
-# ============================ ПОБЛИЗОСТИ ============================
-async def nearby_menu(update, context):
-    """Главное меню Поблизости."""
+# ============================ ГЛАВНОЕ МЕНЮ ============================
+async def next_menu(update, context):
     uid = update.effective_user.id
     await clean_screen(update, context)
+
+    if get_setting("subgate_enabled", "0") == "1" and not is_admin(uid):
+        chans = await get_mandatory_channels()
+        if chans and not await user_subscribed_all(context, uid, chans):
+            await context.bot.send_message(
+                uid, t("subgate_start"), parse_mode="HTML",
+                reply_markup=subscribe_gate_kb(chans),
+            )
+            return
 
     prof = conn.execute("SELECT * FROM nearby_profiles WHERE user_id=?", (uid,)).fetchone()
 
     if not prof:
-        context.user_data["state"] = "nearby_name"
-        context.user_data["nearby_new"] = {}
-        await send_menu(
+        context.user_data["state"] = "next_create_name"
+        context.user_data["next_new"] = {}
+        context.user_data["next_create_from"] = "menu"
+        msg = await context.bot.send_message(
+            uid,
+            t("next_create_title") + "\n\n" + t("next_ask_name"),
+            parse_mode="HTML",
+            reply_markup=next_cancel_kb(),
+        )
+        context.user_data["last_menu_msg_id"] = msg.message_id
+        return
+
+    context.user_data["state"] = "next_menu"
+    text = (
+        t("next_menu_title") + "\n"
+        f"👤 <b>{html.escape(prof['name'])}</b>, {prof['age']}\n"
+        f"🎯 <b>{pref_label(prof['looking_for'])}</b>\n\n"
+        f"📄 {html.escape(prof['bio'] or '—')}\n\n"
+        "👇 Выбери действие:"
+    )
+    msg = await context.bot.send_message(
+        uid, text, parse_mode="HTML", reply_markup=next_menu_kb(),
+    )
+    context.user_data["last_menu_msg_id"] = msg.message_id
+
+
+# ============================ РОУТЕР МЕНЮ ============================
+async def next_router(update, context):
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+
+    if text == "Назад":
+        context.user_data["state"] = None
+        await go_home(update, context)
+        return
+    if text in ("🔥 Смотреть анкеты", "Смотреть анкеты"):
+        await next_browse(update, context)
+        return
+    if text in ("👤 Моя анкета", "Моя анкета"):
+        await next_edit_menu(update, context)
+        return
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=next_menu_kb())
+
+
+# ============================ МОЯ АНКЕТА ============================
+async def next_edit_menu(update, context):
+    uid = update.effective_user.id
+    prof = conn.execute("SELECT * FROM nearby_profiles WHERE user_id=?", (uid,)).fetchone()
+
+    if not prof:
+        context.user_data["state"] = "next_create_name"
+        context.user_data["next_new"] = {}
+        context.user_data["next_create_from"] = "edit"
+        await _next_show(
             update, context,
-            t("nearby_create_title") + t("nearby_ask_name"),
-            cancel_reply_kb(), parse_mode="HTML"
+            t("next_create_title") + "\n\n" + t("next_ask_name"),
+            next_cancel_kb(),
         )
         return
 
-    context.user_data["state"] = "nearby_menu"
+    context.user_data["state"] = "next_edit_menu"
+    gender_disp = gender_label(prof["gender"])
+    looking_disp = pref_label(prof["looking_for"])
+    photo_status = "✅" if prof["photo_id"] else "❌"
+
     text = (
-        t("nearby_title") + "\n"
-        f"<blockquote>"
-        f"👤 {html.escape(prof['name'])}\n"
-        f"🎂 {prof['age']}\n"
-        f"💬 {html.escape(prof['bio'] or '—')}"
-        f"</blockquote>"
+        f"👤 <b>Моя анкета</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "<blockquote>"
+        f"📝 Имя: <b>{html.escape(prof['name'])}</b>\n"
+        f"🎂 Возраст: <b>{prof['age']}</b>\n"
+        f"⚧ Пол: <b>{gender_disp}</b>\n"
+        f"🎯 Кого ищу: <b>{looking_disp}</b>\n"
+        f"📄 О себе: {html.escape((prof['bio'] or '—')[:120])}\n"
+        f"📷 Фото: {photo_status}"
+        "</blockquote>\n\n"
+        "👇 Выбери поле для изменения:"
     )
-    await send_menu(update, context, text, nearby_menu_kb(), parse_mode="HTML")
+    await _next_show(update, context, text, next_edit_kb())
 
 
-async def nearby_create_router(update, context):
-    state = context.user_data.get("state")
+async def next_edit_router(update, context):
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+
+    if text == "Назад":
+        context.user_data["state"] = "next_menu"
+        await next_menu(update, context)
+        return
+
+    if text in ("📝 Имя", "Имя"):
+        context.user_data["state"] = "next_edit_name"
+        await _next_show(update, context, t("next_ask_name"), next_edit_back_kb())
+        return
+    if text in ("🎂 Возраст", "Возраст"):
+        context.user_data["state"] = "next_edit_age"
+        await _next_show(update, context, t("next_ask_age"), next_edit_back_kb())
+        return
+    if text in ("📄 О себе", "О себе"):
+        context.user_data["state"] = "next_edit_bio"
+        await _next_show(update, context, t("next_ask_bio"), next_edit_back_kb())
+        return
+    if text in ("📷 Фото", "Фото"):
+        context.user_data["state"] = "next_edit_photo"
+        await _next_show(update, context, t("next_ask_photo"), next_edit_back_kb())
+        return
+    if text in ("🎯 Кого ищу", "Кого ищу"):
+        context.user_data["state"] = "next_edit_looking"
+        await _next_show(update, context, t("next_ask_looking"), next_looking_kb())
+        return
+    if text in ("⚧ Пол", "Пол"):
+        context.user_data["state"] = "next_edit_gender"
+        await _next_show(update, context, t("next_ask_gender"), next_gender_kb())
+        return
+    if text in ("👁 Предпросмотр", "Предпросмотр"):
+        await next_preview(update, context)
+        return
+
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=next_edit_kb())
+
+
+async def next_preview(update, context):
+    uid = update.effective_user.id
+    prof = conn.execute("SELECT * FROM nearby_profiles WHERE user_id=?", (uid,)).fetchone()
+    if not prof:
+        await next_edit_menu(update, context)
+        return
+
+    text = t(
+        "next_preview",
+        name=html.escape(prof["name"]),
+        age=prof["age"],
+        gender=gender_label(prof["gender"]),
+        looking=pref_label(prof["looking_for"]),
+        bio=html.escape(prof["bio"] or "—"),
+    )
+    await _next_show(update, context, text, next_edit_kb(), photo_id=prof["photo_id"])
+
+
+# ============================ ОБРАБОТКА ПОЛЕЙ (создание + редактирование) ============================
+async def next_field_router(update, context):
+    """Единый роутер для создания и редактирования полей анкеты."""
+    state = context.user_data.get("state") or ""
     text = (update.message.text or "").strip()
+    uid = update.effective_user.id
 
     if canon(text) in ("Отмена", "Назад"):
-        context.user_data["state"] = None
-        context.user_data.pop("nearby_new", None)
-        await go_home(update, context)
+        if state.startswith("next_edit_"):
+            context.user_data["state"] = "next_edit_menu"
+            await next_edit_menu(update, context)
+            return
+        context.user_data["state"] = "next_menu"
+        context.user_data.pop("next_new", None)
+        context.user_data.pop("next_create_from", None)
+        await next_menu(update, context)
         return
 
-    p = context.user_data.setdefault("nearby_new", {})
-
-    if state == "nearby_name":
+    # === РЕДАКТИРОВАНИЕ ===
+    if state == "next_edit_name":
         if len(text) < 2 or len(text) > 30:
-            await update.message.reply_text(t("nearby_name_invalid"), reply_markup=cancel_reply_kb())
+            await update.message.reply_text(t("next_name_invalid"), reply_markup=next_edit_back_kb())
             return
-        p["name"] = text
-        context.user_data["state"] = "nearby_age"
-        await update.message.reply_text(t("nearby_ask_age"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        conn.execute("UPDATE nearby_profiles SET name=?, updated_at=? WHERE user_id=?",
+                     (text, now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
         return
 
-    if state == "nearby_age":
-        if not text.isdigit() or int(text) < 12 or int(text) > 99:
-            await update.message.reply_text(t("nearby_age_invalid"), reply_markup=cancel_reply_kb())
+    if state == "next_edit_age":
+        if not text.isdigit() or not (12 <= int(text) <= 99):
+            await update.message.reply_text(t("next_age_invalid"), reply_markup=next_edit_back_kb())
             return
-        p["age"] = int(text)
-        context.user_data["state"] = "nearby_gender"
-        await update.message.reply_text(t("nearby_ask_gender"), parse_mode="HTML", reply_markup=nearby_gender_kb())
+        conn.execute("UPDATE nearby_profiles SET age=?, updated_at=? WHERE user_id=?",
+                     (int(text), now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
         return
 
-    if state == "nearby_gender":
-        g = {"Мужской": "m", "Женский": "f"}.get(canon(text))
-        if not g:
-            await update.message.reply_text("Выбери пол:", reply_markup=nearby_gender_kb())
+    if state == "next_edit_bio":
+        if len(text) < 5 or len(text) > 200:
+            await update.message.reply_text(t("next_bio_invalid"), reply_markup=next_edit_back_kb())
             return
-        p["gender"] = g
-        context.user_data["state"] = "nearby_looking"
-        await update.message.reply_text(t("nearby_ask_looking"), parse_mode="HTML", reply_markup=nearby_looking_kb())
+        conn.execute("UPDATE nearby_profiles SET bio=?, updated_at=? WHERE user_id=?",
+                     (text, now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
         return
 
-    if state == "nearby_looking":
+    if state == "next_edit_looking":
         pref = {"Парня": "m", "Девушку": "f", "Любого": "any"}.get(canon(text))
         if not pref:
-            await update.message.reply_text("Выбери вариант:", reply_markup=nearby_looking_kb())
+            await update.message.reply_text(t("choose_on_kb"), reply_markup=next_looking_kb())
+            return
+        conn.execute("UPDATE nearby_profiles SET looking_for=?, updated_at=? WHERE user_id=?",
+                     (pref, now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
+        return
+
+    if state == "next_edit_gender":
+        g = {"Мужской": "m", "Женский": "f"}.get(canon(text))
+        if not g:
+            await update.message.reply_text(t("choose_on_kb"), reply_markup=next_gender_kb())
+            return
+        conn.execute("UPDATE nearby_profiles SET gender=?, updated_at=? WHERE user_id=?",
+                     (g, now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
+        return
+
+    # === СОЗДАНИЕ (мастер) ===
+    p = context.user_data.setdefault("next_new", {})
+
+    if state == "next_create_name":
+        if len(text) < 2 or len(text) > 30:
+            await update.message.reply_text(t("next_name_invalid"), reply_markup=next_cancel_kb())
+            return
+        p["name"] = text
+        context.user_data["state"] = "next_create_age"
+        await update.message.reply_text(t("next_ask_age"), parse_mode="HTML", reply_markup=next_cancel_kb())
+        return
+
+    if state == "next_create_age":
+        if not text.isdigit() or not (12 <= int(text) <= 99):
+            await update.message.reply_text(t("next_age_invalid"), reply_markup=next_cancel_kb())
+            return
+        p["age"] = int(text)
+        context.user_data["state"] = "next_create_gender"
+        await update.message.reply_text(t("next_ask_gender"), parse_mode="HTML", reply_markup=next_gender_kb())
+        return
+
+    if state == "next_create_gender":
+        g = {"Мужской": "m", "Женский": "f"}.get(canon(text))
+        if not g:
+            await update.message.reply_text(t("choose_on_kb"), reply_markup=next_gender_kb())
+            return
+        p["gender"] = g
+        context.user_data["state"] = "next_create_looking"
+        await update.message.reply_text(t("next_ask_looking"), parse_mode="HTML", reply_markup=next_looking_kb())
+        return
+
+    if state == "next_create_looking":
+        pref = {"Парня": "m", "Девушку": "f", "Любого": "any"}.get(canon(text))
+        if not pref:
+            await update.message.reply_text(t("choose_on_kb"), reply_markup=next_looking_kb())
             return
         p["looking_for"] = pref
-        context.user_data["state"] = "nearby_bio"
-        await update.message.reply_text(t("nearby_ask_bio"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        context.user_data["state"] = "next_create_bio"
+        await update.message.reply_text(t("next_ask_bio"), parse_mode="HTML", reply_markup=next_cancel_kb())
         return
 
-    if state == "nearby_bio":
+    if state == "next_create_bio":
         if len(text) < 5 or len(text) > 200:
-            await update.message.reply_text(t("nearby_bio_invalid"), reply_markup=cancel_reply_kb())
+            await update.message.reply_text(t("next_bio_invalid"), reply_markup=next_cancel_kb())
             return
         p["bio"] = text
-        context.user_data["state"] = "nearby_photo"
-        await update.message.reply_text(t("nearby_ask_photo"), parse_mode="HTML", reply_markup=cancel_reply_kb())
+        context.user_data["state"] = "next_create_photo"
+        await update.message.reply_text(t("next_ask_photo"), parse_mode="HTML", reply_markup=next_cancel_kb())
         return
 
-    if state == "nearby_photo":
+    if state == "next_create_photo":
         if text == "-":
             p["photo_id"] = None
-            await _save_nearby_profile(update, context, p)
+            await _next_save_new_profile(update, context, p)
             return
-        await update.message.reply_text(t("nearby_photo_required"), reply_markup=cancel_reply_kb())
+        await update.message.reply_text(t("next_photo_required"), reply_markup=next_cancel_kb())
         return
 
+    context.user_data["state"] = "next_menu"
+    await next_menu(update, context)
 
-async def nearby_photo_handler(update, context):
+
+async def next_photo_handler(update, context):
     if not update.message or not update.message.photo:
-        await update.message.reply_text(t("nearby_photo_required"), reply_markup=cancel_reply_kb())
+        await update.message.reply_text(t("next_photo_required"), reply_markup=next_edit_back_kb())
         return
-    p = context.user_data.get("nearby_new", {})
-    p["photo_id"] = update.message.photo[-1].file_id
-    await _save_nearby_profile(update, context, p)
+
+    state = context.user_data.get("state")
+    uid = update.effective_user.id
+    file_id = update.message.photo[-1].file_id
+
+    if state == "next_edit_photo":
+        conn.execute("UPDATE nearby_profiles SET photo_id=?, updated_at=? WHERE user_id=?",
+                     (file_id, now_iso(), uid))
+        conn.commit()
+        await update.message.reply_text(t("next_saved"), parse_mode="HTML")
+        context.user_data["state"] = "next_edit_menu"
+        await next_edit_menu(update, context)
+        return
+
+    if state == "next_create_photo":
+        p = context.user_data.get("next_new", {})
+        p["photo_id"] = file_id
+        await _next_save_new_profile(update, context, p)
+        return
+
+    await update.message.reply_text(t("next_photo_required"), reply_markup=next_cancel_kb())
 
 
-async def _save_nearby_profile(update, context, p):
+async def _next_save_new_profile(update, context, p):
     uid = update.effective_user.id
     conn.execute("DELETE FROM nearby_profiles WHERE user_id=?", (uid,))
     conn.execute(
@@ -5224,21 +4873,19 @@ async def _save_nearby_profile(update, context, p):
          p["bio"], p.get("photo_id"), now_iso(), now_iso()),
     )
     conn.commit()
-    context.user_data["state"] = None
-    context.user_data.pop("nearby_new", None)
-
-    await update.message.reply_text(
-        t("nearby_profile_saved"), parse_mode="HTML", reply_markup=main_menu_kb(uid)
-    )
-    context.user_data["state"] = "nearby_menu"
-    await nearby_menu(update, context)
+    context.user_data.pop("next_new", None)
+    context.user_data.pop("next_create_from", None)
+    context.user_data["state"] = "next_menu"
+    await update.message.reply_text(t("next_profile_saved"), parse_mode="HTML")
+    await next_menu(update, context)
 
 
-async def nearby_browse(update, context):
+# ============================ ПРОСМОТР АНКЕТ ============================
+async def next_browse(update, context):
     uid = update.effective_user.id
     prof = conn.execute("SELECT * FROM nearby_profiles WHERE user_id=?", (uid,)).fetchone()
     if not prof:
-        await nearby_menu(update, context)
+        await next_menu(update, context)
         return
 
     row = conn.execute(
@@ -5247,166 +4894,340 @@ async def nearby_browse(update, context):
         "AND (looking_for = 'any' OR looking_for = ?) "
         "AND (gender = ? OR ? = 'any') "
         "AND user_id NOT IN (SELECT to_id FROM nearby_likes WHERE from_id = ?) "
+        "AND user_id NOT IN (SELECT banned_id FROM bans WHERE owner_id = ? AND until > ?) "
+        "AND user_id NOT IN (SELECT owner_id FROM bans WHERE banned_id = ? AND until > ?) "
         "ORDER BY RANDOM() LIMIT 1",
-        (uid, prof["gender"], prof["looking_for"], prof["looking_for"], uid),
+        (uid, prof["gender"], prof["looking_for"], prof["looking_for"], uid,
+         uid, now_iso(), uid, now_iso()),
     ).fetchone()
 
     if not row:
-        await clean_screen(update, context)
-        await send_menu(update, context, t("nearby_no_more"), nearby_browse_kb(), parse_mode="HTML")
+        context.user_data["state"] = "next_menu"
+        await _next_show(update, context, t("next_no_profiles"), next_menu_kb())
         return
 
-    context.user_data["state"] = "nearby_view"
-    context.user_data["nearby_current"] = row["user_id"]
+    context.user_data["state"] = "next_view"
+    context.user_data["next_target"] = row["user_id"]
 
-    caption = f"<b>{html.escape(row['name'])}, {row['age']}</b>\n\n{html.escape(row['bio'] or '—')}"
-    kb = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("❤️", callback_data=f"nl:{row['user_id']}"),
-            InlineKeyboardButton("👎", callback_data=f"nd:{row['user_id']}"),
-        ],
-        [InlineKeyboardButton("🚩 Пожаловаться", callback_data=f"nr:{row['user_id']}")],
-    ])
+    header = t("next_view_header", name=html.escape(row["name"]), age=row["age"])
+    caption = header + "\n\n" + html.escape(row["bio"] or "—")
+    await _next_show(update, context, caption, next_reaction_kb(), photo_id=row["photo_id"])
 
-    await clean_screen(update, context)
-    if row["photo_id"]:
+
+# ============================ РЕАКЦИИ ============================
+async def next_view_router(update, context):
+    text = canon(update.message.text)
+    uid = update.effective_user.id
+    target = context.user_data.get("next_target")
+
+    if not target:
+        context.user_data["state"] = "next_menu"
+        await next_menu(update, context)
+        return
+    if target == uid:
+        await next_browse(update, context)
+        return
+
+    if text in ("❤️ Лайк", "Лайк", "❤️"):
+        await _next_do_like(update, context, uid, target)
+        return
+
+    if text in ("👎 Дизлайк", "Дизлайк", "👎"):
+        await _next_record_action(uid, target, "dislike")
+        await next_browse(update, context)
+        return
+
+    if text in ("⛔ Жалоба", "Жалоба", "⛔", "Пожаловаться"):
+        context.user_data["state"] = "awaiting_report_reason"
+        context.user_data["report_context"] = "nearby"
+        context.user_data["report_ref_id"] = None
+        context.user_data["reported_id"] = target
+        await update.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
+        return
+
+    if text in ("💬 Написать", "Написать", "💬"):
+        context.user_data["state"] = "next_msg_type"
+        await update.message.reply_text(
+            t("next_msg_prompt"), parse_mode="HTML", reply_markup=next_cancel_kb(),
+        )
+        return
+
+    if text in ("💤 Выйти", "Выйти", "💤"):
+        context.user_data["state"] = None
+        context.user_data.pop("next_target", None)
+        await clean_screen(update, context)
+        await context.bot.send_message(
+            uid, t("next_search_stopped"),
+            parse_mode="HTML", reply_markup=main_menu_kb(uid),
+        )
+        return
+
+    await update.message.reply_text(t("choose_on_kb"), reply_markup=next_reaction_kb())
+
+
+async def _next_record_action(uid: int, target: int, action: str):
+    try:
+        conn.execute("DELETE FROM nearby_likes WHERE from_id=? AND to_id=?", (uid, target))
+        conn.execute(
+            "INSERT INTO nearby_likes (from_id, to_id, action, created_at) VALUES (?, ?, ?, ?)",
+            (uid, target, action, now_iso()),
+        )
+        conn.commit()
+    except Exception as e:
+        log.warning("next_record_action: %s", e)
+
+
+async def _next_do_like(update, context, uid, target):
+    await _next_record_action(uid, target, "like")
+
+    back = conn.execute(
+        "SELECT 1 FROM nearby_likes WHERE from_id=? AND to_id=? AND action='like'",
+        (target, uid),
+    ).fetchone()
+
+    if back:
+        u1, u2 = sorted([uid, target])
         try:
-            await context.bot.send_photo(
-                update.effective_chat.id, row["photo_id"],
-                caption=caption, parse_mode="HTML", reply_markup=kb
+            conn.execute(
+                "INSERT INTO nearby_matches (user1_id, user2_id, created_at) VALUES (?, ?, ?)",
+                (u1, u2, now_iso()),
             )
-            return
-        except TelegramError:
+            conn.commit()
+        except Exception:
             pass
 
-    await context.bot.send_message(update.effective_chat.id, caption, parse_mode="HTML", reply_markup=kb)
+        for u in (uid, target):
+            try:
+                partner_id = target if u == uid else uid
+                partner = get_user(partner_id)
+                pname = (partner["first_name"] if partner else None) or "пользователь"
+                puname = partner["username"] if partner else None
+                contact = (f"@{puname}" if puname
+                           else f'<a href="tg://user?id={partner_id}">Открыть ЛС</a>')
+                await context.bot.send_message(
+                    u,
+                    t("next_match_title") + "\n" + t(
+                        "next_match_contact", name=html.escape(pname), contact=contact,
+                    ),
+                    parse_mode="HTML",
+                    reply_markup=next_menu_kb(),
+                )
+            except TelegramError:
+                pass
+
+        context.user_data.pop("next_target", None)
+        context.user_data["state"] = "next_menu"
+        return
+
+    await next_browse(update, context)
 
 
-async def on_nearby_like(update, context):
+# ============================ ЛС ЧЕРЕЗ NEXT ============================
+async def deliver_next_message(context, from_id, to_id, content_type,
+                               text=None, voice_file_id=None, parent_id=None):
+    cur = conn.execute(
+        "INSERT INTO nearby_messages "
+        "(from_id, to_id, content_type, text, voice_file_id, parent_id, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (from_id, to_id, content_type, text, voice_file_id, parent_id, now_iso()),
+    )
+    conn.commit()
+    mid = cur.lastrowid
+
+    _sl = cur_lang()
+    set_cur_lang(get_lang(to_id))
+
+    kb = next_reply_inline_kb(mid)
+    header = f"🌟 <b>{NEXT_BRAND}</b>\n"
+
+    try:
+        if content_type == "text":
+            sent = await context.bot.send_message(
+                to_id,
+                header + f"<blockquote>{html.escape(text or '')}</blockquote>",
+                parse_mode="HTML",
+                reply_markup=kb,
+            )
+        else:
+            sent = await context.bot.send_voice(
+                to_id, voice_file_id,
+                caption=header, parse_mode="HTML", reply_markup=kb,
+            )
+    except TelegramError as e:
+        log.warning("deliver_next to %s: %s", to_id, e)
+        set_cur_lang(_sl)
+        return None
+
+    conn.execute("UPDATE nearby_messages SET owner_chat_message_id=? WHERE id=?",
+                 (sent.message_id, mid))
+    conn.commit()
+
+    try:
+        info = await context.bot.send_message(
+            from_id, t("next_msg_sent"), parse_mode="HTML",
+        )
+        track_extra(context, info)
+    except TelegramError:
+        pass
+
+    set_cur_lang(_sl)
+    return mid
+
+
+async def next_msg_router(update, context):
+    uid = update.effective_user.id
+    target = context.user_data.get("next_target")
+    if not target:
+        context.user_data["state"] = "next_menu"
+        await next_menu(update, context)
+        return
+
+    msg = update.message
+    text = (msg.text or "").strip() if msg else ""
+
+    if canon(text) in ("Отмена", "Назад"):
+        context.user_data["state"] = "next_view"
+        await next_browse(update, context)
+        return
+
+    content_type = None
+    msg_text = None
+    voice_id = None
+    if msg.text:
+        content_type, msg_text = "text", msg.text
+    elif msg.voice:
+        content_type, voice_id = "voice", msg.voice.file_id
+    else:
+        await msg.reply_text(t("next_only_text_voice"), reply_markup=next_cancel_kb())
+        return
+
+    if content_type == "text" and not is_staff(uid) and has_forbidden_contacts(msg_text):
+        await msg.reply_text(t("no_contacts"))
+        return
+
+    ban = conn.execute(
+        "SELECT 1 FROM bans WHERE owner_id=? AND banned_id=? AND until>?",
+        (target, uid, now_iso()),
+    ).fetchone()
+    if ban:
+        await msg.reply_text(t("next_banned_write"))
+        context.user_data["state"] = "next_view"
+        await next_browse(update, context)
+        return
+
+    ok = await deliver_next_message(
+        context, from_id=uid, to_id=target,
+        content_type=content_type, text=msg_text, voice_file_id=voice_id,
+    )
+    context.user_data["state"] = "next_view"
+    if ok:
+        await asyncio.sleep(0.3)
+        await next_browse(update, context)
+    else:
+        await msg.reply_text(t("next_msg_failed"), reply_markup=next_reaction_kb())
+
+
+# ============================ INLINE «ОТВЕТИТЬ» ============================
+async def on_next_reply(update, context):
     query = update.callback_query
     await query.answer()
-    data = query.data
+    try:
+        mid = int(query.data.split(":")[1])
+    except (ValueError, IndexError):
+        return
 
-    if data.startswith("nl:"):
-        action = "like"
-        target = int(data.split(":")[1])
-    elif data.startswith("nd:") or data.startswith("nr:"):
-        action = "dislike"
-        target = int(data.split(":")[1])
-    else:
+    parent = conn.execute("SELECT * FROM nearby_messages WHERE id=?", (mid,)).fetchone()
+    if not parent:
+        await query.answer(t("anon_not_found"), show_alert=True)
         return
 
     uid = query.from_user.id
-    if target == uid:
+    if uid == parent["from_id"]:
+        target = parent["to_id"]
+    elif uid == parent["to_id"]:
+        target = parent["from_id"]
+    else:
         return
 
-    conn.execute(
-        "INSERT OR REPLACE INTO nearby_likes (from_id, to_id, action, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (uid, target, action, now_iso()),
+    context.user_data["state"] = "next_reply_text"
+    context.user_data["next_reply_target"] = target
+    context.user_data["next_reply_parent"] = mid
+
+    await context.bot.send_message(
+        uid, t("next_reply_prompt"),
+        parse_mode="HTML", reply_markup=next_cancel_kb(),
     )
+
+
+async def next_reply_router(update, context):
+    uid = update.effective_user.id
+    target = context.user_data.get("next_reply_target")
+    parent_id = context.user_data.get("next_reply_parent")
+
+    if not target:
+        context.user_data["state"] = "next_menu"
+        await next_menu(update, context)
+        return
+
+    msg = update.message
+    text = (msg.text or "").strip() if msg else ""
+
+    if canon(text) in ("Отмена", "Назад"):
+        context.user_data["state"] = "next_menu"
+        context.user_data.pop("next_reply_target", None)
+        context.user_data.pop("next_reply_parent", None)
+        await next_menu(update, context)
+        return
+
+    content_type = None
+    msg_text = None
+    voice_id = None
+    if msg.text:
+        content_type, msg_text = "text", msg.text
+    elif msg.voice:
+        content_type, voice_id = "voice", msg.voice.file_id
+    else:
+        await msg.reply_text(t("next_only_text_voice"), reply_markup=next_cancel_kb())
+        return
+
+    if content_type == "text" and not is_staff(uid) and has_forbidden_contacts(msg_text):
+        await msg.reply_text(t("no_contacts"))
+        return
+
+    conn.execute("UPDATE nearby_messages SET answered=1 WHERE id=?", (parent_id,))
     conn.commit()
 
-    if action == "like":
-        back = conn.execute(
-            "SELECT 1 FROM nearby_likes WHERE from_id=? AND to_id=? AND action='like'",
-            (target, uid),
-        ).fetchone()
-        if back:
-            u1, u2 = sorted([uid, target])
-            try:
-                conn.execute(
-                    "INSERT INTO nearby_matches (user1_id, user2_id, created_at) VALUES (?, ?, ?)",
-                    (u1, u2, now_iso()),
-                )
-                conn.commit()
-            except Exception:
-                pass
+    await deliver_next_message(
+        context, from_id=uid, to_id=target,
+        content_type=content_type, text=msg_text, voice_file_id=voice_id,
+        parent_id=parent_id,
+    )
+    context.user_data["state"] = "next_menu"
+    context.user_data.pop("next_reply_target", None)
+    context.user_data.pop("next_reply_parent", None)
+    await msg.reply_text(t("next_msg_sent"), parse_mode="HTML", reply_markup=next_menu_kb())
 
-            for u in (uid, target):
-                try:
-                    partner_id = target if u == uid else uid
-                    partner = get_user(partner_id)
-                    partner_name = (partner["first_name"] if partner else None) or "пользователь"
-                    partner_uname = partner["username"] if partner else None
 
-                    if partner_uname:
-                        contact = f"@{partner_uname}"
-                    else:
-                        contact = f'<a href="tg://user?id={partner_id}">Открыть ЛС</a>'
-
-                    bot_username = await get_bot_username(context)
-                    text = (
-                        t("nearby_match_title") + "\n"
-                        + t("nearby_match_contact", name=html.escape(partner_name), contact=contact) + "\n\n"
-                        + t("nearby_match_footer", bot=bot_username)
-                    )
-                    await context.bot.send_message(
-                        u, text, parse_mode="HTML", reply_markup=main_menu_kb(u),
-                    )
-                except TelegramError:
-                    pass
-            return
-
+# ============================ INLINE «ЖАЛОБА» ============================
+async def on_next_report(update, context):
+    query = update.callback_query
+    await query.answer()
     try:
-        await query.message.delete()
-    except TelegramError:
-        pass
-    await nearby_browse(update, context)
-
-
-async def nearby_matches_list(update, context):
-    uid = update.effective_user.id
-    matches = conn.execute(
-        "SELECT * FROM nearby_matches WHERE user1_id=? OR user2_id=? ORDER BY id DESC LIMIT 20",
-        (uid, uid),
-    ).fetchall()
-
-    if not matches:
-        await clean_screen(update, context)
-        await send_menu(update, context, t("nearby_no_matches"), nearby_matches_kb(), parse_mode="HTML")
+        mid = int(query.data.split(":")[1])
+    except (ValueError, IndexError):
         return
-
-    lines = [t("nearby_matches_list", n=len(matches))]
-    for m in matches:
-        partner_id = m["user2_id"] if m["user1_id"] == uid else m["user1_id"]
-        partner = get_user(partner_id)
-        if not partner:
-            continue
-        name = partner["first_name"] or f"ID{partner_id}"
-        uname = f"@{partner['username']}" if partner["username"] else f'<a href="tg://user?id={partner_id}">ЛС</a>'
-        lines.append(f"👤 <b>{html.escape(name)}</b> — {uname}")
-
-    lines.append("\n<i>" + t("nearby_matches_footer") + "</i>")
-
-    await clean_screen(update, context)
-    await send_menu(update, context, "\n".join(lines), nearby_matches_kb(), parse_mode="HTML")
-
-
-async def nearby_router(update, context):
-    """Роутер кнопок раздела Поблизости."""
-    text = canon(update.message.text)
-    uid = update.effective_user.id
-
-    if text == "Назад":
-        context.user_data["state"] = None
-        await nav(update, context, t("main_menu"), main_menu_kb(uid))
+    row = conn.execute("SELECT * FROM nearby_messages WHERE id=?", (mid,)).fetchone()
+    if not row:
         return
-    if text == "Смотреть анкеты":
-        await nearby_browse(update, context)
+    if query.from_user.id != row["to_id"]:
         return
-    if text == "Мои мэтчи":
-        await nearby_matches_list(update, context)
-        return
-    if text == "Редактировать анкету":
-        conn.execute("DELETE FROM nearby_profiles WHERE user_id=?", (uid,))
-        conn.commit()
-        context.user_data["state"] = "nearby_name"
-        context.user_data["nearby_new"] = {}
-        await update.message.reply_text(t("nearby_ask_name"), parse_mode="HTML", reply_markup=cancel_reply_kb())
-        return
-
-    await update.message.reply_text(t("choose_on_kb"), reply_markup=nearby_menu_kb())
+    context.user_data["state"] = "awaiting_report_reason"
+    context.user_data["report_context"] = "nearby_msg"
+    context.user_data["report_ref_id"] = mid
+    context.user_data["reported_id"] = row["from_id"]
+    await context.bot.send_message(
+        query.from_user.id, t("report_choose"), reply_markup=report_reason_kb(),
+    )
     # ===================== БЛОК 11 / 14 — РЕФЕРАЛЫ И МАГАЗИН =====================
 
 # ============================ РЕФЕРАЛЫ: ЭКРАН ============================
@@ -5428,7 +5249,6 @@ async def show_referral(update, context):
     reward = REF_REWARD_VIP if vip else REF_REWARD_NORMAL
     bonus = t("referral_bonus_vip") if vip else t("referral_bonus_normal")
 
-    # Прогресс показывается ТОЛЬКО если юзер создал свою анон-ссылку
     user = get_user(uid)
     has_own_link = bool(user and user["custom_link"])
     progress_block = ""
@@ -5499,7 +5319,6 @@ async def referral_router(update, context):
 
 
 async def show_top(update, context):
-    """Топ-10 пригласивших НАД реф-ссылкой."""
     try:
         await update.message.delete()
     except TelegramError:
@@ -5542,8 +5361,8 @@ async def refresh_ref_rewards(update, context):
 
 
 async def on_claim_vip(update, context):
+    """ФИКС: один answer() — с алертом если не хватает друзей."""
     query = update.callback_query
-    await query.answer()
     uid = query.from_user.id
     u = get_user(uid)
     qual = qualified_referrals(uid)
@@ -5555,6 +5374,8 @@ async def on_claim_vip(update, context):
         need = (claimed + 1) * threshold - qual
         await query.answer(t("ref_need_more", n=need, have=qual, need=threshold), show_alert=True)
         return
+
+    await query.answer()
 
     days = cfg_vip_days()
     try:
@@ -5574,8 +5395,8 @@ async def on_claim_vip(update, context):
 
 
 async def on_claim_moder(update, context):
+    """ФИКС: один answer() — с алертом если не хватает друзей."""
     query = update.callback_query
-    await query.answer()
     uid = query.from_user.id
     u = get_user(uid)
     qual = qualified_referrals(uid)
@@ -5587,6 +5408,8 @@ async def on_claim_moder(update, context):
         need = (claimed + 1) * threshold - qual
         await query.answer(t("ref_need_more", n=need, have=qual, need=threshold), show_alert=True)
         return
+
+    await query.answer()
 
     days = cfg_moder_days()
     base = now_dt()
@@ -5961,11 +5784,14 @@ async def submit_moder_app(update, context):
 
 
 async def on_moder_app_decision(update, context):
+    """ФИКС: один answer()."""
     query = update.callback_query
-    await query.answer()
+
     if not is_admin(query.from_user.id):
         await query.answer(t("admin_only"), show_alert=True)
         return
+
+    await query.answer()
 
     _, decision, app_id = query.data.split(":")
     app_id = int(app_id)
@@ -6344,7 +6170,6 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def _do_successful_payment(update, context, sp, uid, payload):
-    # Раскрытие отправителя
     if payload.startswith("reveal:"):
         mid = int(payload.split(":")[1])
         row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
@@ -6355,7 +6180,6 @@ async def _do_successful_payment(update, context, sp, uid, payload):
         await update.message.reply_text(txt or t("anon_not_found"), parse_mode="HTML")
         return
 
-    # Покупка коинов
     if not payload.startswith("coins:"):
         return
 
@@ -6547,8 +6371,9 @@ async def show_stars_refund(update, context):
 
 
 async def on_refund_pick(update, context):
+    """ФИКС: один answer() — с алертом при отказе."""
     query = update.callback_query
-    await query.answer()
+
     if not is_super_admin(query.from_user.id):
         await query.answer(t("super_admin_only"), show_alert=True)
         return
@@ -6556,6 +6381,7 @@ async def on_refund_pick(update, context):
     try:
         idx = int(query.data.split(":")[1])
     except (ValueError, IndexError):
+        await query.answer()
         return
 
     purchases = context.user_data.get("admin_refunds", {})
@@ -6563,6 +6389,8 @@ async def on_refund_pick(update, context):
     if not p:
         await query.answer("Данные устарели. Введи кнопку заново.", show_alert=True)
         return
+
+    await query.answer()
 
     refund_coins = int(p["coins"] * STARS_REFUND_PERCENT / 100)
     kb = InlineKeyboardMarkup([
@@ -6582,21 +6410,26 @@ async def on_refund_pick(update, context):
 
 
 async def on_refund_do(update, context):
+    """ФИКС: один answer() — с алертом при отказе."""
     query = update.callback_query
-    await query.answer()
+
     if not is_super_admin(query.from_user.id):
+        await query.answer(t("super_admin_only"), show_alert=True)
         return
 
     try:
         idx = int(query.data.split(":")[1])
     except (ValueError, IndexError):
+        await query.answer()
         return
 
     purchases = context.user_data.get("admin_refunds", {})
     p = purchases.get(idx)
     if not p:
-        await query.edit_message_text("Данные устарели.")
+        await query.answer("Данные устарели.", show_alert=True)
         return
+
+    await query.answer()
 
     try:
         await context.bot.refund_star_payment(
@@ -6620,7 +6453,6 @@ async def on_refund_do(update, context):
             )
         return
 
-    # Возврат прошёл — списываем коины (% от полученных)
     refund_coins = int(p["coins"] * STARS_REFUND_PERCENT / 100)
     buyer = get_user(p["user_id"])
     if buyer:
@@ -6679,9 +6511,15 @@ def reveal_sender_text(row) -> str | None:
 
 
 async def on_reveal_button(update, context):
+    """ФИКС: один answer() — с алертом при ошибке."""
     query = update.callback_query
-    await query.answer()
-    mid = int(query.data.split(":")[1])
+
+    try:
+        mid = int(query.data.split(":")[1])
+    except (ValueError, IndexError):
+        await query.answer()
+        return
+
     row = conn.execute("SELECT * FROM anon_messages WHERE id=?", (mid,)).fetchone()
 
     if not row:
@@ -6690,6 +6528,8 @@ async def on_reveal_button(update, context):
     if query.from_user.id != row["to_id"]:
         await query.answer(t("reveal_only_recipient"), show_alert=True)
         return
+
+    await query.answer()
 
     if is_unlimited(get_user(query.from_user.id)):
         await context.bot.send_message(
@@ -6834,7 +6674,7 @@ async def adm_stats_msg(update, context):
         "────────────\n"
         f"🔗 Анон-ссылок: <b>{anon_links}</b>\n"
         f"📨 Рефералов: <b>{ref_links}</b>\n"
-        f"📍 Анкет Поблизости: <b>{nearby_count}</b>\n"
+        f"📍 Анкет 𝐍𝐞𝐱𝐭: <b>{nearby_count}</b>\n"
         f"💕 Мэтчей: <b>{matches_count}</b>\n"
         "────────────\n"
         f"💬 Анон-сообщений: <b>{msgs_count}</b>\n"
@@ -7265,10 +7105,28 @@ async def show_pending_reports(update, context):
                 msg["text"] if msg and msg["content_type"] == "text" else "[голосовое]"
             ) if msg else "—"
             body = f"🚩 Жалоба #{r['id']} (анон)\nПричина: {r['reason']}\nСодержание: {preview}"
+        elif r["context"] in ("nearby", "nearby_msg"):
+            reported = get_user(r["reported_id"])
+            preview = ""
+            if r["context"] == "nearby_msg":
+                m = conn.execute("SELECT * FROM nearby_messages WHERE id=?", (r["ref_id"],)).fetchone()
+                if m:
+                    preview = m["text"] if m["content_type"] == "text" else "[голосовое]"
+            body = (
+                f"⛔ Жалоба #{r['id']} (𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭)\n"
+                f"Причина: {r['reason']}\n"
+                f"На: {user_mention(reported)}\n"
+                f"{('Сообщение: ' + preview) if preview else ''}"
+            )
         else:
             body = f"🚩 Жалоба #{r['id']} (рулетка)\nПричина: {r['reason']}"
 
-        ban_label = "Бан навсегда" if r["context"] == "anon" else "Бан 30 дн."
+        # ФИКС: бан-навсегда для анона и 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭
+        if r["context"] in ("anon", "nearby", "nearby_msg"):
+            ban_label = "Бан навсегда"
+        else:
+            ban_label = "Бан 30 дн."
+
         kb = InlineKeyboardMarkup([[
             InlineKeyboardButton(ban_label, callback_data=f"repadm:ok:{r['id']}"),
             InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{r['id']}"),
@@ -7784,7 +7642,7 @@ async def process_adm_coins_wizard(update, context):
             pass
             # ===================== БЛОК 14 / 14 — КОМАНДЫ / РОУТЕРЫ / ЗАПУСК =====================
 
-# ============================ /tg — МОНИТОРИНГ РУЛЕТКИ ============================
+# ============================ /tg ============================
 def tg_watch_kb():
     return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("🚪 Выйти")]], resize_keyboard=True))
 
@@ -7921,19 +7779,20 @@ async def process_tg_pick(update, context):
 
 async def on_tg_ban(update, context):
     query = update.callback_query
+
     if not is_staff(query.from_user.id):
         await query.answer(t("staff_only"), show_alert=True)
         return
 
+    await query.answer()
+
     _, sid, which = query.data.split(":")
     session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (int(sid),)).fetchone()
     if not session:
-        await query.answer("Сессия не найдена", show_alert=True)
         return
 
     target = session["user1_id"] if which == "1" else session["user2_id"]
     if is_admin(target) or is_moder(get_user(target)):
-        await query.answer("Нельзя забанить персонал", show_alert=True)
         return
 
     conn.execute("UPDATE users SET is_banned=1 WHERE tg_id=?", (target,))
@@ -7947,7 +7806,6 @@ async def on_tg_ban(update, context):
     except TelegramError:
         pass
 
-    await query.answer(f"Пользователь {target} забанен, сессия завершена", show_alert=True)
     try:
         await context.bot.send_message(
             query.from_user.id,
@@ -7958,7 +7816,7 @@ async def on_tg_ban(update, context):
         pass
 
 
-# ============================ /next — НАПИСАТЬ ЮЗЕРУ ============================
+# ============================ /next ============================
 async def modmsg_start(update, context):
     context.user_data["state"] = "modmsg_id"
     await update.message.reply_text("Введите ID пользователя, которому написать:", reply_markup=cancel_reply_kb())
@@ -8020,9 +7878,8 @@ async def process_modmsg_text(update, context):
     )
 
 
-# ============================ /anon — НАБЛЮДЕНИЕ ============================
+# ============================ /anon ============================
 async def anon_start(update, context):
-    uid = update.effective_user.id
     context.user_data["state"] = "anon_pick"
     await update.message.reply_text(
         t("anon_watch_prompt"),
@@ -8109,14 +7966,12 @@ async def process_anon_pick(update, context):
 
 
 async def relay_to_anon_watchers(context, target_id, msg_id):
-    """Трансляция новой анонимки наблюдателям /anon."""
     try:
         watchers = conn.execute(
             "SELECT * FROM anon_watchers WHERE target_id=? AND active=1", (target_id,)
         ).fetchall()
     except Exception:
         return
-
     if not watchers:
         return
 
@@ -8160,7 +8015,7 @@ async def on_anon_watch_leave(update, context):
     await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
 
 
-# ============================ /sex — КОМНАТА ДЛЯ ДЕВУШЕК ============================
+# ============================ /sex ============================
 def sex_room_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("💬 Комната"), KeyboardButton("👥 Участники")],
@@ -8170,7 +8025,6 @@ def sex_room_kb():
 
 
 async def sex_start(update, context):
-    """Команда /sex — открыть или создать комнату. Только модер."""
     uid = update.effective_user.id
     u = get_user(uid)
     if not is_moder(u):
@@ -8180,12 +8034,10 @@ async def sex_start(update, context):
     room = conn.execute("SELECT * FROM sex_rooms ORDER BY id LIMIT 1").fetchone()
 
     if not room:
-        # Нет комнаты — только модер создаёт
         context.user_data["state"] = "sex_create_name"
         await update.message.reply_text(t("sex_create_prompt"), parse_mode="HTML", reply_markup=cancel_reply_kb())
         return
 
-    # Комната есть — заходим
     role = "moder" if is_moder(get_user(uid)) else "girl"
     existing = conn.execute(
         "SELECT * FROM sex_members WHERE room_id=? AND user_id=?", (room["id"], uid)
@@ -8208,7 +8060,6 @@ async def sex_start(update, context):
 
 
 async def sex_create_router(update, context):
-    """Ввод названия комнаты."""
     text = canon(update.message.text.strip())
     uid = update.effective_user.id
     if text in ("Отмена", "Назад"):
@@ -8231,14 +8082,12 @@ async def sex_create_router(update, context):
     conn.commit()
     room_id = cur.lastrowid
 
-    # Модер добавляется первым
     conn.execute(
         "INSERT INTO sex_members (room_id, user_id, role, number, joined_at) VALUES (?, ?, 'moder', 1, ?)",
         (room_id, uid, now_iso()),
     )
     conn.commit()
 
-    # Приглашаем всех девушек в боте
     girls = conn.execute("SELECT tg_id FROM users WHERE gender='f'").fetchall()
     added = 0
     for g in girls:
@@ -8265,8 +8114,7 @@ async def sex_create_router(update, context):
                 set_cur_lang(get_lang(gid))
                 await context.bot.send_message(
                     gid,
-                    f"💬 <b>Тебя пригласили в комнату «{html.escape(title)}»</b>\n\n"
-                    f"Набери /sex чтобы войти.",
+                    f"💬 <b>Тебя пригласили в комнату «{html.escape(title)}»</b>\n\nНабери /sex чтобы войти.",
                     parse_mode="HTML",
                 )
                 set_cur_lang(_sl)
@@ -8285,7 +8133,6 @@ async def sex_create_router(update, context):
 
 
 async def sex_room_router(update, context):
-    """Роутер внутри комнаты /sex."""
     text = canon(update.message.text)
     uid = update.effective_user.id
     room_id = context.user_data.get("sex_room_id")
@@ -8309,7 +8156,6 @@ async def sex_room_router(update, context):
         "SELECT * FROM sex_members WHERE room_id=? AND user_id=?", (room_id, uid)
     ).fetchone()
     if not member:
-        # Не в комнате — добавляем как модера (если модер)
         u = get_user(uid)
         if is_moder(u):
             num = conn.execute(
@@ -8349,7 +8195,6 @@ async def sex_room_router(update, context):
         return
 
     if text == "Запросить выход":
-        # Только девушка может запросить выход
         if member["role"] == "girl":
             exists = conn.execute(
                 "SELECT * FROM sex_exit_requests WHERE room_id=? AND user_id=?", (room_id, uid)
@@ -8360,7 +8205,6 @@ async def sex_room_router(update, context):
                     (room_id, uid, now_iso()),
                 )
                 conn.commit()
-            # Уведомляем модеров комнаты
             moders = conn.execute(
                 "SELECT user_id FROM sex_members WHERE room_id=? AND role='moder'", (room_id,)
             ).fetchall()
@@ -8407,13 +8251,12 @@ async def sex_room_router(update, context):
         await update.message.reply_text(t("sex_room_deleted"), reply_markup=main_menu_kb(uid))
         return
 
-    # Обычное сообщение — рассылаем всем участникам кроме отправителя
     if update.message.text or update.message.voice or update.message.photo:
         content_type = "text" if update.message.text else "voice"
         text_content = update.message.text or None
         voice_id = update.message.voice.file_id if update.message.voice else None
 
-        cur = conn.execute(
+        conn.execute(
             "INSERT INTO sex_messages (room_id, sender_number, content_type, text, voice_file_id, created_at) "
             "VALUES (?, ?, ?, ?, ?, ?)",
             (room_id, member["number"], content_type, text_content, voice_id, now_iso()),
@@ -8441,6 +8284,85 @@ async def sex_room_router(update, context):
     await update.message.reply_text("Пиши текст, голосовое или фото:", reply_markup=sex_room_kb())
 
 
+async def sex_rename_router(update, context):
+    text = canon(update.message.text.strip())
+    uid = update.effective_user.id
+    if text in ("Отмена", "Назад"):
+        context.user_data["state"] = "sex_room"
+        await update.message.reply_text(t("main_menu"), reply_markup=sex_room_kb())
+        return
+    new_title = (update.message.text or "").strip()
+    if len(new_title) < 2 or len(new_title) > 40:
+        await update.message.reply_text("Название 2-40 символов:", reply_markup=cancel_reply_kb())
+        return
+    room_id = context.user_data.get("sex_room_id")
+    conn.execute("UPDATE sex_rooms SET title=? WHERE id=?", (new_title, room_id))
+    conn.commit()
+    context.user_data["state"] = "sex_room"
+    await update.message.reply_text(
+        t("sex_room_renamed", title=html.escape(new_title)),
+        parse_mode="HTML", reply_markup=sex_room_kb(),
+    )
+
+
+async def sex_approve_cmd(update, context, user_id):
+    uid = update.effective_user.id
+    u = get_user(uid)
+    if not is_moder(u):
+        return
+    room = conn.execute("SELECT * FROM sex_rooms ORDER BY id LIMIT 1").fetchone()
+    if not room:
+        await update.message.reply_text(t("sex_no_room"))
+        return
+    req = conn.execute(
+        "SELECT * FROM sex_exit_requests WHERE room_id=? AND user_id=? AND status='pending'",
+        (room["id"], user_id),
+    ).fetchone()
+    if not req:
+        await update.message.reply_text("Запрос не найден.")
+        return
+    conn.execute("UPDATE sex_exit_requests SET status='approved' WHERE id=?", (req["id"],))
+    conn.execute("DELETE FROM sex_members WHERE room_id=? AND user_id=?", (room["id"], user_id))
+    conn.commit()
+    try:
+        _sl = cur_lang()
+        set_cur_lang(get_lang(user_id))
+        await context.bot.send_message(user_id, t("sex_exit_approved"))
+        set_cur_lang(_sl)
+    except TelegramError:
+        pass
+    await update.message.reply_text(f"✅ Выход одобрен для {user_id}.", reply_markup=sex_room_kb())
+
+
+# ============================ CALLBACKS ============================
+_CALLBACKS = [
+    ("reply:", on_reply_button, False),
+    ("del:", on_delete_button, False),
+    ("subcheck:", on_subcheck_button, False),
+    ("subgate", on_subgate_check, True),
+    ("report_anon:", on_report_anon, False),
+    ("reveal:", on_reveal_button, False),
+    ("reveal_pay:", on_reveal_pay, False),
+    ("reveal_cancel", on_reveal_cancel, True),
+    ("repadm:", on_report_admin_decision, False),
+    ("roulette_cancel", on_roulette_cancel, True),
+    ("roulette_report:", on_roulette_report, False),
+    ("modapp:", on_moder_app_decision, False),
+    ("claim_vip", on_claim_vip, True),
+    ("claim_moder", on_claim_moder, True),
+    ("ref_info", on_ref_info, True),
+    ("tgban:", on_tg_ban, False),
+    ("refund_pick:", on_refund_pick, False),
+    ("refund_do:", on_refund_do, False),
+    ("refund_cancel", on_refund_cancel, True),
+    ("anon_watch_leave", on_anon_watch_leave, True),
+    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+    ("nreply:", on_next_reply, False),
+    ("nreport:", on_next_report, False),
+]
+
+
+# ============================ НАВИГАЦИЯ В ШАПКЕ ============================
 async def on_subgate_check(update, context):
     query = update.callback_query
     await query.answer()
@@ -8462,7 +8384,6 @@ async def on_roulette_report(update, context):
     session_id = int(query.data.split(":")[1])
     session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (session_id,)).fetchone()
     if not session:
-        await query.answer(t("session_not_found"), show_alert=True)
         return
     reporter_id = query.from_user.id
     if reporter_id == session["user1_id"]:
@@ -8476,52 +8397,20 @@ async def on_roulette_report(update, context):
     context.user_data["report_ref_id"] = session_id
     context.user_data["reported_id"] = reported_id
     await query.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
-    
-
-# ============================ CALLBACKS ============================
-_CALLBACKS = [
-    ("reply:", on_reply_button, False),
-    ("del:", on_delete_button, False),
-    ("subcheck:", on_subcheck_button, False),
-    ("subgate", on_subgate_check, True),
-    ("report_anon:", on_report_anon, False),
-    ("reveal:", on_reveal_button, False),
-    ("reveal_pay:", on_reveal_pay, False),
-    ("reveal_cancel", on_reveal_cancel, True),
-    ("repadm:", on_report_admin_decision, False),
-    ("roulette_cancel", on_roulette_cancel, True),
-    ("roulette_report:", on_roulette_report, False),
-    ("modapp:", on_moder_app_decision, False),
-    ("claim_vip", on_claim_vip, True),
-    ("claim_moder", on_claim_moder, True),
-    ("ref_info", on_ref_info, True),
-    ("tgban:", on_tg_ban, False),
-    ("nl:", on_nearby_like, False),
-    ("nd:", on_nearby_like, False),
-    ("nr:", on_nearby_like, False),
-    ("refund_pick:", on_refund_pick, False),
-    ("refund_do:", on_refund_do, False),
-    ("refund_cancel", on_refund_cancel, True),
-    ("anon_watch_leave", on_anon_watch_leave, True),
-]
 
 
-# ============================ НАВИГАЦИЯ В ШАПКЕ ============================
 async def show_help(update, context):
-    """Кнопка Помощь."""
     uid = update.effective_user.id
     await nav(update, context, t("help"), main_menu_kb(uid), parse_mode="HTML")
 
 
 async def process_adm_ad_wizard(update, context):
-    """Заглушка для рекламы (если что-то вызовет)."""
     context.user_data["state"] = None
     await update.message.reply_text("Функция недоступна.", reply_markup=admin_menu_kb())
 
 
 # ============================ TEXT ROUTER ============================
 async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработка всех текстовых сообщений."""
     state = context.user_data.get("state")
     text = canon(update.message.text) if update.message else None
     raw_text = update.message.text if update.message else ""
@@ -8531,7 +8420,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t("banned"))
         return
 
-    # Скрытая команда /sex_approve <id> — только для модера
     if raw_text and raw_text.startswith("/sex_approve"):
         uid = update.effective_user.id
         if is_moder(get_user(uid)):
@@ -8542,7 +8430,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("Использование: /sex_approve <user_id>")
         return
 
-    # Восстановление незавершённого анона по ссылке
     if not state:
         _fl = load_link_flow(update.effective_user.id)
         if _fl:
@@ -8559,11 +8446,18 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "shop_add_title", "shop_edit_name",
         "adm_bcast_content", "adm_bcast_btn_ask", "adm_bcast_btn_text", "adm_bcast_btn_url",
         "adm_ch_name", "adm_ch_link", "adm_ch_confirm",
+        # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+        "next_create_name", "next_create_age", "next_create_gender",
+        "next_create_looking", "next_create_bio", "next_create_photo",
+        "next_edit_name", "next_edit_age", "next_edit_bio",
+        "next_edit_photo", "next_edit_looking", "next_edit_gender",
+        "next_edit_menu",
+        "next_view", "next_msg_type", "next_reply_text",
     }
 
     _NAV = {
         "Моя ссылка": show_link_menu,
-        "Поблизости": nearby_menu,
+        "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭": next_menu,
         "Чат-рулетка": show_roulette_entry,
         "Профиль": show_profile,
         "Магазин": show_shop,
@@ -8581,7 +8475,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _NAV[text](update, context)
         return
 
-    # --- Чат-рулетка ---
+    # --- Рулетка ---
     if state == "rchat":
         if text == "Далее":
             await rchat_next(update, context)
@@ -8634,15 +8528,27 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await process_report_reason(update, context)
         return
 
-    # --- Поблизости (мастер) ---
-    if state and state.startswith("nearby_") and state != "nearby_menu":
-        if state == "nearby_view":
-            await update.message.reply_text(t("choose_on_kb"), reply_markup=nearby_browse_kb())
-            return
-        await nearby_create_router(update, context)
+    # --- 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ---
+    if state and state.startswith("next_create_"):
+        await next_field_router(update, context)
         return
-    if state == "nearby_menu":
-        await nearby_router(update, context)
+    if state and state.startswith("next_edit_") and state != "next_edit_menu":
+        await next_field_router(update, context)
+        return
+    if state == "next_edit_menu":
+        await next_edit_router(update, context)
+        return
+    if state == "next_menu":
+        await next_router(update, context)
+        return
+    if state == "next_view":
+        await next_view_router(update, context)
+        return
+    if state == "next_msg_type":
+        await next_msg_router(update, context)
+        return
+    if state == "next_reply_text":
+        await next_reply_router(update, context)
         return
 
     # --- Рулетка-меню ---
@@ -8650,22 +8556,15 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await roulette_pref_router(update, context)
         return
 
-    # --- Язык ---
     if state == "language":
         await language_router(update, context)
         return
-
-    # --- Ссылка-меню ---
     if state == "link_menu":
         await link_menu_router(update, context)
         return
-
-    # --- Профиль ---
     if state == "profile":
         await profile_router(update, context)
         return
-
-    # --- Подарок коинов ---
     if state in ("giftcoins_id", "giftcoins_amount"):
         await gift_coins_router(update, context)
         return
@@ -8688,7 +8587,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await shop_edit_router(update, context)
         return
 
-    # --- Анкета модера ---
     if state and state.startswith("moder_q_"):
         await moder_q_router(update, context)
         return
@@ -8722,7 +8620,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await star_admin_router(update, context)
         return
 
-    # --- Бан ---
     if state == "ban_id":
         await process_ban(update, context)
         return
@@ -8797,11 +8694,9 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await process_bcast_btn_url(update, context)
         return
 
-    # Релей рулетки
     if await relay_roulette_message(update, context):
         return
 
-    # --- Отмена поиска ---
     if text == "Отменить поиск":
         uid = update.effective_user.id
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
@@ -8858,12 +8753,12 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-    # --- Главное меню (кнопки) ---
+    # --- Главное меню ---
     if text == "Моя ссылка":
         await show_link_menu(update, context)
         return
-    if text == "Поблизости":
-        await nearby_menu(update, context)
+    if text in ("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭", "Next Meet", "Поблизости"):
+        await next_menu(update, context)
         return
     if text == "Чат-рулетка":
         await show_roulette_entry(update, context)
@@ -8910,7 +8805,6 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ============================ MEDIA ROUTER ============================
 async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Голос/фото/стикеры/видео/кружки/документы."""
     _u = get_user(update.effective_user.id)
     if _u and is_banned(_u) and not is_admin(update.effective_user.id):
         return
@@ -8943,9 +8837,18 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if state == "adm_bcast_content":
         await process_bcast_content(update, context)
         return
-    if state == "nearby_photo":
-        await nearby_photo_handler(update, context)
+
+    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+    if state in ("next_create_photo", "next_edit_photo"):
+        await next_photo_handler(update, context)
         return
+    if state == "next_msg_type":
+        await next_msg_router(update, context)
+        return
+    if state == "next_reply_text":
+        await next_reply_router(update, context)
+        return
+
     if state == "sex_room":
         await sex_room_router(update, context)
         return
@@ -9021,7 +8924,6 @@ async def _h_cmd_anon(message: Message):
 
 
 async def _h_cmd_sex(message: Message):
-    # /sex — ТОЛЬКО для модераторов (не админ)
     uid = message.from_user.id
     if is_admin(uid):
         await message.answer("🛡 Команда доступна только модераторам, не админам.")
@@ -9079,7 +8981,6 @@ async def on_error(event: ErrorEvent):
 
 # ============================ ON_MY_CHAT_MEMBER ============================
 async def on_my_chat_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Ловим блокировку/разблокировку бота."""
     cm = update.my_chat_member
     if not cm or cm.chat.type != "private":
         return
@@ -9153,7 +9054,6 @@ async def _matchmaker_loop():
 
 
 def run_safe_cleanup():
-    """Безопасная очистка мусора."""
     try:
         six_h = (now_dt() - timedelta(hours=6)).isoformat()
         ten_min = (now_dt() - timedelta(minutes=120)).isoformat()
@@ -9172,11 +9072,12 @@ def run_safe_cleanup():
         conn.execute("DELETE FROM anon_messages WHERE deleted=1 AND created_at < ?", (del_anon,))
         conn.execute("DELETE FROM anon_messages WHERE created_at < ?", (old_anon,))
         conn.execute("DELETE FROM reports WHERE status <> 'pending' AND created_at < ?", (old_reports,))
-        # Удаление истёкших старых ссылок
         conn.execute("UPDATE users SET old_link=NULL, old_link_until=NULL WHERE old_link_until IS NOT NULL AND old_link_until < ?", (now_iso(),))
-        # Удаление заявок на выход старше 3 часов
         three_h = (now_dt() - timedelta(hours=3)).isoformat()
         conn.execute("DELETE FROM sex_exit_requests WHERE status='pending' AND created_at < ?", (three_h,))
+        # 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — чистим старые ЛС (90 дней)
+        old_nbmsg = (now_dt() - timedelta(days=90)).isoformat()
+        conn.execute("DELETE FROM nearby_messages WHERE created_at < ?", (old_nbmsg,))
         conn.commit()
 
         if not DATABASE_URL:
