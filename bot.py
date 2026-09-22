@@ -1,7 +1,7 @@
-# ===================== БЛОК 1 / 14 — ИМПОРТЫ, ENV, БД =====================
+# ===================== БЛОК 1 / 15 — ИМПОРТЫ, ENV, БД =====================
 """
 𐌽ꤕ𐌗ተ — анонимный Telegram-бот.
-Anon + Chat-Roulette + 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 + Shop + Stars + Admin.
+Anon + Chat-Roulette + 𝐍𝐞𝐱𝐭.. + Shop + Stars + Admin.
 Стек: aiogram v3, SQLite / PostgreSQL (Neon).
 """
 from __future__ import annotations
@@ -277,7 +277,6 @@ VIP_DISCOUNT_PERCENT = 20
 VIP_DAILY_BONUS = 5
 WELCOME_COOLDOWN_MIN = 10
 
-# Рефералы
 REF_REWARD_NORMAL = 50
 REF_REWARD_VIP = 100
 REF_INVITED_BONUS = 100
@@ -445,7 +444,7 @@ else:
 
 def db():
     return conn
-    # ===================== БЛОК 2 / 14 — СХЕМА БД =====================
+    # ===================== БЛОК 2 / 15 — СХЕМА БД =====================
 
 def init_db():
     cur = conn.cursor()
@@ -611,7 +610,7 @@ def init_db():
         value TEXT
     );
 
-    -- ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — анкеты ============
+    -- ============ 𝐍𝐞𝐱𝐭.. — анкеты ============
     CREATE TABLE IF NOT EXISTS nearby_profiles (
         user_id INTEGER PRIMARY KEY,
         name TEXT,
@@ -640,7 +639,7 @@ def init_db():
         UNIQUE(user1_id, user2_id)
     );
 
-    -- ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — личные сообщения ============
+    -- ============ 𝐍𝐞𝐱𝐭.. — ЛС ============
     CREATE TABLE IF NOT EXISTS nearby_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         from_id INTEGER NOT NULL,
@@ -690,7 +689,7 @@ def init_db():
         UNIQUE(room_id, user_id)
     );
 
-    -- ============ /anon — наблюдение ============
+    -- ============ /anon ============
     CREATE TABLE IF NOT EXISTS anon_watchers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         mod_id INTEGER NOT NULL,
@@ -1036,14 +1035,15 @@ def has_forbidden_contacts(text: str | None) -> bool:
         if sum(c.isdigit() for c in m.group()) >= 7:
             return True
     return False
-    # ===================== БЛОК 3 / 14 — ЯЗЫКИ (BTN + tr) =====================
+    # ===================== БЛОК 3 / 15 — ЯЗЫКИ (BTN + tr) =====================
 LANGS = ("ru", "uz", "en")
 LANG_BUTTONS = {"Русский": "ru", "O'zbekcha": "uz", "English": "en"}
 
 BTN = {
+    # ============ Главное меню ============
     "🔗 Моя ссылка": ("🔗 Havolam", "🔗 My link"),
+    "🎯 𝐍𝐞𝐱𝐭..": ("🎯 𝐍𝐞𝐱𝐭..", "🎯 𝐍𝐞𝐱𝐭.."),
     "🎲 Чат-рулетка": ("🎲 Chat-ruletka", "🎲 Chat roulette"),
-    "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭": ("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭", "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"),
     "👤 Профиль": ("👤 Profil", "👤 Profile"),
     "🛒 Магазин": ("🛒 Do'kon", "🛒 Shop"),
     "👥 Пригласить": ("👥 Taklif qilish", "👥 Invite"),
@@ -1052,12 +1052,16 @@ BTN = {
     "💎 Купить коины": ("💎 Coin sotib olish", "💎 Buy coins"),
     "🛠 Админка": ("🛠 Admin panel", "🛠 Admin"),
     "🛡 Модерка": ("🛡 Moderator", "🛡 Moderation"),
+
+    # ============ Общие ============
     "✅ Да": ("✅ Ha", "✅ Yes"),
     "❌ Отмена": ("❌ Bekor qilish", "❌ Cancel"),
     "💎 Коины": ("💎 Coinlar", "💎 Coins"),
     "⏳ VIP": ("⏳ VIP", "⏳ VIP"),
     "🛡 Модер": ("🛡 Moder", "🛡 Moder"),
     "📦 Вручную": ("📦 Qo'lda", "📦 Manual"),
+
+    # ============ Админка ============
     "📊 Статистика": ("📊 Statistika", "📊 Statistics"),
     "👑 VIP по ID": ("👑 ID bo'yicha VIP", "👑 VIP by ID"),
     "➕ Выдать VIP": ("➕ VIP berish", "➕ Grant VIP"),
@@ -1077,98 +1081,123 @@ BTN = {
     "➕ Добавить канал": ("➕ Kanal qo'shish", "➕ Add channel"),
     "🗑 Удалить канал": ("🗑 Kanalni o'chirish", "🗑 Delete channel"),
     "💾 Сохранить": ("💾 Saqlash", "💾 Save"),
-    "✅ Сохранить": ("✅ Saqlash", "✅ Save"),
-    "📣 Реклама": ("📣 Reklama", "📣 Ad"),
     "✉️ Рассылка": ("✉️ Xabar tarqatish", "✉️ Broadcast"),
     "📢 Рассылка": ("📢 Xabar tarqatish", "📢 Broadcast"),
     "🛡 Модеры": ("🛡 Moderatorlar", "🛡 Moderators"),
-    "🔒 Отозвать доступ": ("🔒 Kirishni bekor qilish", "🔒 Revoke access"),
     "🔨 Бан / Разбан": ("🔨 Ban / Unban", "🔨 Ban / Unban"),
     "⭐ Коины за Stars": ("⭐ Stars uchun coin", "⭐ Coins for Stars"),
     "⭐ Возврат Stars": ("⭐ Stars qaytarish", "⭐ Refund Stars"),
     "💎 Цена раскрытия": ("💎 Ochish narxi", "💎 Reveal price"),
-    "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
-    "🏠 Меню": ("🏠 Menyu", "🏠 Menu"),
     "➕ Добавить пакет коинов": ("➕ Coin paket qo'shish", "➕ Add coin package"),
     "🗑 Удалить пакет коинов": ("🗑 Coin paketni o'chirish", "🗑 Delete coin package"),
-    "🚩 Жалобы": ("🚩 Shikoyatlar", "🚩 Reports"),
+    "🛡 Модерка на неделю": ("🛡 Bir haftalik moder", "🛡 Moderator for a week"),
+    "➕ Выдать модера": ("➕ Moder berish", "➕ Grant moder"),
+    "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
+    "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
+
+    # ============ Жалобы: действия админа ============
+    "🔨 Бан": ("🔨 Ban", "🔨 Ban"),
+    "✅ Разбан": ("✅ Unban", "✅ Unban"),
+    "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
+
+    # ============ Админ: реф-настройки ============
+    "👑 VIP: дней": ("👑 VIP: kun", "👑 VIP: days"),
+    "👥 VIP: друзей": ("👥 VIP: do'st", "👥 VIP: friends"),
+    "🛡 Модер: дней": ("🛡 Moder: kun", "🛡 Moder: days"),
+    "👥 Модер: друзей": ("👥 Moder: do'st", "👥 Moder: friends"),
+    "📷 Фото": ("📷 Foto", "📷 Photo"),
+    "🚫 Убрать фото": ("🚫 Fotosiz", "🚫 No photo"),
+
+    # ============ Общие ============
+    "⬅️ Назад": ("⬅️ Orqaga", "⬅️ Back"),
+    "🏠 Меню": ("🏠 Menyu", "🏠 Menu"),
+
+    # ============ Пол/пол-предпочтения ============
     "👨 Мужской": ("👨 Erkak", "👨 Male"),
     "👩 Женский": ("👩 Ayol", "👩 Female"),
-    "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
-    "✏️ Сменить ссылку": ("✏️ Havolani o'zgartirish", "✏️ Change link"),
     "👨 Парня": ("👨 Yigit", "👨 A guy"),
     "👩 Девушку": ("👩 Qiz", "👩 A girl"),
     "🤷 Любого": ("🤷 Farqi yo'q", "🤷 Anyone"),
+
+    # ============ Профиль ============
+    "✏️ Сменить пол": ("✏️ Jinsni o'zgartirish", "✏️ Change gender"),
+    "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
+    "🎁 Подарить коины": ("🎁 Coin sovg'a qilish", "🎁 Gift coins"),
+
+    # ============ Ссылка ============
+    "🔗 Показать ссылку": ("🔗 Havolani ko'rsatish", "🔗 Show link"),
+    "✏️ Сменить ссылку": ("✏️ Havolani o'zgartirish", "✏️ Change link"),
+
+    # ============ Анонимка ============
     "❓ Вопрос": ("❓ Savol", "❓ Question"),
     "💌 Валентинка": ("💌 Valentinka", "💌 Valentine"),
+
+    # ============ Жалобы (причины) ============
     "🤬 Мат": ("🤬 So'kinish", "🤬 Swearing"),
     "💰 Мошенничество": ("💰 Firibgarlik", "💰 Fraud"),
     "😡 Оскорбление": ("😡 Haqorat", "😡 Insult"),
     "👎 Не нравится": ("👎 Yoqmadi", "👎 Dislike"),
-    "✏️ Сменить пол": ("✏️ Jinsni o'zgartirish", "✏️ Change gender"),
+    "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
+
+    # ============ Рулетка ============
+    "⛔ Отменить поиск": ("⛔ Qidiruvni bekor qilish", "⛔ Stop search"),
+    "➡️ Далее": ("➡️ Keyingi", "➡️ Next"),
+    "⏹️ Стоп": ("⏹️ To'xtatish", "⏹️ Stop"),
+    "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
+
+    # ============ Рассылка ============
     "👥 Всем": ("👥 Hammaga", "👥 Everyone"),
     "👨 Мужчинам": ("👨 Erkaklarga", "👨 To men"),
     "👩 Женщинам": ("👩 Ayollarga", "👩 To women"),
-    "➕ Выдать модера": ("➕ Moder berish", "➕ Grant moder"),
-    "➖ Забрать модера": ("➖ Moderni olish", "➖ Revoke moder"),
-    "✏️ Изменить": ("✏️ O'zgartirish", "✏️ Edit"),
+
+    # ============ Товар/магазин ============
     "➕ Добавить товар": ("➕ Mahsulot qo'shish", "➕ Add item"),
     "🗑 Удалить товар": ("🗑 Mahsulotni o'chirish", "🗑 Delete item"),
     "📝 Название": ("📝 Nomi", "📝 Name"),
     "💰 Цена": ("💰 Narxi", "💰 Price"),
     "⏳ Срок VIP": ("⏳ VIP muddati", "⏳ VIP duration"),
     "💎 Сумма коинов": ("💎 Coin miqdori", "💎 Coin amount"),
+
+    # ============ Рефералы ============
     "🏆 Топ пригласивших": ("🏆 Top taklif qilganlar", "🏆 Top inviters"),
-    "⛔ Отменить поиск": ("⛔ Qidiruvni bekor qilish", "⛔ Stop search"),
-    "➡️ Далее": ("➡️ Keyingi", "➡️ Next"),
-    "⏹️ Стоп": ("⏹️ To'xtatish", "⏹️ Stop"),
-    "🔍 Новый поиск": ("🔍 Yangi qidiruv", "🔍 New search"),
-    "🚩 Пожаловаться": ("🚩 Shikoyat qilish", "🚩 Report"),
-    "📤 Отправить всем": ("📤 Hammaga yuborish", "📤 Send to all"),
-    "🎁 Подарить коины": ("🎁 Coin sovg'a qilish", "🎁 Gift coins"),
-    "✅ Согласиться": ("✅ Roziman", "✅ I agree"),
-    "✅ Подтвердить": ("✅ Tasdiqlash", "✅ Confirm"),
-    "❌ Отклонить": ("❌ Rad etish", "❌ Reject"),
-    "✏️ Изменить возраст": ("✏️ Yoshni o'zgartirish", "✏️ Change age"),
-    "🚪 Выйти": ("🚪 Chiqish", "🚪 Exit"),
 
-    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — меню ============
+    # ============ 𝐍𝐞𝐱𝐭.. — меню ============
     "🔥 Смотреть анкеты": ("🔥 Anketalarni ko'rish", "🔥 Browse profiles"),
-    "👤 Моя анкета": ("👤 Mening anketam", "👤 My profile"),
+    "📝 Моя анкета": ("📝 Mening anketam", "📝 My profile"),
 
-    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — карточка ============
+    # ============ 𝐍𝐞𝐱𝐭.. — карточка ============
     "❤️ Лайк": ("❤️ Layk", "❤️ Like"),
     "👎 Дизлайк": ("👎 Dizlayk", "👎 Dislike"),
-    "💬 Написать": ("💬 Yozish", "💬 Write"),
-    "⛔ Жалоба": ("⛔ Shikoyat", "⛔ Report"),
+    "💌 Написать": ("💌 Yozish", "💌 Write"),
+    "🚩 Жалоба": ("🚩 Shikoyat", "🚩 Report"),
     "💤 Выйти": ("💤 Chiqish", "💤 Exit"),
 
-    # ============ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — моя анкета ============
+    # ============ 𝐍𝐞𝐱𝐭.. — моя анкета ============
     "📝 Имя": ("📝 Ism", "📝 Name"),
     "🎂 Возраст": ("🎂 Yosh", "🎂 Age"),
     "📄 О себе": ("📄 O'zim haqimda", "📄 About me"),
-    "📷 Фото": ("📷 Foto", "📷 Photo"),
     "👁 Предпросмотр": ("👁 Ko'rib chiqish", "👁 Preview"),
     "🎯 Кого ищу": ("🎯 Kimni qidiraman", "🎯 Looking for"),
     "⚧ Пол": ("⚧ Jins", "⚧ Gender"),
 
-    # Inline-кнопки под сообщениями
+    # ============ Inline ============
     "↩️ Ответить": ("↩️ Javob berish", "↩️ Reply"),
 
-    # Голые эмодзи (кэш/старые)
+    # ============ Голые эмодзи (кэш) ============
     "❤️": ("❤️", "❤️"),
     "👎": ("👎", "👎"),
-    "💬": ("💬", "💬"),
+    "💌": ("💌", "💌"),
     "⛔": ("⛔", "⛔"),
     "💤": ("💤", "💤"),
 
-    # /sex
+    # ============ /sex ============
     "💬 Комната": ("💬 Xona", "💬 Room"),
     "👥 Участники": ("👥 Ishtirokchilar", "👥 Members"),
     "🚪 Запросить выход": ("🚪 Chiqishni so'rash", "🚪 Request exit"),
     "🛡 Одобрить выход": ("🛡 Chiqishni tasdiqlash", "🛡 Approve exit"),
     "🗑 Удалить комнату": ("🗑 Xonani o'chirish", "🗑 Delete room"),
     "✏️ Переименовать": ("✏️ Nomini o'zgartirish", "✏️ Rename"),
+    "🚪 Выйти": ("🚪 Chiqish", "🚪 Exit"),
 }
 
 
@@ -1199,14 +1228,21 @@ for _ru, (_uz, _en) in BTN.items():
     _ALIAS[_uz] = _canonical
     _ALIAS[_en] = _canonical
 
-_ALIAS["𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
-_ALIAS["Next Meet"] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
-_ALIAS["Next..."] = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
+# Bold-unicode 𝐍𝐞𝐱𝐭.. — не режется regex, задаём алиасы вручную
+_ALIAS["🎯 𝐍𝐞𝐱𝐭.."] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["𝐍𝐞𝐱𝐭.."] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["Next.."] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["Next"] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["Next Meet"] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["Поблизости"] = "🎯 𝐍𝐞𝐱𝐭.."
+_ALIAS["📍 Поблизости"] = "🎯 𝐍𝐞𝐱𝐭.."
 
+# Голые эмодзи — не обнулять при canon
 _EMOJI_BUTTONS = {
     "❤️": "❤️", "❤": "❤️",
     "👎": "👎",
-    "💬": "💬",
+    "💌": "💌",
     "⛔": "⛔",
     "💤": "💤",
 }
@@ -1296,28 +1332,28 @@ def _leading_emoji(s):
         return ""
     m = _LEADING_EMOJI_RE.match(s)
     return m.group(1) if m else ""
-    # ===================== БЛОК 4 / 14 — СЛОВАРЬ T (часть 1) =====================
+    # ===================== БЛОК 4 / 15 — СЛОВАРЬ T (часть 1) =====================
 T = {
     # ============================ ГЛАВНОЕ ============================
     "main_menu": {
-        "ru": "Главное меню 👇",
-        "uz": "Asosiy menyu 👇",
-        "en": "Main menu 👇",
+        "ru": "🏠 <b>Главное меню</b> 👇",
+        "uz": "🏠 <b>Asosiy menyu</b> 👇",
+        "en": "🏠 <b>Main menu</b> 👇",
     },
     "pick_on_kb": {
-        "ru": "Выберите вариант на клавиатуре 👇",
-        "uz": "Klaviaturadan variantni tanlang 👇",
-        "en": "Please choose an option on the keyboard 👇",
+        "ru": "👇 Выберите вариант на клавиатуре",
+        "uz": "👇 Klaviaturadan variantni tanlang",
+        "en": "👇 Please choose an option on the keyboard",
     },
     "not_understood": {
-        "ru": "Не понял команду. Воспользуйтесь меню 👇",
-        "uz": "Buyruqni tushunmadim. Menyudan foydalaning 👇",
-        "en": "I didn't get that. Please use the menu 👇",
+        "ru": "❓ Не понял команду. Воспользуйтесь меню 👇",
+        "uz": "❓ Buyruqni tushunmadim. Menyudan foydalaning 👇",
+        "en": "❓ I didn't get that. Please use the menu 👇",
     },
     "search_cancelled": {
-        "ru": "Поиск отменён. Главное меню 👇",
-        "uz": "Qidiruv bekor qilindi. Asosiy menyu 👇",
-        "en": "Search cancelled. Main menu 👇",
+        "ru": "⛔ Поиск отменён. Главное меню 👇",
+        "uz": "⛔ Qidiruv bekor qilindi. Asosiy menyu 👇",
+        "en": "⛔ Search cancelled. Main menu 👇",
     },
     "banned": {
         "ru": "🚫 Вы заблокированы и не можете пользоваться ботом.",
@@ -1328,33 +1364,28 @@ T = {
     "enter_number": {"ru": "🔢 Введите число:", "uz": "🔢 Raqam kiriting:", "en": "🔢 Enter a number:"},
     "enter_days": {"ru": "📅 Введите число дней:", "uz": "📅 Kunlar sonini kiriting:", "en": "📅 Enter the number of days:"},
     "choose_on_kb": {"ru": "👇 Выберите", "uz": "👇 Tanlang", "en": "👇 Choose"},
-    "cancelled": {"ru": "Отменено.", "uz": "Bekor qilindi.", "en": "Cancelled."},
+    "cancelled": {"ru": "↩️ Отменено.", "uz": "↩️ Bekor qilindi.", "en": "↩️ Cancelled."},
 
-    # ============================ NEXT MEET ============================
+    # ============================ NEXT.. ============================
     "next_brand": {
-        "ru": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
-        "uz": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
-        "en": "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭",
+        "ru": "𝐍𝐞𝐱𝐭..",
+        "uz": "𝐍𝐞𝐱𝐭..",
+        "en": "𝐍𝐞𝐱𝐭..",
     },
     "next_menu_title": {
-        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
-        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
-        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "ru": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "uz": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "en": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━",
     },
     "next_create_title": {
-        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nСоздай анкету, чтобы тебя видели другие.\n\n",
-        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nAnketa yarating.\n\n",
-        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\nCreate a profile to be seen.\n\n",
+        "ru": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━\n✏️ Создай анкету, чтобы тебя видели другие.\n\n",
+        "uz": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━\n✏️ Anketa yarating.\n\n",
+        "en": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n━━━━━━━━━━━━━━━━━━━━\n✏️ Create a profile to be seen.\n\n",
     },
-    "next_profile_card": {
-        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 Кого ищу: <b>{looking}</b>\n\n📄 {bio}\n\n👇 Выбери действие:",
-        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 <b>{looking}</b>\n\n📄 {bio}\n\n👇 Amalni tanlang:",
-        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n🎯 Looking for: <b>{looking}</b>\n\n📄 {bio}\n\n👇 Choose action:",
-    },
-    "next_ask_name": {"ru": "✏️ Введи <b>имя</b> (2-30 символов):", "uz": "✏️ <b>Ismingizni</b> kiriting:", "en": "✏️ Enter your <b>name</b>:"},
-    "next_ask_age": {"ru": "✏️ Сколько тебе <b>лет</b>? (12-99)", "uz": "✏️ <b>Yoshingiz</b> nechada? (12-99)", "en": "✏️ How old are you? (12-99)"},
-    "next_ask_gender": {"ru": "✏️ Твой <b>пол</b>:", "uz": "✏️ <b>Jinsingiz</b>:", "en": "✏️ Your <b>gender</b>:"},
-    "next_ask_looking": {"ru": "✏️ <b>Кого ищешь</b>?", "uz": "✏️ <b>Kimni qidirasiz</b>?", "en": "✏️ <b>Who are you looking for</b>?"},
+    "next_ask_name": {"ru": "📝 Введи <b>имя</b> (2-30 символов):", "uz": "📝 <b>Ismingizni</b> kiriting:", "en": "📝 Enter your <b>name</b>:"},
+    "next_ask_age": {"ru": "🎂 Сколько тебе <b>лет</b>? (12-99)", "uz": "🎂 <b>Yoshingiz</b> nechada? (12-99)", "en": "🎂 How old are you? (12-99)"},
+    "next_ask_gender": {"ru": "⚧ Твой <b>пол</b>:", "uz": "⚧ <b>Jinsingiz</b>:", "en": "⚧ Your <b>gender</b>:"},
+    "next_ask_looking": {"ru": "🎯 <b>Кого ищешь</b>?", "uz": "🎯 <b>Kimni qidirasiz</b>?", "en": "🎯 <b>Who are you looking for</b>?"},
     "next_ask_bio": {"ru": "📄 Расскажи <b>о себе</b> (5-200 символов):", "uz": "📄 <b>O'zingiz haqida</b> (5-200 belgi):", "en": "📄 <b>About you</b> (5-200 chars):"},
     "next_ask_photo": {"ru": "📷 Отправь <b>фото</b> (или «-» чтобы убрать):", "uz": "📷 <b>Foto</b> yuboring (yoki «-»):", "en": "📷 Send your <b>photo</b> (or «-»):"},
 
@@ -1365,51 +1396,49 @@ T = {
 
     "next_saved": {"ru": "✅ <b>Сохранено!</b>", "uz": "✅ <b>Saqlandi!</b>", "en": "✅ <b>Saved!</b>"},
     "next_profile_saved": {"ru": "✅ <b>Анкета создана!</b>\n\nТеперь можешь смотреть других.", "uz": "✅ <b>Anketa yaratildi!</b>", "en": "✅ <b>Profile created!</b>"},
-    "next_create_need_all": {
-        "ru": "Сначала заполни все поля анкеты.",
-        "uz": "Avval anketani to'ldiring.",
-        "en": "Fill all profile fields first.",
-    },
     "next_preview": {
         "ru": "👁 <b>Предпросмотр анкеты</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 Кого ищу: <b>{looking}</b>\n\n📄 {bio}",
         "uz": "👁 <b>Anketa ko'rinishi</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 <b>{looking}</b>\n\n📄 {bio}",
         "en": "👁 <b>Profile preview</b>\n━━━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>, {age}\n⚧ {gender}\n🎯 Looking for: <b>{looking}</b>\n\n📄 {bio}",
     },
-
-    "next_match_title": {"ru": "💕 <b>Взаимная симпатия!</b>\n━━━━━━━━━━━━━━━━━━━━", "uz": "💕 <b>O'zaro yoqdi!</b>\n━━━━━━━━━━━━━━━━━━━━", "en": "💕 <b>Mutual like!</b>\n━━━━━━━━━━━━━━━━━━━━"},
-    "next_match_contact": {"ru": "Собеседник: <b>{name}</b>\n\n{contact}", "uz": "Suhbatdosh: <b>{name}</b>\n\n{contact}", "en": "Partner: <b>{name}</b>\n\n{contact}"},
-
-    "next_msg_prompt": {
-        "ru": "💬 <b>Написать сообщение</b>\n\nОтправь текст или голосовое (до 15 сек).\n\n<i>«Отмена» — вернуться к анкете</i>",
-        "uz": "💬 <b>Xabar yozish</b>\n\nMatn yoki ovozli yuboring.",
-        "en": "💬 <b>Write a message</b>\n\nSend text or voice (up to 15s).",
-    },
-    "next_msg_sent": {"ru": "✅ <b>Отправлено</b>", "uz": "✅ <b>Yuborildi</b>", "en": "✅ <b>Sent</b>"},
-    "next_msg_failed": {"ru": "❌ Не удалось отправить", "uz": "❌ Yuborib bo'lmadi", "en": "❌ Failed to send"},
-    "next_reply_prompt": {"ru": "↩️ <b>Ответить</b>\n\nОтправь текст или голосовое:", "uz": "↩️ <b>Javob berish</b>\n\nMatn yoki ovozli yuboring:", "en": "↩️ <b>Reply</b>\n\nSend text or voice:"},
-    "next_msg_inbox_hint": {"ru": "Новое сообщение пришло в чат ⬆️", "uz": "Yangi xabar chatda ⬆️", "en": "New message above ⬆️"},
-
-    "next_banned_write": {"ru": "⛔ Ты не можешь писать этому пользователю.", "uz": "⛔ Siz bu foydalanuvchiga yoza olmaysiz.", "en": "⛔ You can't write to this user."},
-    "next_report_confirm": {"ru": "⛔ <b>Жалоба отправлена</b>\nАдминистратор рассмотрит её.", "uz": "⛔ <b>Shikoyat yuborildi</b>", "en": "⛔ <b>Report sent</b>"},
-    "next_banned_admin": {"ru": "🔨 Пользователь <b>{name}</b> заблокирован в поиске анкет <b>навсегда</b>.", "uz": "🔨 <b>{name}</b> qidiruvda abadiy ban qilindi.", "en": "🔨 User <b>{name}</b> banned from search <b>forever</b>."},
-    "next_banned_user": {"ru": "🚫 Вы заблокированы в поиске анкет за нарушение правил.", "uz": "🚫 Siz qidiruvda banlangansiz.", "en": "🚫 You are banned from search."},
-    "next_only_text_voice": {"ru": "Только текст или голосовое.", "uz": "Faqat matn yoki ovozli.", "en": "Text or voice only."},
-
-    "next_search_stopped": {
-        "ru": "💤 <b>Ты вышел из поиска.</b>\n\nГлавное меню 👇",
-        "uz": "💤 <b>Qidiruvdan chiqdingiz.</b>\n\nAsosiy menyu 👇",
-        "en": "💤 <b>You left the search.</b>\n\nMain menu 👇",
+    "next_view_header": {
+        "ru": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n👤 <b>{name}</b>, {age}",
+        "uz": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n👤 <b>{name}</b>, {age}",
+        "en": "🎯 <b>𝐍𝐞𝐱𝐭..</b>\n👤 <b>{name}</b>, {age}",
     },
     "next_no_profiles": {
         "ru": "😔 <b>Анкет пока нет.</b>\n\nЗаходи позже!",
         "uz": "😔 <b>Hozircha anketalar yo'q.</b>",
         "en": "😔 <b>No profiles yet.</b>",
     },
-    "next_view_header": {
-        "ru": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
-        "uz": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
-        "en": "🌟 <b>𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n👤 <b>{name}</b>, {age}",
+    "next_search_stopped": {
+        "ru": "💤 <b>Ты вышел из поиска.</b>\n\nГлавное меню 👇",
+        "uz": "💤 <b>Qidiruvdan chiqdingiz.</b>\n\nAsosiy menyu 👇",
+        "en": "💤 <b>You left the search.</b>\n\nMain menu 👇",
     },
+    "next_match_title": {
+        "ru": "💕 <b>Взаимная симпатия!</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "uz": "💕 <b>O'zaro yoqdi!</b>\n━━━━━━━━━━━━━━━━━━━━",
+        "en": "💕 <b>Mutual like!</b>\n━━━━━━━━━━━━━━━━━━━━",
+    },
+    "next_match_contact": {
+        "ru": "Собеседник: <b>{name}</b>\n\n{contact}",
+        "uz": "Suhbatdosh: <b>{name}</b>\n\n{contact}",
+        "en": "Partner: <b>{name}</b>\n\n{contact}",
+    },
+    "next_msg_prompt": {
+        "ru": "💌 <b>Написать сообщение</b>\n\nОтправь текст или голосовое (до 15 сек).\n\n<i>«Отмена» — вернуться к анкете</i>",
+        "uz": "💌 <b>Xabar yozish</b>\n\nMatn yoki ovozli yuboring.",
+        "en": "💌 <b>Write a message</b>\n\nSend text or voice (up to 15s).",
+    },
+    "next_msg_sent": {"ru": "✅ <b>Отправлено</b>", "uz": "✅ <b>Yuborildi</b>", "en": "✅ <b>Sent</b>"},
+    "next_msg_failed": {"ru": "❌ Не удалось отправить", "uz": "❌ Yuborib bo'lmadi", "en": "❌ Failed to send"},
+    "next_reply_prompt": {"ru": "↩️ <b>Ответить</b>\n\nОтправь текст или голосовое:", "uz": "↩️ <b>Javob berish</b>\n\nMatn yoki ovozli yuboring:", "en": "↩️ <b>Reply</b>\n\nSend text or voice:"},
+
+    "next_banned_write": {"ru": "⛔ Ты не можешь писать этому пользователю.", "uz": "⛔ Siz bu foydalanuvchiga yoza olmaysiz.", "en": "⛔ You can't write to this user."},
+    "next_report_confirm": {"ru": "🚩 <b>Жалоба отправлена</b>\nАдминистратор рассмотрит её.", "uz": "🚩 <b>Shikoyat yuborildi</b>", "en": "🚩 <b>Report sent</b>"},
+    "next_banned_user": {"ru": "🚫 Вы заблокированы в поиске анкет за нарушение правил.", "uz": "🚫 Siz qidiruvda banlangansiz.", "en": "🚫 You are banned from search."},
+    "next_only_text_voice": {"ru": "⚠️ Только текст или голосовое.", "uz": "⚠️ Faqat matn yoki ovozli.", "en": "⚠️ Text or voice only."},
 
     # ============================ ЯЗЫК ============================
     "lang_choose": {
@@ -1431,7 +1460,7 @@ T = {
             "Добро пожаловать в <b>𐌽ꤕ𐌗ተ</b> — место, где говорят честно и анонимно 🕶\n\n"
             "<blockquote>🔗 Получай анонимки по своей ссылке\n"
             "🎲 Чат-рулетка — новые знакомства каждый раз\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — анкеты и мэтчи\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — анкеты и мэтчи\n"
             "🤐 Полная анонимность — никто не знает, кто ты\n"
             "💎 VIP, коины и бонусы за приглашённых друзей</blockquote>\n\n"
             "👇 <b>Первый шаг — выбери свой пол</b>"
@@ -1442,7 +1471,7 @@ T = {
             "Xush kelibsiz <b>𐌽ꤕ𐌗ተ</b> ga 🕶\n\n"
             "<blockquote>🔗 Havolangiz orqali anonim xabar oling\n"
             "🎲 Chat-ruletka — yangi tanishuvlar\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — anketalar va matchlar\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — anketalar va matchlar\n"
             "🤐 To'liq anonimlik\n"
             "💎 VIP, coinlar va bonuslar</blockquote>\n\n"
             "👇 <b>Birinchi qadam — jinsingizni tanlang</b>"
@@ -1453,7 +1482,7 @@ T = {
             "Welcome to <b>𐌽ꤕ𐌗ተ</b> — speak freely and anonymously 🕶\n\n"
             "<blockquote>🔗 Get anonymous messages via your link\n"
             "🎲 Chat roulette — new people every time\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — profiles and matches\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — profiles and matches\n"
             "🤐 Full anonymity\n"
             "💎 VIP, coins and bonuses for inviting friends</blockquote>\n\n"
             "👇 <b>First step — choose your gender</b>"
@@ -1466,7 +1495,7 @@ T = {
             "Снова рады видеть тебя в <b>𐌽ꤕ𐌗ተ</b> 💫\n\n"
             "<blockquote>🔗 Делись ссылкой — получай анонимки\n"
             "🎲 Прыгай в чат-рулетку\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — найди мэтч\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — найди мэтч\n"
             "👥 Зови друзей — получай бонусы</blockquote>\n\n"
             "🏠 Главное меню"
         ),
@@ -1476,7 +1505,7 @@ T = {
             "Sizni yana ko'rganimizdan xursandmiz 💫\n\n"
             "<blockquote>🔗 Havolani ulashing\n"
             "🎲 Chat-ruletkaga kiring\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — match toping\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — match toping\n"
             "👥 Do'stlarni chaqiring</blockquote>\n\n"
             "🏠 Asosiy menyu"
         ),
@@ -1486,7 +1515,7 @@ T = {
             "Great to see you again 💫\n\n"
             "<blockquote>🔗 Share your link\n"
             "🎲 Jump into chat roulette\n"
-            "🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — find a match\n"
+            "🎯 𝐍𝐞𝐱𝐭.. — find a match\n"
             "👥 Invite friends</blockquote>\n\n"
             "🏠 Main menu"
         ),
@@ -1518,12 +1547,12 @@ T = {
             "• VIP находит пару быстрее"
             "</blockquote>\n\n"
 
-            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b>\n"
+            "<b>🎯 𝐍𝐞𝐱𝐭..</b>\n"
             "<blockquote>"
             "Анкеты и мэтчи по интересам.\n"
             "• <b>«Смотреть анкеты»</b> — листаешь профили: ❤️ Лайк, 👎 Дизлайк\n"
-            "• <b>💬 Написать</b> — сразу текст или голосовое в ЛС\n"
-            "• <b>⛔ Жалоба</b> — отправляется админу\n"
+            "• <b>💌 Написать</b> — сразу текст или голосовое в ЛС\n"
+            "• <b>🚩 Жалоба</b> — отправляется админу\n"
             "• <b>💤 Выйти</b> — прекратить поиск и вернуться в меню\n"
             "• Взаимный ❤️ = <b>мэтч</b> — открывается контакт\n"
             "• <b>«Моя анкета»</b> — редактируй имя/возраст/пол/о себе/фото по отдельности"
@@ -1584,7 +1613,7 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>🔗 Havolam</b> — anonim xabarlar uchun shaxsiy havola.\n"
             "<b>🎲 Chat-ruletka</b> — tasodifiy suhbatdosh.\n"
-            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b> — anketalar va matchlar.\n"
+            "<b>🎯 𝐍𝐞𝐱𝐭..</b> — anketalar va matchlar.\n"
             "<b>👤 Profil</b> — ma'lumotlaringiz.\n"
             "<b>🛒 Do'kon</b> — VIP va coinlar.\n"
             "<b>👥 Taklif qilish</b> — do'stlar uchun bonuslar.\n"
@@ -1596,7 +1625,7 @@ T = {
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>🔗 My link</b> — personal link for anonymous messages.\n"
             "<b>🎲 Chat roulette</b> — random partner.\n"
-            "<b>🌟 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭</b> — profiles and matches.\n"
+            "<b>🎯 𝐍𝐞𝐱𝐭..</b> — profiles and matches.\n"
             "<b>👤 Profile</b> — your data.\n"
             "<b>🛒 Shop</b> — VIP and coins.\n"
             "<b>👥 Invite</b> — referral bonuses.\n"
@@ -1608,92 +1637,92 @@ T = {
     # ============================ ПРОФИЛЬ ============================
     "profile_full": {
         "ru": (
-            "<b>Ваш профиль</b>\n"
+            "👤 <b>Ваш профиль</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "ID: <code>{id}</code>\n"
-            "Имя: <b>{name}</b>\n"
-            "Пол: <b>{gender}</b>\n"
-            "Возраст: <b>{age}</b>\n"
-            "В чат-рулетке: <b>{roulette_time}</b>\n"
-            "Отправлено по ссылке: <b>{sent}</b>\n"
-            "Получено по ссылке: <b>{received}</b>\n"
-            "Приглашено друзей: <b>{invited}</b>\n"
-            "Место в топе: <b>{rank}</b>\n"
+            "🆔 ID: <code>{id}</code>\n"
+            "📝 Имя: <b>{name}</b>\n"
+            "⚧ Пол: <b>{gender}</b>\n"
+            "🎂 Возраст: <b>{age}</b>\n"
+            "🎲 В чат-рулетке: <b>{roulette_time}</b>\n"
+            "📤 Отправлено: <b>{sent}</b>\n"
+            "📥 Получено: <b>{received}</b>\n"
+            "👥 Приглашено друзей: <b>{invited}</b>\n"
+            "🏆 Место в топе: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
-            "Коины: <b>{coins}</b>\n"
-            "Потрачено звёзд: <b>{stars}</b>\n"
-            "Регистрация: <b>{reg_date}</b>"
+            "💎 Коины: <b>{coins}</b>\n"
+            "⭐ Потрачено звёзд: <b>{stars}</b>\n"
+            "📅 Регистрация: <b>{reg_date}</b>"
             "</blockquote>"
         ),
         "uz": (
-            "<b>Profilingiz</b>\n"
+            "👤 <b>Profilingiz</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "ID: <code>{id}</code>\n"
-            "Ism: <b>{name}</b>\n"
-            "Jins: <b>{gender}</b>\n"
-            "Yosh: <b>{age}</b>\n"
-            "Chat-ruletkada: <b>{roulette_time}</b>\n"
-            "Havola orqali: <b>{sent}</b>\n"
-            "Havola orqali kelgan: <b>{received}</b>\n"
-            "Do'stlar: <b>{invited}</b>\n"
-            "Topda: <b>{rank}</b>\n"
+            "🆔 ID: <code>{id}</code>\n"
+            "📝 Ism: <b>{name}</b>\n"
+            "⚧ Jins: <b>{gender}</b>\n"
+            "🎂 Yosh: <b>{age}</b>\n"
+            "🎲 Chat-ruletkada: <b>{roulette_time}</b>\n"
+            "📤 Havola orqali: <b>{sent}</b>\n"
+            "📥 Kelgan: <b>{received}</b>\n"
+            "👥 Do'stlar: <b>{invited}</b>\n"
+            "🏆 Topda: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
-            "Coinlar: <b>{coins}</b>\n"
-            "Yulduzlar: <b>{stars}</b>\n"
-            "Ro'yxatdan: <b>{reg_date}</b>"
+            "💎 Coinlar: <b>{coins}</b>\n"
+            "⭐ Yulduzlar: <b>{stars}</b>\n"
+            "📅 Ro'yxatdan: <b>{reg_date}</b>"
             "</blockquote>"
         ),
         "en": (
-            "<b>Your profile</b>\n"
+            "👤 <b>Your profile</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<blockquote>"
-            "ID: <code>{id}</code>\n"
-            "Name: <b>{name}</b>\n"
-            "Gender: <b>{gender}</b>\n"
-            "Age: <b>{age}</b>\n"
-            "In roulette: <b>{roulette_time}</b>\n"
-            "Sent via link: <b>{sent}</b>\n"
-            "Received via link: <b>{received}</b>\n"
-            "Friends invited: <b>{invited}</b>\n"
-            "Leaderboard: <b>{rank}</b>\n"
+            "🆔 ID: <code>{id}</code>\n"
+            "📝 Name: <b>{name}</b>\n"
+            "⚧ Gender: <b>{gender}</b>\n"
+            "🎂 Age: <b>{age}</b>\n"
+            "🎲 In roulette: <b>{roulette_time}</b>\n"
+            "📤 Sent: <b>{sent}</b>\n"
+            "📥 Received: <b>{received}</b>\n"
+            "👥 Friends: <b>{invited}</b>\n"
+            "🏆 Rank: <b>{rank}</b>\n"
             "👑 VIP: <b>{vip}</b>\n"
-            "Coins: <b>{coins}</b>\n"
-            "Stars spent: <b>{stars}</b>\n"
-            "Registered: <b>{reg_date}</b>"
+            "💎 Coins: <b>{coins}</b>\n"
+            "⭐ Stars spent: <b>{stars}</b>\n"
+            "📅 Registered: <b>{reg_date}</b>"
             "</blockquote>"
         ),
     },
     "vip_none": {"ru": "—", "uz": "—", "en": "—"},
     "vip_until": {"ru": "до {date}", "uz": "{date} gacha", "en": "until {date}"},
     "vip_forever": {"ru": "навсегда", "uz": "abadiy", "en": "forever"},
-    "choose_action": {"ru": "Выберите действие на клавиатуре", "uz": "Klaviaturadan amalni tanlang", "en": "Choose an action on the keyboard"},
-    "choose_new_gender": {"ru": "Выберите новый пол:", "uz": "Yangi jinsni tanlang:", "en": "Choose new gender:"},
-    "gender_saved": {"ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\nГлавное меню", "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\nAsosiy menyu", "en": "✅ Done! Your gender: <b>{g}</b>\n\nMain menu"},
+    "choose_action": {"ru": "👇 Выберите действие на клавиатуре", "uz": "👇 Klaviaturadan amalni tanlang", "en": "👇 Choose an action on the keyboard"},
+    "choose_new_gender": {"ru": "⚧ Выберите новый пол:", "uz": "⚧ Yangi jinsni tanlang:", "en": "⚧ Choose new gender:"},
+    "gender_saved": {"ru": "✅ Готово! Ваш пол: <b>{g}</b>\n\n🏠 Главное меню", "uz": "✅ Tayyor! Jinsingiz: <b>{g}</b>\n\n🏠 Asosiy menyu", "en": "✅ Done! Your gender: <b>{g}</b>\n\n🏠 Main menu"},
     "gender_set_short": {"ru": "✅ Пол сохранён: {g}", "uz": "✅ Jins saqlandi: {g}", "en": "✅ Gender saved: {g}"},
     "gender_needed_for_search": {"ru": "👤 Для поиска нужно указать пол. Выбери:", "uz": "👤 Qidiruv uchun jinsingizni tanlang:", "en": "👤 Please select your gender to start searching:"},
 
     # ============================ ВОЗРАСТ ============================
-    "age_register_ask": {"ru": "<b>Сколько вам лет?</b>\n\nНапишите возраст числом (например: 21).", "uz": "<b>Yoshingiz nechada?</b>\n\nYoshingizni raqam bilan yozing (masalan: 21).", "en": "<b>How old are you?</b>\n\nType your age as a number (e.g. 21)."},
-    "age_enter_number": {"ru": "Введите ваш возраст числом (например: 21):", "uz": "Yoshingizni raqam bilan kiriting (masalan: 21):", "en": "Enter your age as a number (e.g. 21):"},
-    "age_saved": {"ru": "Возраст сохранён: <b>{age}</b>\n\nГлавное меню", "uz": "Yosh saqlandi: <b>{age}</b>\n\nAsosiy menyu", "en": "Age saved: <b>{age}</b>\n\nMain menu"},
+    "age_register_ask": {"ru": "🎂 <b>Сколько вам лет?</b>\n\nНапишите возраст числом (например: 21).", "uz": "🎂 <b>Yoshingiz nechada?</b>\n\nYoshingizni raqam bilan yozing (masalan: 21).", "en": "🎂 <b>How old are you?</b>\n\nType your age as a number (e.g. 21)."},
+    "age_enter_number": {"ru": "🔢 Введите ваш возраст числом (например: 21):", "uz": "🔢 Yoshingizni raqam bilan kiriting (masalan: 21):", "en": "🔢 Enter your age as a number (e.g. 21):"},
+    "age_saved": {"ru": "✅ Возраст сохранён: <b>{age}</b>\n\n🏠 Главное меню", "uz": "✅ Yosh saqlandi: <b>{age}</b>\n\n🏠 Asosiy menyu", "en": "✅ Age saved: <b>{age}</b>\n\n🏠 Main menu"},
 
     # ============================ ПОДАРОК КОИНОВ ============================
     "giftcoins_ask_id": {
-        "ru": "<b>Подарить коины другу</b>\n━━━━━━━━━━━━━━━━━━━━\nКоины спишутся с твоего баланса и придут другу.\n\nВведите <b>Telegram ID</b> или <b>@username</b> друга\n<i>(друг должен быть запущен в боте)</i>",
-        "uz": "<b>Do'stga coin sovg'a qilish</b>\n━━━━━━━━━━━━━━━━━━━━\nCoinlar balansingizdan yechiladi.\n\nDo'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting",
-        "en": "<b>Gift coins to a friend</b>\n━━━━━━━━━━━━━━━━━━━━\nCoins are deducted from your balance.\n\nEnter the friend's <b>Telegram ID</b> or <b>@username</b>",
+        "ru": "🎁 <b>Подарить коины другу</b>\n━━━━━━━━━━━━━━━━━━━━\nКоины спишутся с твоего баланса и придут другу.\n\nВведите <b>Telegram ID</b> или <b>@username</b> друга\n<i>(друг должен быть запущен в боте)</i>",
+        "uz": "🎁 <b>Do'stga coin sovg'a qilish</b>\n━━━━━━━━━━━━━━━━━━━━\nCoinlar balansingizdan yechiladi.\n\nDo'stning <b>Telegram ID</b> yoki <b>@username</b> ini kiriting",
+        "en": "🎁 <b>Gift coins to a friend</b>\n━━━━━━━━━━━━━━━━━━━━\nCoins are deducted from your balance.\n\nEnter the friend's <b>Telegram ID</b> or <b>@username</b>",
     },
-    "giftcoins_ask_amount": {"ru": "Сколько коинов подарить? (твой баланс: <b>{balance}</b>)", "uz": "Qancha coin sovg'a qilasiz? (balansingiz: <b>{balance}</b>)", "en": "How many coins to gift? (your balance: <b>{balance}</b>)"},
-    "giftcoins_amount_number": {"ru": "Введите положительное число коинов:", "uz": "Musbat coin sonini kiriting:", "en": "Enter a positive number of coins:"},
-    "giftcoins_not_enough": {"ru": "Недостаточно коинов. Твой баланс: <b>{balance}</b>. Введите меньшую сумму:", "uz": "Coin yetarli emas. Balansingiz: <b>{balance}</b>. Kamroq kiriting:", "en": "Not enough coins. Your balance: <b>{balance}</b>. Enter a smaller amount:"},
-    "giftcoins_sent": {"ru": "<b>Готово!</b> Подарено <b>{amount}</b> пользователю <code>{id}</code>", "uz": "<b>Tayyor!</b> <code>{id}</code> ga <b>{amount}</b> sovg'a qilindi", "en": "<b>Done!</b> Gifted <b>{amount}</b> to user <code>{id}</code>"},
-    "giftcoins_received": {"ru": "<b>Вам подарили {amount}!</b>\nКто-то перевёл тебе коины. Трать в магазине", "uz": "<b>Sizga {amount} sovg'a qilindi!</b>\nKimdir coin yubordi. Do'konda sarflang", "en": "<b>You received {amount} as a gift!</b>\nSomeone sent you coins. Spend in the shop"},
-    "gift_user_not_found": {"ru": "Пользователь не найден (он должен быть запущен в боте). Введите ID или @username:", "uz": "Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:", "en": "User not found (they must be in the bot). Enter ID or @username:"},
-    "gift_not_self": {"ru": "Нельзя подарить самому себе. Введите ID друга:", "uz": "O'zingizga sovg'a qila olmaysiz. Do'stning ID sini kiriting:", "en": "You can't gift yourself. Enter a friend's ID:"},
-    }
-# ===================== БЛОК 5 / 14 — СЛОВАРЬ T (часть 2) =====================
+    "giftcoins_ask_amount": {"ru": "💰 Сколько коинов подарить? (твой баланс: <b>{balance}</b>)", "uz": "💰 Qancha coin sovg'a qilasiz? (balansingiz: <b>{balance}</b>)", "en": "💰 How many coins to gift? (your balance: <b>{balance}</b>)"},
+    "giftcoins_amount_number": {"ru": "🔢 Введите положительное число коинов:", "uz": "🔢 Musbat coin sonini kiriting:", "en": "🔢 Enter a positive number of coins:"},
+    "giftcoins_not_enough": {"ru": "💸 Недостаточно коинов. Твой баланс: <b>{balance}</b>. Введите меньшую сумму:", "uz": "💸 Coin yetarli emas. Balansingiz: <b>{balance}</b>. Kamroq kiriting:", "en": "💸 Not enough coins. Your balance: <b>{balance}</b>. Enter a smaller amount:"},
+    "giftcoins_sent": {"ru": "✅ <b>Готово!</b> Подарено <b>{amount}</b> пользователю <code>{id}</code>", "uz": "✅ <b>Tayyor!</b> <code>{id}</code> ga <b>{amount}</b> sovg'a qilindi", "en": "✅ <b>Done!</b> Gifted <b>{amount}</b> to user <code>{id}</code>"},
+    "giftcoins_received": {"ru": "🎁 <b>Вам подарили {amount}!</b>\nКто-то перевёл тебе коины. Трать в магазине", "uz": "🎁 <b>Sizga {amount} sovg'a qilindi!</b>\nKimdir coin yubordi. Do'konda sarflang", "en": "🎁 <b>You received {amount} as a gift!</b>\nSomeone sent you coins. Spend in the shop"},
+    "gift_user_not_found": {"ru": "❌ Пользователь не найден (он должен быть запущен в боте). Введите ID или @username:", "uz": "❌ Foydalanuvchi topilmadi (u botda bo'lishi kerak). ID yoki @username kiriting:", "en": "❌ User not found (they must be in the bot). Enter ID or @username:"},
+    "gift_not_self": {"ru": "❌ Нельзя подарить самому себе. Введите ID друга:", "uz": "❌ O'zingizga sovg'a qila olmaysiz. Do'stning ID sini kiriting:", "en": "❌ You can't gift yourself. Enter a friend's ID:"},
+}
+# ===================== БЛОК 5 / 15 — СЛОВАРЬ T (часть 2) =====================
 T.update({
 
     # ============================ ССЫЛКА ============================
@@ -1703,9 +1732,9 @@ T.update({
         "en": "🔗 <b>«My link» section</b>\n\n👉 Choose an action",
     },
     "link_menu": {
-        "ru": "Выберите действие на клавиатуре",
-        "uz": "Klaviaturadan amalni tanlang",
-        "en": "Choose an action on the keyboard",
+        "ru": "👇 Выберите действие на клавиатуре",
+        "uz": "👇 Klaviaturadan amalni tanlang",
+        "en": "👇 Choose an action on the keyboard",
     },
     "link_show": {
         "ru": "🤫 <b>Ваша персональная ссылка</b>\n<blockquote>{link}</blockquote>\nНажми «Поделиться» — выбери, кому отправить, и тебе будут писать анонимно",
@@ -1718,31 +1747,31 @@ T.update({
         "en": "✅ <b>Done! Your link</b>\n<blockquote>{link}</blockquote>",
     },
     "link_no_link": {
-        "ru": "У вас ещё нет ссылки.\nПридумайте код (до 10 символов: латиница, цифры, «-», «_»):",
-        "uz": "Sizda hali havola yo'q.\nKod kiriting (10 ta belgigacha):",
-        "en": "You don't have a link yet.\nCreate a code (up to 10 characters):",
+        "ru": "🔗 У вас ещё нет ссылки.\nПридумайте код (до 10 символов: латиница, цифры, «-», «_»):",
+        "uz": "🔗 Sizda hali havola yo'q.\nKod kiriting (10 ta belgigacha):",
+        "en": "🔗 You don't have a link yet.\nCreate a code (up to 10 characters):",
     },
     "link_change": {
-        "ru": "Придумайте новый код (до 10 символов).\nСтарая ссылка работает ещё 24 часа, потом удаляется.",
-        "uz": "Yangi kod kiriting (10 ta belgigacha).\nEski havola yana 24 soat ishlaydi.",
-        "en": "Enter a new code (up to 10 characters).\nThe old link works for 24 more hours.",
+        "ru": "✏️ Придумайте новый код (до 10 символов).\nСтарая ссылка работает ещё 24 часа, потом удаляется.",
+        "uz": "✏️ Yangi kod kiriting (10 ta belgigacha).\nEski havola yana 24 soat ishlaydi.",
+        "en": "✏️ Enter a new code (up to 10 characters).\nThe old link works for 24 more hours.",
     },
     "link_invalid": {
-        "ru": "Код должен быть до 10 символов (латиница, цифры, «-», «_»). Попробуйте ещё раз:",
-        "uz": "Kod 10 ta belgigacha bo'lishi kerak. Qayta urinib ko'ring:",
-        "en": "Code must be up to 10 characters. Try again:",
+        "ru": "❌ Код должен быть до 10 символов (латиница, цифры, «-», «_»). Попробуйте ещё раз:",
+        "uz": "❌ Kod 10 ta belgigacha bo'lishi kerak. Qayta urinib ko'ring:",
+        "en": "❌ Code must be up to 10 characters. Try again:",
     },
     "link_taken": {
-        "ru": "Этот код уже занят, попробуйте другой:",
-        "uz": "Bu kod band, boshqasini kiriting:",
-        "en": "This code is already taken, try another one:",
+        "ru": "❌ Этот код уже занят, попробуйте другой:",
+        "uz": "❌ Bu kod band, boshqasini kiriting:",
+        "en": "❌ This code is already taken, try another one:",
     },
     "link_limit": {
-        "ru": "Ссылку можно сменить через {days} дн. Или купи VIP для снятия ограничения",
-        "uz": "Havolani {days} kundan keyin o'zgartirish mumkin. Yoki VIP sotib oling",
-        "en": "You can change the link in {days} days. Or buy VIP to remove the limit",
+        "ru": "⏳ Ссылку можно сменить через {days} дн. Или купи VIP для снятия ограничения",
+        "uz": "⏳ Havolani {days} kundan keyin o'zgartirish mumkin. Yoki VIP sotib oling",
+        "en": "⏳ You can change the link in {days} days. Or buy VIP to remove the limit",
     },
-    "btn_share": {"ru": "Поделиться", "uz": "Ulashish", "en": "Share"},
+    "btn_share": {"ru": "🔗 Поделиться", "uz": "🔗 Ulashish", "en": "🔗 Share"},
     "share_text": {
         "ru": "Напиши мне что-нибудь анонимно",
         "uz": "Menga anonim biror narsa yozing",
@@ -1751,9 +1780,9 @@ T.update({
 
     # ============================ АНОНИМКА ============================
     "anon_what_send": {
-        "ru": "Что хотите отправить?",
-        "uz": "Nima yubormoqchisiz?",
-        "en": "What would you like to send?",
+        "ru": "❓ Что хотите отправить?",
+        "uz": "❓ Nima yubormoqchisiz?",
+        "en": "❓ What would you like to send?",
     },
     "anon_write_prompt": {
         "ru": "✍️ Напишите ваш {label} текстом или отправьте голосовое:",
@@ -1762,38 +1791,38 @@ T.update({
     },
     "anon_label_question": {"ru": "вопрос", "uz": "savol", "en": "question"},
     "anon_label_valentine": {"ru": "валентинку", "uz": "valentinka", "en": "valentine"},
-    "anon_sent": {"ru": "Отправлено", "uz": "Yuborildi", "en": "Sent"},
+    "anon_sent": {"ru": "✅ Отправлено", "uz": "✅ Yuborildi", "en": "✅ Sent"},
     "anon_failed": {
-        "ru": "Не удалось доставить сообщение получателю",
-        "uz": "Xabarni yetkazib bo'lmadi",
-        "en": "Failed to deliver the message",
+        "ru": "❌ Не удалось доставить сообщение получателю",
+        "uz": "❌ Xabarni yetkazib bo'lmadi",
+        "en": "❌ Failed to deliver the message",
     },
     "anon_reply_prompt": {
-        "ru": "Напиши ответ (текст или голосовое):",
-        "uz": "Javob yozing (matn yoki ovozli):",
-        "en": "Write your reply (text or voice):",
+        "ru": "💬 Напиши ответ (текст или голосовое):",
+        "uz": "💬 Javob yozing (matn yoki ovozli):",
+        "en": "💬 Write your reply (text or voice):",
     },
-    "anon_reply_sent": {"ru": "Ответ отправлен", "uz": "Javob yuborildi", "en": "Reply sent"},
+    "anon_reply_sent": {"ru": "✅ Ответ отправлен", "uz": "✅ Javob yuborildi", "en": "✅ Reply sent"},
     "anon_reply_failed": {
-        "ru": "Не удалось доставить ответ",
-        "uz": "Javobni yetkazib bo'lmadi",
-        "en": "Failed to deliver the reply",
+        "ru": "❌ Не удалось доставить ответ",
+        "uz": "❌ Javobni yetkazib bo'lmadi",
+        "en": "❌ Failed to deliver the reply",
     },
-    "anon_not_found": {"ru": "Сообщение не найдено.", "uz": "Xabar topilmadi.", "en": "Message not found."},
+    "anon_not_found": {"ru": "❌ Сообщение не найдено.", "uz": "❌ Xabar topilmadi.", "en": "❌ Message not found."},
     "anon_limit": {
-        "ru": "Лимит {n} сообщений в сутки исчерпан. VIP снимает это ограничение.",
-        "uz": "Kuniga {n} ta xabar limiti tugadi. VIP bu cheklovni olib tashlaydi.",
-        "en": "Daily limit of {n} messages reached. VIP removes this limit.",
+        "ru": "⚠️ Лимит {n} сообщений в сутки исчерпан. VIP снимает это ограничение.",
+        "uz": "⚠️ Kuniga {n} ta xabar limiti tugadi. VIP bu cheklovni olib tashlaydi.",
+        "en": "⚠️ Daily limit of {n} messages reached. VIP removes this limit.",
     },
     "anon_vip_media": {
-        "ru": "Фото/стикеры/гиф/видео могут отправлять только VIP.\nОтправь текст или голосовое.",
-        "uz": "Foto/stiker/gif/video faqat VIP yuborishi mumkin.",
-        "en": "Photos/stickers/gifs/videos can only be sent by VIP.",
+        "ru": "📷 Фото/стикеры/гиф/видео могут отправлять только VIP.\nОтправь текст или голосовое.",
+        "uz": "📷 Foto/stiker/gif/video faqat VIP yuborishi mumkin.",
+        "en": "📷 Photos/stickers/gifs/videos can only be sent by VIP.",
     },
     "anon_formats": {
-        "ru": "Поддерживается текст, голосовое{vip}.",
-        "uz": "Matn, ovozli{vip} qo'llab-quvvatlanadi.",
-        "en": "Supported: text, voice{vip}.",
+        "ru": "📝 Поддерживается текст, голосовое{vip}.",
+        "uz": "📝 Matn, ovozli{vip} qo'llab-quvvatlanadi.",
+        "en": "📝 Supported: text, voice{vip}.",
     },
     "anon_formats_vip": {
         "ru": ", фото, стикеры, гиф, видео",
@@ -1801,19 +1830,19 @@ T.update({
         "en": ", photos, stickers, gifs, videos",
     },
     "anon_invalid_link": {
-        "ru": "Эта ссылка недействительна",
-        "uz": "Bu havola yaroqsiz",
-        "en": "This link is invalid",
+        "ru": "❌ Эта ссылка недействительна",
+        "uz": "❌ Bu havola yaroqsiz",
+        "en": "❌ This link is invalid",
     },
     "anon_own_link": {
-        "ru": "Это ваша собственная ссылка. Самому себе писать нельзя.",
-        "uz": "Bu sizning shaxsiy havolangiz. O'zingizga yozib bo'lmaydi.",
-        "en": "This is your own link. You can't write to yourself.",
+        "ru": "❌ Это ваша собственная ссылка. Самому себе писать нельзя.",
+        "uz": "❌ Bu sizning shaxsiy havolangiz. O'zingizga yozib bo'lmaydi.",
+        "en": "❌ This is your own link. You can't write to yourself.",
     },
     "anon_banned": {
-        "ru": "Вы временно не можете писать этому пользователю",
-        "uz": "Siz bu foydalanuvchiga vaqtincha yoza olmaysiz",
-        "en": "You are temporarily unable to write to this user",
+        "ru": "⛔ Вы временно не можете писать этому пользователю",
+        "uz": "⛔ Siz bu foydalanuvchiga vaqtincha yoza olmaysiz",
+        "en": "⛔ You are temporarily unable to write to this user",
     },
     "anon_deleted_notice": {
         "ru": "🗑 Собеседник удалил своё анонимное сообщение.",
@@ -1844,43 +1873,43 @@ T.update({
     "preview_voice": {"ru": "голосовое сообщение", "uz": "ovozli xabar", "en": "voice message"},
     "preview_media": {"ru": "медиа", "uz": "media", "en": "media"},
     "btn_reply": {"ru": "💬 Ответить", "uz": "💬 Javob", "en": "💬 Reply"},
-    "btn_report": {"ru": "😡 Жалоба", "uz": "😡 Shikoyat", "en": "😡 Report"},
+    "btn_report": {"ru": "🚩 Жалоба", "uz": "🚩 Shikoyat", "en": "🚩 Report"},
     "btn_reveal": {"ru": "👁 Узнать кто · 1", "uz": "👁 Kim ekan · 1", "en": "👁 Reveal who · 1"},
     "btn_delete": {"ru": "🗑 Удалить", "uz": "🗑 O'chirish", "en": "🗑 Delete"},
-    "del_both": {"ru": "Удалено у обоих", "uz": "Ikkalasida ham o'chirildi", "en": "Deleted for both"},
+    "del_both": {"ru": "🗑 Удалено у обоих", "uz": "🗑 Ikkalasida ham o'chirildi", "en": "🗑 Deleted for both"},
     "del_only_me": {
-        "ru": "Удалено у тебя. У собеседника не вышло (старше 48ч?).",
-        "uz": "Sizda o'chirildi.",
-        "en": "Deleted for you.",
+        "ru": "🗑 Удалено у тебя. У собеседника не вышло (старше 48ч?).",
+        "uz": "🗑 Sizda o'chirildi.",
+        "en": "🗑 Deleted for you.",
     },
     "del_stale": {
-        "ru": "Сообщение устарело — удалено только у тебя.",
-        "uz": "Xabar eskirgan — faqat sizda o'chirildi.",
-        "en": "Message is stale — deleted only for you.",
+        "ru": "⚠️ Сообщение устарело — удалено только у тебя.",
+        "uz": "⚠️ Xabar eskirgan — faqat sizda o'chirildi.",
+        "en": "⚠️ Message is stale — deleted only for you.",
     },
 
     # ============================ ЖАЛОБА ============================
-    "report_choose": {"ru": "Выбери причину жалобы:", "uz": "Shikoyat sababini tanlang:", "en": "Choose the report reason:"},
+    "report_choose": {"ru": "🚩 Выбери причину жалобы:", "uz": "🚩 Shikoyat sababini tanlang:", "en": "🚩 Choose the report reason:"},
     "report_sent": {
-        "ru": "Жалоба отправлена админу на рассмотрение",
-        "uz": "Shikoyat adminga yuborildi",
-        "en": "Report sent to admin for review",
+        "ru": "✅ Жалоба отправлена админу на рассмотрение",
+        "uz": "✅ Shikoyat adminga yuborildi",
+        "en": "✅ Report sent to admin for review",
     },
-    "report_cancelled": {"ru": "Жалоба отменена.", "uz": "Shikoyat bekor qilindi.", "en": "Report cancelled."},
+    "report_cancelled": {"ru": "↩️ Жалоба отменена.", "uz": "↩️ Shikoyat bekor qilindi.", "en": "↩️ Report cancelled."},
     "report_confirmed_user": {
-        "ru": "Жалоба подтверждена. Этот пользователь не сможет беспокоить вас {days} дн.",
-        "uz": "Shikoyat tasdiqlandi. Bu foydalanuvchi sizni {days} kun bezovta qila olmaydi.",
-        "en": "Report confirmed. This user can't bother you for {days} days.",
+        "ru": "✅ Жалоба подтверждена. Этот пользователь не сможет беспокоить вас {days} дн.",
+        "uz": "✅ Shikoyat tasdiqlandi. Bu foydalanuvchi sizni {days} kun bezovta qila olmaydi.",
+        "en": "✅ Report confirmed. This user can't bother you for {days} days.",
     },
     "report_confirmed_forever": {
-        "ru": "Жалоба подтверждена. Этот пользователь больше <b>никогда</b> не сможет писать вам.",
-        "uz": "Shikoyat tasdiqlandi. Bu foydalanuvchi endi sizga <b>hech qachon</b> yoza olmaydi.",
-        "en": "Report confirmed. This user can <b>never</b> message you again.",
+        "ru": "✅ Жалоба подтверждена. Этот пользователь больше <b>никогда</b> не сможет писать вам.",
+        "uz": "✅ Shikoyat tasdiqlandi. Bu foydalanuvchi endi sizga <b>hech qachon</b> yoza olmaydi.",
+        "en": "✅ Report confirmed. This user can <b>never</b> message you again.",
     },
     "report_rejected_user": {
-        "ru": "Жалоба отклонена администратором.",
-        "uz": "Shikoyat administrator tomonidan rad etildi.",
-        "en": "The report was rejected by the administrator.",
+        "ru": "❌ Жалоба отклонена администратором.",
+        "uz": "❌ Shikoyat administrator tomonidan rad etildi.",
+        "en": "❌ The report was rejected by the administrator.",
     },
     "report_already_handled": {
         "ru": "ℹ️ Жалоба уже обработана.",
@@ -1893,15 +1922,35 @@ T.update({
         "en": "✅ Report confirmed, ban issued",
     },
     "report_rejected_staff": {"ru": "❌ Жалоба отклонена", "uz": "❌ Shikoyat rad etildi", "en": "❌ Report rejected"},
+    "report_banned_msg": {
+        "ru": "✅ Пользователь <b>{name}</b> забанен. Жалоба #{rid}",
+        "uz": "✅ <b>{name}</b> ban qilindi. Shikoyat #{rid}",
+        "en": "✅ User <b>{name}</b> banned. Report #{rid}",
+    },
+    "report_unbanned_msg": {
+        "ru": "✅ Пользователь <b>{name}</b> разбанен. Жалоба #{rid}",
+        "uz": "✅ <b>{name}</b> bandan chiqarildi. Shikoyat #{rid}",
+        "en": "✅ User <b>{name}</b> unbanned. Report #{rid}",
+    },
+    "report_rejected_msg": {
+        "ru": "❌ Жалоба #{rid} отклонена",
+        "uz": "❌ Shikoyat #{rid} rad etildi",
+        "en": "❌ Report #{rid} rejected",
+    },
     "you_were_banned": {
         "ru": "⚠️ На вас поступила жалоба — на {days} дн. вы не сможете попасть к этому собеседнику в рулетке.",
         "uz": "⚠️ Sizga shikoyat tushdi — {days} kun davomida bu suhbatdoshga tusha olmaysiz.",
         "en": "⚠️ You were reported — for {days} days you won't be matched with this person.",
     },
     "you_were_banned_forever": {
-        "ru": "На вас поступила жалоба. Вы <b>навсегда</b> заблокированы для этого пользователя.",
-        "uz": "Sizga shikoyat tushdi. Siz bu foydalanuvchi uchun <b>abadiy</b> bloklandingiz.",
-        "en": "You were reported. You are <b>permanently</b> blocked for this user.",
+        "ru": "🚫 На вас поступила жалоба. Вы <b>навсегда</b> заблокированы для этого пользователя.",
+        "uz": "🚫 Sizga shikoyat tushdi. Siz bu foydalanuvchi uchun <b>abadiy</b> bloklandingiz.",
+        "en": "🚫 You were reported. You are <b>permanently</b> blocked for this user.",
+    },
+    "you_were_unbanned": {
+        "ru": "✅ Вас разбанили. Вы снова можете писать этому пользователю.",
+        "uz": "✅ Siz bandan chiqarildingiz. Bu foydalanuvchiga yana yoza olasiz.",
+        "en": "✅ You were unbanned. You can write to this user again.",
     },
     "no_contacts": {
         "ru": "⛔ Нельзя отправлять ссылки, @юзернеймы, номера, ID и соцсети.",
@@ -1909,9 +1958,9 @@ T.update({
         "en": "⛔ You can't send links, @usernames, numbers, IDs.",
     },
     "cant_ban_staff": {
-        "ru": "Нельзя забанить администратора или модератора. Жалоба отклонена.",
-        "uz": "Administrator yoki moderatorni bloklab bo'lmaydi.",
-        "en": "You can't ban an admin or moderator.",
+        "ru": "🛡 Нельзя забанить администратора или модератора. Жалоба отклонена.",
+        "uz": "🛡 Administrator yoki moderatorni bloklab bo'lmaydi.",
+        "en": "🛡 You can't ban an admin or moderator.",
     },
     "staff_only": {"ru": "🛡 Только для модерации.", "uz": "🛡 Faqat moderatorlar uchun.", "en": "🛡 Moderation only."},
     "admin_only": {"ru": "🔒 Только для админа.", "uz": "🔒 Faqat admin uchun.", "en": "🔒 Admin only."},
@@ -1919,11 +1968,11 @@ T.update({
 
     # ============================ ПОДПИСКА ============================
     "sub_to_delete_short": {
-        "ru": "<b>Чтобы удалить сообщение — подпишись</b>\n<i>Нажми на кнопки ниже, подпишись, вернись и нажми «Проверить».</i>",
-        "uz": "<b>Xabarni o'chirish uchun — obuna bo'ling</b>",
-        "en": "<b>To delete the message — subscribe</b>",
+        "ru": "🔒 <b>Чтобы удалить сообщение — подпишись</b>\n<i>Нажми на кнопки ниже, подпишись, вернись и нажми «Проверить».</i>",
+        "uz": "🔒 <b>Xabarni o'chirish uchun — obuna bo'ling</b>",
+        "en": "🔒 <b>To delete the message — subscribe</b>",
     },
-    "btn_check_sub": {"ru": "Проверить", "uz": "Tekshirish", "en": "Check"},
+    "btn_check_sub": {"ru": "🔍 Проверить", "uz": "🔍 Tekshirish", "en": "🔍 Check"},
     "subgate_start": {
         "ru": "🔒 <b>Чтобы пользоваться ботом — подпишись</b>\n━━━━━━━━━━━━━━━━━━━━\n<i>Нажми на кнопки ниже, подпишись, затем вернись и нажми «Проверить».</i>",
         "uz": "🔒 <b>Botdan foydalanish uchun — obuna bo'ling</b>",
@@ -1940,22 +1989,22 @@ T.update({
     "roulette_searching": {"ru": "⏳ Идёт поиск собеседника…", "uz": "⏳ Suhbatdosh qidirilmoqda…", "en": "⏳ Searching for a partner…"},
     "roulette_finding_partner": {"ru": "⏳ Идёт поиск собеседника…", "uz": "⏳ Suhbatdosh qidirilmoqda…", "en": "⏳ Searching for a partner…"},
     "roulette_already_chat": {
-        "ru": "Вы уже в чате. Пишите собеседнику или используйте кнопки ниже",
-        "uz": "Siz allaqachon chatsiz.",
-        "en": "You are already in a chat.",
+        "ru": "⚠️ Вы уже в чате. Пишите собеседнику или используйте кнопки ниже",
+        "uz": "⚠️ Siz allaqachon chatsiz.",
+        "en": "⚠️ You are already in a chat.",
     },
-    "roulette_stop": {"ru": "Поиск отменён.", "uz": "Qidiruv bekor qilindi.", "en": "Search cancelled."},
-    "roulette_left": {"ru": "Собеседник покинул чат.", "uz": "Suhbatdosh chatni tark etdi.", "en": "Partner left the chat."},
+    "roulette_stop": {"ru": "⏹️ Поиск отменён.", "uz": "⏹️ Qidiruv bekor qilindi.", "en": "⏹️ Search cancelled."},
+    "roulette_left": {"ru": "🚪 Собеседник покинул чат.", "uz": "🚪 Suhbatdosh chatni tark etdi.", "en": "🚪 Partner left the chat."},
     "session_not_found": {"ru": "❓ Сессия не найдена.", "uz": "❓ Sessiya topilmadi.", "en": "❓ Session not found."},
     "search_still": {
-        "ru": "Всё ещё ищем тебе собеседника…\nТы в поиске уже <b>{min}</b> мин.",
-        "uz": "Hali ham suhbatdosh qidirilmoqda…\nSiz <b>{min}</b> daqiqadan beri qidiruvdasiz.",
-        "en": "Still looking for a partner…\nYou've been searching for <b>{min}</b> min.",
+        "ru": "⏳ Всё ещё ищем тебе собеседника…\nТы в поиске уже <b>{min}</b> мин.",
+        "uz": "⏳ Hali ham suhbatdosh qidirilmoqda…\nSiz <b>{min}</b> daqiqadan beri qidiruvdasiz.",
+        "en": "⏳ Still looking for a partner…\nYou've been searching for <b>{min}</b> min.",
     },
     "search_timeout": {
-        "ru": "<b>Поиск остановлен</b> — за {min} мин подходящий собеседник не нашёлся",
-        "uz": "<b>Qidiruv to'xtatildi</b> — {min} daqiqada mos suhbatdosh topilmadi",
-        "en": "<b>Search stopped</b> — no match found in {min} min",
+        "ru": "⏹️ <b>Поиск остановлен</b> — за {min} мин подходящий собеседник не нашёлся",
+        "uz": "⏹️ <b>Qidiruv to'xtatildi</b> — {min} daqiqada mos suhbatdosh topilmadi",
+        "en": "⏹️ <b>Search stopped</b> — no match found in {min} min",
     },
     "roulette_found": {
         "ru": "🎲🟢 <b>СОБЕСЕДНИК НАЙДЕН</b> 🟢🎲\n━━━━━━━━━━━━━━━━━━━━\n<i>Пиши первым — не стесняйся!</i>\n<blockquote>🤫 Полная анонимность\nМожно слать фото, голосовые и стикеры</blockquote>\n<i>«Далее» — другой · «Стоп» — выйти</i>",
@@ -1965,19 +2014,19 @@ T.update({
 
     # ============================ МАГАЗИН ============================
     "shop_title": {"ru": "🛒 <b>Магазин</b>\nВыберите товар", "uz": "🛒 <b>Do'kon</b>\nMahsulotni tanlang", "en": "🛒 <b>Shop</b>\nChoose an item"},
-    "shop_empty": {"ru": "<b>Магазин пока пуст.</b>", "uz": "<b>Do'kon hali bo'sh.</b>", "en": "<b>The shop is empty.</b>"},
+    "shop_empty": {"ru": "📭 <b>Магазин пока пуст.</b>", "uz": "📭 <b>Do'kon hali bo'sh.</b>", "en": "📭 <b>The shop is empty.</b>"},
     "shop_pick_item": {"ru": "🛒 Выберите товар на клавиатуре", "uz": "🛒 Klaviaturadan mahsulotni tanlang", "en": "🛒 Choose an item on the keyboard"},
     "shop_vip_note": {
-        "ru": "<i>Цены показаны с твоей VIP-скидкой −20%.</i>",
-        "uz": "<i>Narxlar VIP chegirmangiz −20% bilan ko'rsatilgan.</i>",
-        "en": "<i>Prices shown with your VIP −20% discount.</i>",
+        "ru": "👑 <i>Цены показаны с твоей VIP-скидкой −20%.</i>",
+        "uz": "👑 <i>Narxlar VIP chegirmangiz −20% bilan ko'rsatilgan.</i>",
+        "en": "👑 <i>Prices shown with your VIP −20% discount.</i>",
     },
     "item_unavailable": {"ru": "❌ Товар недоступен.", "uz": "❌ Mahsulot mavjud emas.", "en": "❌ Item unavailable."},
     "not_enough_coins": {"ru": "💸 Недостаточно коинов", "uz": "💸 Coinlar yetarli emas", "en": "💸 Not enough coins"},
     "shop_buy_confirm": {
-        "ru": "Купить «<b>{title}</b>» за {price}?",
-        "uz": "«<b>{title}</b>»ni {price} ga sotib olasizmi?",
-        "en": "Buy «<b>{title}</b>» for {price}?",
+        "ru": "🛒 Купить «<b>{title}</b>» за {price}?",
+        "uz": "🛒 «<b>{title}</b>»ni {price} ga sotib olasizmi?",
+        "en": "🛒 Buy «<b>{title}</b>» for {price}?",
     },
     "price_plain": {"ru": "<b>{price}</b>", "uz": "<b>{price}</b>", "en": "<b>{price}</b>"},
     "price_vip": {
@@ -2003,16 +2052,16 @@ T.update({
 
     # ============================ STARS ============================
     "stars_unavailable": {
-        "ru": "Покупка коинов пока недоступна.",
-        "uz": "Coin sotib olish hozircha mavjud emas.",
-        "en": "Buying coins is not available yet.",
+        "ru": "⭐ Покупка коинов пока недоступна.",
+        "uz": "⭐ Coin sotib olish hozircha mavjud emas.",
+        "en": "⭐ Buying coins is not available yet.",
     },
     "stars_pick_pkg": {"ru": "💎 Выбери пакет на клавиатуре", "uz": "💎 Klaviaturadan paketni tanlang", "en": "💎 Choose a package on the keyboard"},
-    "pkg_unavailable": {"ru": "Пакет недоступен.", "uz": "Paket mavjud emas.", "en": "Package unavailable."},
+    "pkg_unavailable": {"ru": "❌ Пакет недоступен.", "uz": "❌ Paket mavjud emas.", "en": "❌ Package unavailable."},
     "stars_buy_confirm": {
-        "ru": "Купить «<b>{title}</b>» ({coins} коинов) за <b>{stars} ⭐</b>?",
-        "uz": "«<b>{title}</b>» ({coins} coin) ni <b>{stars} ⭐</b> ga sotib olasizmi?",
-        "en": "Buy «<b>{title}</b>» ({coins} coins) for <b>{stars} ⭐</b>?",
+        "ru": "⭐ Купить «<b>{title}</b>» ({coins} коинов) за <b>{stars} ⭐</b>?",
+        "uz": "⭐ «<b>{title}</b>» ({coins} coin) ni <b>{stars} ⭐</b> ga sotib olasizmi?",
+        "en": "⭐ Buy «<b>{title}</b>» ({coins} coins) for <b>{stars} ⭐</b>?",
     },
     "stars_invoice_sent": {
         "ru": "💳 Счёт выставлен ниже. Оплати кнопкой или вернись в меню",
@@ -2026,67 +2075,67 @@ T.update({
         "en": "🔥 <b>Payment successful!</b> <b>{coins}</b> added",
     },
     "stars_title": {
-        "ru": "<b>Покупка коинов за Telegram Stars</b>\nВыбери пакет",
-        "uz": "<b>Telegram Stars uchun coin sotib olish</b>\nPaketni tanlang",
-        "en": "<b>Buy coins with Telegram Stars</b>\nChoose a package",
+        "ru": "⭐ <b>Покупка коинов за Telegram Stars</b>\nВыбери пакет",
+        "uz": "⭐ <b>Telegram Stars uchun coin sotib olish</b>\nPaketni tanlang",
+        "en": "⭐ <b>Buy coins with Telegram Stars</b>\nChoose a package",
     },
 
     # ============================ РАСКРЫТИЕ ============================
-    "msg_not_found": {"ru": "Сообщение не найдено", "uz": "Xabar topilmadi", "en": "Message not found"},
+    "msg_not_found": {"ru": "❌ Сообщение не найдено", "uz": "❌ Xabar topilmadi", "en": "❌ Message not found"},
     "reveal_profile_link": {"ru": "профиль", "uz": "profil", "en": "profile"},
-    "btn_reveal_yes": {"ru": "Да, раскрыть · 1", "uz": "Ha, aniqlash · 1", "en": "Yes, reveal · 1"},
-    "btn_cancel_accent": {"ru": "Отмена", "uz": "Bekor", "en": "Cancel"},
-    "reveal_title": {"ru": "Раскрыть отправителя", "uz": "Yuboruvchini aniqlash", "en": "Reveal sender"},
+    "btn_reveal_yes": {"ru": "✅ Да, раскрыть · 1", "uz": "✅ Ha, aniqlash · 1", "en": "✅ Yes, reveal · 1"},
+    "btn_cancel_accent": {"ru": "❌ Отмена", "uz": "❌ Bekor", "en": "❌ Cancel"},
+    "reveal_title": {"ru": "👁 Раскрыть отправителя", "uz": "👁 Yuboruvchini aniqlash", "en": "👁 Reveal sender"},
     "reveal_desc": {
         "ru": "Узнай, кто отправил тебе это анонимное сообщение",
         "uz": "Sizga bu anonim xabarni kim yuborganini biling",
         "en": "Find out who sent you this anonymous message",
     },
     "reveal_result": {
-        "ru": "<b>Отправитель раскрыт!</b>\n\nИмя: <b>{name}</b>\nНик: {uname}\nID: <code>{tid}</code>",
-        "uz": "<b>Yuboruvchi aniqlandi!</b>\n\nIsm: <b>{name}</b>\nNik: {uname}\nID: <code>{tid}</code>",
-        "en": "<b>Sender revealed!</b>\n\nName: <b>{name}</b>\nUsername: {uname}\nID: <code>{tid}</code>",
+        "ru": "👁 <b>Отправитель раскрыт!</b>\n\n📝 Имя: <b>{name}</b>\n👤 Ник: {uname}\n🆔 ID: <code>{tid}</code>",
+        "uz": "👁 <b>Yuboruvchi aniqlandi!</b>\n\n📝 Ism: <b>{name}</b>\n👤 Nik: {uname}\n🆔 ID: <code>{tid}</code>",
+        "en": "👁 <b>Sender revealed!</b>\n\n📝 Name: <b>{name}</b>\n👤 Username: {uname}\n🆔 ID: <code>{tid}</code>",
     },
     "reveal_confirm": {
-        "ru": "Раскрыть отправителя этого сообщения за <b>1 ⭐</b>?",
-        "uz": "Ushbu xabar yuboruvchini <b>1 ⭐</b> uchun aniqlaysizmi?",
-        "en": "Reveal the sender of this message for <b>1 ⭐</b>?",
+        "ru": "👁 Раскрыть отправителя этого сообщения за <b>1 ⭐</b>?",
+        "uz": "👁 Ushbu xabar yuboruvchini <b>1 ⭐</b> uchun aniqlaysizmi?",
+        "en": "👁 Reveal the sender of this message for <b>1 ⭐</b>?",
     },
-    "reveal_paying": {"ru": "Оплатите инвойс ниже...", "uz": "Quyidagi hisob-fakturani to'lang...", "en": "Pay the invoice below..."},
+    "reveal_paying": {"ru": "💳 Оплатите инвойс ниже...", "uz": "💳 Quyidagi hisob-fakturani to'lang...", "en": "💳 Pay the invoice below..."},
     "reveal_only_recipient": {
-        "ru": "Только получатель может раскрыть отправителя.",
-        "uz": "Faqat qabul qiluvchi yuboruvchini aniqlay oladi.",
-        "en": "Only the recipient can reveal the sender.",
+        "ru": "🔒 Только получатель может раскрыть отправителя.",
+        "uz": "🔒 Faqat qabul qiluvchi yuboruvchini aniqlay oladi.",
+        "en": "🔒 Only the recipient can reveal the sender.",
     },
 
     # ============================ РЕФЕРАЛЫ ============================
     "referral_screen": {
         "ru": (
-            "<b>Приглашай друзей — зарабатывай коины!</b>\n"
+            "👥 <b>Приглашай друзей — зарабатывай коины!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "За каждого друга: <b>{reward}</b>{bonus}\n"
-            "Приглашено: <b>{total}</b>\n"
-            "Заработано: <b>{earned}</b>\n\n"
-            "Твоя ссылка:\n"
+            "🎁 За каждого друга: <b>{reward}</b>{bonus}\n"
+            "📊 Приглашено: <b>{total}</b>\n"
+            "💰 Заработано: <b>{earned}</b>\n\n"
+            "🔗 Твоя ссылка:\n"
             "<blockquote>{link}</blockquote>\n"
-            "Если друг заблокирует бота — коины за него спишутся обратно."
+            "⚠️ Если друг заблокирует бота — коины за него спишутся обратно."
         ),
         "uz": (
-            "<b>Do'stlarni taklif qiling — coin ishlang!</b>\n"
+            "👥 <b>Do'stlarni taklif qiling — coin ishlang!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "Har bir do'st uchun: <b>{reward}</b>{bonus}\n"
-            "Taklif qilindi: <b>{total}</b>\n"
-            "Ishlab topildi: <b>{earned}</b>\n\n"
-            "Havolangiz:\n"
+            "🎁 Har bir do'st uchun: <b>{reward}</b>{bonus}\n"
+            "📊 Taklif qilindi: <b>{total}</b>\n"
+            "💰 Ishlab topildi: <b>{earned}</b>\n\n"
+            "🔗 Havolangiz:\n"
             "<blockquote>{link}</blockquote>"
         ),
         "en": (
-            "<b>Invite friends — earn coins!</b>\n"
+            "👥 <b>Invite friends — earn coins!</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
-            "For each friend: <b>{reward}</b>{bonus}\n"
-            "Invited: <b>{total}</b>\n"
-            "Earned: <b>{earned}</b>\n\n"
-            "Your link:\n"
+            "🎁 For each friend: <b>{reward}</b>{bonus}\n"
+            "📊 Invited: <b>{total}</b>\n"
+            "💰 Earned: <b>{earned}</b>\n\n"
+            "🔗 Your link:\n"
             "<blockquote>{link}</blockquote>"
         ),
     },
@@ -2094,38 +2143,38 @@ T.update({
     "referral_bonus_normal": {"ru": " (у VIP — 100)", "uz": " (VIP uchun — 100)", "en": " (VIP gets 100)"},
     "ref_rewards_title": {
         "ru": (
-            "<b>Награды за друзей</b>\n"
+            "🏆 <b>Награды за друзей</b>\n"
             "Приведи друзей по ссылке (чтобы они создали свою ссылку) и забери:\n"
-            "<b>VIP бесплатно</b> — за {vip_n} друзей ({vip_d} дн.)\n"
-            "<b>Модерка на неделю</b> — за {mod_n} друзей ({mod_d} дн.)\n"
+            "👑 <b>VIP бесплатно</b> — за {vip_n} друзей ({vip_d} дн.)\n"
+            "🛡 <b>Модерка на неделю</b> — за {mod_n} друзей ({mod_d} дн.)\n"
             "Жми кнопку, когда наберёшь"
         ),
         "uz": (
-            "<b>Do'stlar uchun mukofotlar</b>\n"
-            "<b>Bepul VIP</b> — {vip_n} do'st uchun ({vip_d} kun)\n"
-            "<b>Bir haftalik moder</b> — {mod_n} do'st uchun ({mod_d} kun)"
+            "🏆 <b>Do'stlar uchun mukofotlar</b>\n"
+            "👑 <b>Bepul VIP</b> — {vip_n} do'st uchun ({vip_d} kun)\n"
+            "🛡 <b>Bir haftalik moder</b> — {mod_n} do'st uchun ({mod_d} kun)"
         ),
         "en": (
-            "<b>Rewards for friends</b>\n"
-            "<b>Free VIP</b> — for {vip_n} friends ({vip_d} days)\n"
-            "<b>Moderator for a week</b> — for {mod_n} friends ({mod_d} days)"
+            "🏆 <b>Rewards for friends</b>\n"
+            "👑 <b>Free VIP</b> — for {vip_n} friends ({vip_d} days)\n"
+            "🛡 <b>Moderator for a week</b> — for {mod_n} friends ({mod_d} days)"
         ),
     },
-    "ref_claim_coins_btn": {"ru": "{n} за друга · VIP {v}", "uz": "do'st uchun {n} · VIP {v}", "en": "{n} per friend · VIP {v}"},
-    "btn_share_ref": {"ru": "Поделиться ссылкой", "uz": "Havolani ulashish", "en": "Share the link"},
+    "ref_claim_coins_btn": {"ru": "🎁 {n} за друга · VIP {v}", "uz": "🎁 do'st uchun {n} · VIP {v}", "en": "🎁 {n} per friend · VIP {v}"},
+    "btn_share_ref": {"ru": "🔗 Поделиться ссылкой", "uz": "🔗 Havolani ulashish", "en": "🔗 Share the link"},
     "ref_share_text": {
         "ru": "Залетай в анонимный бот! Тебе пишут тайно, чат-рулетка, подарки 🎁 Жми",
         "uz": "Anonim botga kir! Sizga yashirin yozishadi, chat-ruletka, sovg'alar 🎁 Bosing",
         "en": "Join the anonymous bot! Get secret messages, chat roulette, gifts 🎁 Tap",
     },
-    "ref_claim_vip_btn": {"ru": "VIP бесплатно", "uz": "Bepul VIP", "en": "Free VIP"},
-    "ref_claim_moder_btn": {"ru": "Модерка на неделю", "uz": "Bir haftalik moder", "en": "Moderator for a week"},
+    "ref_claim_vip_btn": {"ru": "👑 VIP бесплатно", "uz": "👑 Bepul VIP", "en": "👑 Free VIP"},
+    "ref_claim_moder_btn": {"ru": "🛡 Модерка на неделю", "uz": "🛡 Bir haftalik moder", "en": "🛡 Moderator for a week"},
     "ref_need_more": {
         "ru": (
             "❌ Недостаточно друзей\n\n"
             "Нужно ещё: {n}\n"
             "У тебя подходящих: {have} из {need}\n\n"
-            "Считаются только те друзья, которые сами создали свою ссылку."
+            "⚠️ Считаются только те друзья, которые сами создали свою ссылку."
         ),
         "uz": "❌ Do'stlar yetarli emas\n\nYana kerak: {n}\nSizda mos: {have} / {need}",
         "en": "❌ Not enough friends\n\nNeed more: {n}\nYou have: {have} / {need}",
@@ -2136,37 +2185,37 @@ T.update({
         "en": "🎉 <b>VIP activated for {days} days</b>!",
     },
     "ref_moder_granted": {
-        "ru": "<b>Модерка выдана на {days} дней</b> за {need} приглашённых друзей!\nПрочувствуй власть модератора 👑",
-        "uz": "<b>Moderlik {days} kunga berildi</b> — {need} ta do'st uchun!",
-        "en": "<b>Moderator granted for {days} days</b> for {need} invited friends!",
+        "ru": "🎉 <b>Модерка выдана на {days} дней</b> за {need} приглашённых друзей!\nПрочувствуй власть модератора 👑",
+        "uz": "🎉 <b>Moderlik {days} kunga berildi</b> — {need} ta do'st uchun!",
+        "en": "🎉 <b>Moderator granted for {days} days</b> for {need} invited friends!",
     },
     "ref_info_alert": {
-        "ru": "За каждого приглашённого друга: {n} (а если ты VIP — {v}). Коины приходят автоматически.",
-        "uz": "Har bir taklif qilingan do'st uchun: {n} (VIP bo'lsangiz — {v}).",
-        "en": "For each invited friend: {n} (VIP gets {v}).",
+        "ru": "ℹ️ За каждого приглашённого друга: {n} (а если ты VIP — {v}). Коины приходят автоматически.",
+        "uz": "ℹ️ Har bir taklif qilingan do'st uchun: {n} (VIP bo'lsangiz — {v}).",
+        "en": "ℹ️ For each invited friend: {n} (VIP gets {v}).",
     },
     "link_reward": {
-        "ru": "<b>Бонус за активность по ссылке:</b> +{coins}\nВсего действий: {n}. Так держать! 🔥",
-        "uz": "<b>Havola faolligi uchun bonus:</b> +{coins}\nJami: {n}.",
-        "en": "<b>Activity bonus for your link:</b> +{coins}\nTotal actions: {n}.",
+        "ru": "🎁 <b>Бонус за активность по ссылке:</b> +{coins}\nВсего действий: {n}. Так держать! 🔥",
+        "uz": "🎁 <b>Havola faolligi uchun bonus:</b> +{coins}\nJami: {n}.",
+        "en": "🎁 <b>Activity bonus for your link:</b> +{coins}\nTotal actions: {n}.",
     },
-    "ref_menu_hint": {"ru": "Меню «Пригласить»", "uz": "«Taklif qilish» menyusi", "en": "Invite menu"},
+    "ref_menu_hint": {"ru": "👥 Меню «Пригласить»", "uz": "👥 «Taklif qilish» menyusi", "en": "👥 Invite menu"},
     "ref_friend_joined": {
         "ru": "🎉 По твоей ссылке пришёл друг! Тебе начислено <b>+{reward}</b>",
         "uz": "🎉 Havolangiz orqali do'st keldi! Sizga <b>+{reward}</b> qo'shildi",
         "en": "🎉 A friend joined via your link! You earned <b>+{reward}</b>",
     },
     "ref_welcome_bonus": {
-        "ru": "<b>Добро пожаловать!</b> Ты пришёл по ссылке друга — лови подарок <b>+{n}</b>",
-        "uz": "<b>Xush kelibsiz!</b> Do'st havolasi orqali keldingiz — sovg'a <b>+{n}</b>",
-        "en": "<b>Welcome!</b> You joined via a friend's link — here's a gift <b>+{n}</b>",
+        "ru": "🎁 <b>Добро пожаловать!</b> Ты пришёл по ссылке друга — лови подарок <b>+{n}</b>",
+        "uz": "🎁 <b>Xush kelibsiz!</b> Do'st havolasi orqali keldingiz — sovg'a <b>+{n}</b>",
+        "en": "🎁 <b>Welcome!</b> You joined via a friend's link — here's a gift <b>+{n}</b>",
     },
-    "ref_progress_title": {"ru": "<b>Прогресс до наград:</b>", "uz": "<b>Mukofotlargacha progress:</b>", "en": "<b>Progress to rewards:</b>"},
+    "ref_progress_title": {"ru": "📊 <b>Прогресс до наград:</b>", "uz": "📊 <b>Mukofotlargacha progress:</b>", "en": "📊 <b>Progress to rewards:</b>"},
     "ref_friends_word": {"ru": "друзей", "uz": "do'st", "en": "friends"},
     "top_empty": {
-        "ru": "Пока никто никого не пригласил. Будь первым! 🏆",
-        "uz": "Hozircha hech kim taklif qilmagan. Birinchi bo'ling! 🏆",
-        "en": "No one has invited anyone yet. Be the first! 🏆",
+        "ru": "🏆 Пока никто никого не пригласил. Будь первым!",
+        "uz": "🏆 Hozircha hech kim taklif qilmagan. Birinchi bo'ling!",
+        "en": "🏆 No one has invited anyone yet. Be the first!",
     },
     "top_title": {"ru": "🏆 <b>Топ пригласивших</b>", "uz": "🏆 <b>Eng ko'p taklif qilganlar</b>", "en": "🏆 <b>Top inviters</b>"},
     "ref_coins_refunded": {
@@ -2182,13 +2231,13 @@ T.update({
         "en": "🎁 Daily VIP bonus: <b>+{n}</b>",
     },
     "moder_form_gender": {
-        "ru": "<b>Анкета на модератора.</b>\n\nВаш пол?",
-        "uz": "<b>Moderatorlik anketasi.</b>\n\nJinsingiz?",
-        "en": "<b>Moderator application.</b>\n\nYour gender?",
+        "ru": "🛡 <b>Анкета на модератора.</b>\n\n⚧ Ваш пол?",
+        "uz": "🛡 <b>Moderatorlik anketasi.</b>\n\n⚧ Jinsingiz?",
+        "en": "🛡 <b>Moderator application.</b>\n\n⚧ Your gender?",
     },
-    "moder_form_age": {"ru": "Сколько вам лет?", "uz": "Yoshingiz nechada?", "en": "How old are you?"},
-    "moder_form_tg": {"ru": "Сколько времени проводите в Telegram в день?", "uz": "Kuniga Telegramda qancha vaqt o'tkazasiz?", "en": "How much time do you spend on Telegram per day?"},
-    "moder_form_avail": {"ru": "Сколько готовы уделять боту? Когда вы онлайн?", "uz": "Botga qancha vaqt ajrata olasiz?", "en": "How much time can you give the bot?"},
+    "moder_form_age": {"ru": "🎂 Сколько вам лет?", "uz": "🎂 Yoshingiz nechada?", "en": "🎂 How old are you?"},
+    "moder_form_tg": {"ru": "⏱ Сколько времени проводите в Telegram в день?", "uz": "⏱ Kuniga Telegramda qancha vaqt o'tkazasiz?", "en": "⏱ How much time do you spend on Telegram per day?"},
+    "moder_form_avail": {"ru": "🕐 Сколько готовы уделять боту? Когда вы онлайн?", "uz": "🕐 Botga qancha vaqt ajrata olasiz?", "en": "🕐 How much time can you give the bot?"},
     "moder_form_cancelled": {
         "ru": "↩️ Анкета отменена. Коины ({price}) возвращены.",
         "uz": "↩️ Anketa bekor qilindi. Coinlar ({price}) qaytarildi.",
@@ -2205,9 +2254,9 @@ T.update({
         "en": "🛡 You've been granted the moderator role!",
     },
     "moder_granted_shop": {
-        "ru": "<b>Вы теперь Модер!</b> Добро пожаловать в команду 👑\nЗа бонусом напишите админу @ToxIc_0707",
-        "uz": "<b>Endi siz Modersiz!</b> Jamoaga xush kelibsiz 👑",
-        "en": "<b>You're a Moder now!</b> Welcome to the team 👑",
+        "ru": "🛡 <b>Вы теперь Модер!</b> Добро пожаловать в команду 👑\nЗа бонусом напишите админу @ToxIc_0707",
+        "uz": "🛡 <b>Endi siz Modersiz!</b> Jamoaga xush kelibsiz 👑",
+        "en": "🛡 <b>You're a Moder now!</b> Welcome to the team 👑",
     },
     "moder_rejected_user": {
         "ru": "❌ К сожалению, заявка на модера отклонена. Коины ({coins}) возвращены.",
@@ -2219,38 +2268,38 @@ T.update({
     "moder_granted_staff": {"ru": "✅ Модерка выдана.", "uz": "✅ Moderlik berildi.", "en": "✅ Moderation granted."},
     "moder_rejected_staff": {"ru": "❌ Заявка отклонена, коины возвращены.", "uz": "❌ Ariza rad etildi, coinlar qaytarildi.", "en": "❌ Application rejected, coins refunded."},
     "mod_message": {
-        "ru": "<b>Сообщение от модератора {name}</b>:\n{text}",
-        "uz": "<b>{name} moderatordan xabar</b>:\n{text}",
-        "en": "<b>Message from moderator {name}</b>:\n{text}",
+        "ru": "📨 <b>Сообщение от модератора {name}</b>:\n{text}",
+        "uz": "📨 <b>{name} moderatordan xabar</b>:\n{text}",
+        "en": "📨 <b>Message from moderator {name}</b>:\n{text}",
     },
     "admin_vip_menu": {
-        "ru": "<b>Управление VIP по ID</b>\n\nВыдать или забрать VIP у пользователя",
-        "uz": "<b>ID bo'yicha VIP boshqaruvi</b>",
-        "en": "<b>VIP management by ID</b>",
+        "ru": "👑 <b>Управление VIP по ID</b>\n\nВыдать или забрать VIP у пользователя",
+        "uz": "👑 <b>ID bo'yicha VIP boshqaruvi</b>",
+        "en": "👑 <b>VIP management by ID</b>",
     },
     "vip_ask_id": {
-        "ru": "Введите <b>tg_id</b> или <b>@username</b> пользователя:",
-        "uz": "Foydalanuvchining <b>tg_id</b> yoki <b>@username</b> ini kiriting:",
-        "en": "Enter the user's <b>tg_id</b> or <b>@username</b>:",
+        "ru": "🆔 Введите <b>tg_id</b> или <b>@username</b> пользователя:",
+        "uz": "🆔 Foydalanuvchining <b>tg_id</b> yoki <b>@username</b> ini kiriting:",
+        "en": "🆔 Enter the user's <b>tg_id</b> or <b>@username</b>:",
     },
-    "vip_ask_days": {"ru": "На сколько дней выдать VIP? (число)", "uz": "VIP necha kunga berilsin?", "en": "For how many days to grant VIP?"},
-    "vip_id_number": {"ru": "ID должен быть числом. Попробуйте снова:", "uz": "ID raqam bo'lishi kerak:", "en": "ID must be a number:"},
-    "vip_days_number": {"ru": "Введите положительное число дней:", "uz": "Musbat kunlar sonini kiriting:", "en": "Enter a positive number of days:"},
+    "vip_ask_days": {"ru": "📅 На сколько дней выдать VIP? (число)", "uz": "📅 VIP necha kunga berilsin?", "en": "📅 For how many days to grant VIP?"},
+    "vip_id_number": {"ru": "🔢 ID должен быть числом. Попробуйте снова:", "uz": "🔢 ID raqam bo'lishi kerak:", "en": "🔢 ID must be a number:"},
+    "vip_days_number": {"ru": "🔢 Введите положительное число дней:", "uz": "🔢 Musbat kunlar sonini kiriting:", "en": "🔢 Enter a positive number of days:"},
     "vip_user_not_found": {
-        "ru": "Пользователь не найден (он должен быть в боте). Введите ID или @username:",
-        "uz": "Foydalanuvchi topilmadi. ID yoki @username kiriting:",
-        "en": "User not found. Enter ID or @username:",
+        "ru": "❌ Пользователь не найден (он должен быть в боте). Введите ID или @username:",
+        "uz": "❌ Foydalanuvchi topilmadi. ID yoki @username kiriting:",
+        "en": "❌ User not found. Enter ID or @username:",
     },
     "vip_granted_admin": {
-        "ru": "VIP выдан пользователю <code>{id}</code> на <b>{days}</b> дн.",
-        "uz": "<code>{id}</code> ga VIP <b>{days}</b> kunga berildi.",
-        "en": "VIP granted to user <code>{id}</code> for <b>{days}</b> days.",
+        "ru": "✅ VIP выдан пользователю <code>{id}</code> на <b>{days}</b> дн.",
+        "uz": "✅ <code>{id}</code> ga VIP <b>{days}</b> kunga berildi.",
+        "en": "✅ VIP granted to user <code>{id}</code> for <b>{days}</b> days.",
     },
-    "vip_taken_admin": {"ru": "VIP снят у пользователя <code>{id}</code>.", "uz": "<code>{id}</code> dan VIP olib tashlandi.", "en": "VIP revoked from user <code>{id}</code>."},
+    "vip_taken_admin": {"ru": "✅ VIP снят у пользователя <code>{id}</code>.", "uz": "✅ <code>{id}</code> dan VIP olib tashlandi.", "en": "✅ VIP revoked from user <code>{id}</code>."},
     "vip_granted_user": {
-        "ru": "<b>Вам выдан VIP на {days} дней!</b>\nНаслаждайтесь привилегиями 💎",
-        "uz": "<b>Sizga {days} kunga VIP berildi!</b> 💎",
-        "en": "<b>You've been granted VIP for {days} days!</b> 💎",
+        "ru": "👑 <b>Вам выдан VIP на {days} дней!</b>\nНаслаждайтесь привилегиями 💎",
+        "uz": "👑 <b>Sizga {days} kunga VIP berildi!</b> 💎",
+        "en": "👑 <b>You've been granted VIP for {days} days!</b> 💎",
     },
     "vip_taken_user": {"ru": "👑 Ваш VIP-статус был снят администратором.", "uz": "👑 VIP holatingiz olib tashlandi.", "en": "👑 Your VIP status was revoked."},
     "vip_bulk_menu_title": {
@@ -2264,14 +2313,14 @@ T.update({
         "en": "✅ VIP revoked from <b>{target}</b> ({count} users)",
     },
     "vip_bulk_ask_days": {
-        "ru": "На сколько дней выдать VIP <b>{target}</b>? (число)",
-        "uz": "VIP <b>{target}</b> necha kunga berilsin?",
-        "en": "For how many days to grant VIP to <b>{target}</b>?",
+        "ru": "📅 На сколько дней выдать VIP <b>{target}</b>? (число)",
+        "uz": "📅 VIP <b>{target}</b> necha kunga berilsin?",
+        "en": "📅 For how many days to grant VIP to <b>{target}</b>?",
     },
     "vip_bulk_done": {
-        "ru": "VIP выдан <b>{target}</b> на <b>{days}</b> дн. ({count} чел.)",
-        "uz": "VIP <b>{target}</b> <b>{days}</b> kunga berildi ({count} kishi)",
-        "en": "VIP granted to <b>{target}</b> for <b>{days}</b> days ({count} users)",
+        "ru": "✅ VIP выдан <b>{target}</b> на <b>{days}</b> дн. ({count} чел.)",
+        "uz": "✅ VIP <b>{target}</b> <b>{days}</b> kunga berildi ({count} kishi)",
+        "en": "✅ VIP granted to <b>{target}</b> for <b>{days}</b> days ({count} users)",
     },
     "inactive_nudge": {
         "ru": "💤 <b>Давно тебя не было в 𐌽ꤕ𐌗ተ!</b>\nЧтобы не потерять свои данные (коины, VIP, ссылку) — просто нажми /start 👋",
@@ -2280,15 +2329,14 @@ T.update({
     },
     "moder_help": {
         "ru": (
-            "<b>Помощь по модерке</b>\n"
+            "ℹ️ <b>Помощь по модерке</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>Кнопки панели:</b>\n"
             "<blockquote>"
-            "<b>Жалобы</b> — список жалоб\n"
-            "<b>Бан / Разбан</b> — по ID\n"
-            "<b>Статистика</b> — цифры\n"
-            "<b>Выгрузить пользователей</b> — .txt\n"
-            "<b>Обязательные каналы</b> — каналы для удаления"
+            "🔨 <b>Бан / Разбан</b> — по ID\n"
+            "📊 <b>Статистика</b> — цифры\n"
+            "📤 <b>Выгрузить пользователей</b> — .txt\n"
+            "📢 <b>Обязательные каналы</b> — каналы для удаления"
             "</blockquote>\n"
             "<b>Скрытые команды:</b>\n"
             "<blockquote>"
@@ -2300,17 +2348,17 @@ T.update({
             "<i>Сообщения могут проверяться для безопасности.</i>"
         ),
         "uz": (
-            "<b>Moderator yordami</b>\n"
+            "ℹ️ <b>Moderator yordami</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>Panel tugmalari:</b>\n"
-            "<blockquote><b>Shikoyatlar</b>\n<b>Ban / Unban</b>\n<b>Statistika</b>\n<b>Fayllar</b></blockquote>\n"
+            "<blockquote>🔨 Ban / Unban\n📊 Statistika\n📤 Fayllar</blockquote>\n"
             "<b>Maxfiy buyruqlar</b>: <b>/tg</b>, <b>/next</b>, <b>/anon</b>, <b>/sex</b>"
         ),
         "en": (
-            "<b>Moderator help</b>\n"
+            "ℹ️ <b>Moderator help</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "<b>Panel buttons:</b>\n"
-            "<blockquote><b>Reports</b>\n<b>Ban / Unban</b>\n<b>Statistics</b>\n<b>Export</b></blockquote>\n"
+            "<blockquote>🔨 Ban / Unban\n📊 Statistics\n📤 Export</blockquote>\n"
             "<b>Hidden commands</b>: <b>/tg</b>, <b>/next</b>, <b>/anon</b>, <b>/sex</b>"
         ),
     },
@@ -2339,14 +2387,14 @@ T.update({
     "sex_exit_approved": {"ru": "✅ Ты вышел из комнаты.", "uz": "✅ Siz xonadan chiqdingiz.", "en": "✅ You left the room."},
     "sex_renamed_prompt": {"ru": "✏️ Введи новое название:", "uz": "✏️ Yangi nomni kiriting:", "en": "✏️ Enter new name:"},
     "sex_only_owner_can_delete": {
-        "ru": "Удалить комнату может только её создатель.",
-        "uz": "Xonani faqat yaratuvchi o'chira oladi.",
-        "en": "Only the owner can delete the room.",
+        "ru": "🔒 Удалить комнату может только её создатель.",
+        "uz": "🔒 Xonani faqat yaratuvchi o'chira oladi.",
+        "en": "🔒 Only the owner can delete the room.",
     },
     "sex_only_owner_can_rename": {
-        "ru": "Переименовать комнату может только её создатель.",
-        "uz": "Xonani faqat yaratuvchi nomini o'zgartira oladi.",
-        "en": "Only the owner can rename the room.",
+        "ru": "🔒 Переименовать комнату может только её создатель.",
+        "uz": "🔒 Xonani faqat yaratuvchi nomini o'zgartira oladi.",
+        "en": "🔒 Only the owner can rename the room.",
     },
     "sex_no_room": {
         "ru": "💬 Нет активной комнаты.\n\nНабери /sex чтобы создать.",
@@ -2378,15 +2426,16 @@ T.update({
     },
     "anon_watch_leave": {"ru": "🚪 Вы вышли из наблюдения.", "uz": "🚪 Kuzatishdan chiqdingiz.", "en": "🚪 You left the watch."},
     "anon_watch_new_msg": {
-        "ru": "👁 <b>Новая анонимка для {uid}</b>\nОт: <b>{sname}</b> (<code>{sfid}</code>)\n{when}",
-        "uz": "👁 <b>{uid} uchun yangi anonimka</b>\nKimdan: <b>{sname}</b>",
-        "en": "👁 <b>New anon for {uid}</b>\nFrom: <b>{sname}</b>\n{when}",
+        "ru": "👁 <b>Новая анонимка для {uid}</b>\n👤 От: <b>{sname}</b> (<code>{sfid}</code>)\n🕐 {when}",
+        "uz": "👁 <b>{uid} uchun yangi anonimka</b>\n👤 Kimdan: <b>{sname}</b>",
+        "en": "👁 <b>New anon for {uid}</b>\n👤 From: <b>{sname}</b>\n🕐 {when}",
     },
 })
-# ===================== БЛОК 6 / 14 — t(), КЛАВИАТУРЫ, УТИЛИТЫ =====================
+# ===================== БЛОК 6 / 15 — t(), КЛАВИАТУРЫ, УТИЛИТЫ =====================
 
-# ---- Гармонизация эмодзи ----
+# ---- Гармонизация эмодзи: ru-вариант доминирует ----
 def _harmonize_translations():
+    """Приводит эмодзи-префикс в uz/en к варианту из ru (жёстко)."""
     for _key, _block in T.items():
         if not isinstance(_block, dict):
             continue
@@ -2400,8 +2449,10 @@ def _harmonize_translations():
             _val = _block.get(_lang)
             if not isinstance(_val, str) or not _val:
                 continue
-            if not _leading_emoji(_val):
-                _block[_lang] = _em + " " + _val.lstrip()
+            _cur_em = _leading_emoji(_val)
+            if _cur_em != _em:
+                _stripped = _val[len(_cur_em):].lstrip() if _cur_em else _val
+                _block[_lang] = _em + " " + _stripped
 
 
 _harmonize_translations()
@@ -2416,7 +2467,7 @@ def t(key: str, **kw) -> str:
 # ============================ ГЛАВНЫЕ КЛАВИАТУРЫ ============================
 def main_menu_kb(tg_id: int):
     rows = [
-        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭")],
+        [KeyboardButton("🔗 Моя ссылка"), KeyboardButton("🎯 𝐍𝐞𝐱𝐭..")],
         [KeyboardButton("🎲 Чат-рулетка"), KeyboardButton("👤 Профиль")],
         [KeyboardButton("🛒 Магазин"), KeyboardButton("👥 Пригласить")],
         [KeyboardButton("ℹ️ Помощь"), KeyboardButton("🌐 Язык")],
@@ -2538,32 +2589,20 @@ def left_chat_kb():
     ], resize_keyboard=True))
 
 
-# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — МЕНЮ ============================
+# ============================ 🎯 𝐍𝐞𝐱𝐭.. ============================
 def next_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("🔥 Смотреть анкеты")],
-        [KeyboardButton("👤 Моя анкета")],
+        [KeyboardButton("📝 Моя анкета")],
         [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
-# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — КАРТОЧКА ============================
 def next_reaction_kb():
     return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("❤️ Лайк"), KeyboardButton("👎 Дизлайк")],
-        [KeyboardButton("💬 Написать"), KeyboardButton("⛔ Жалоба")],
+        [KeyboardButton("💌 Написать"), KeyboardButton("🚩 Жалоба")],
         [KeyboardButton("💤 Выйти")],
-    ], resize_keyboard=True))
-
-
-# ============================ 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — МОЯ АНКЕТА ============================
-def next_edit_kb():
-    return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("📝 Имя"), KeyboardButton("🎂 Возраст")],
-        [KeyboardButton("📄 О себе"), KeyboardButton("📷 Фото")],
-        [KeyboardButton("🎯 Кого ищу"), KeyboardButton("⚧ Пол")],
-        [KeyboardButton("👁 Предпросмотр")],
-        [KeyboardButton("⬅️ Назад")],
     ], resize_keyboard=True))
 
 
@@ -2572,7 +2611,6 @@ def next_cancel_kb():
 
 
 def next_edit_back_kb():
-    """Клавиатура при редактировании поля — Отмена возвращает в Мою анкету."""
     return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("❌ Отмена")]], resize_keyboard=True))
 
 
@@ -2591,11 +2629,20 @@ def next_looking_kb():
     ], resize_keyboard=True))
 
 
-# ============================ Inline под сообщениями Next ============================
+def next_edit_kb():
+    return tr_kb(ReplyKeyboardMarkup([
+        [KeyboardButton("📝 Имя"), KeyboardButton("🎂 Возраст")],
+        [KeyboardButton("📄 О себе"), KeyboardButton("📷 Фото")],
+        [KeyboardButton("🎯 Кого ищу"), KeyboardButton("⚧ Пол")],
+        [KeyboardButton("👁 Предпросмотр")],
+        [KeyboardButton("⬅️ Назад")],
+    ], resize_keyboard=True))
+
+
 def next_reply_inline_kb(mid: int):
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("↩️ Ответить", callback_data=f"nreply:{mid}")],
-        [InlineKeyboardButton("⛔ Жалоба", callback_data=f"nreport:{mid}")],
+        [InlineKeyboardButton("🚩 Жалоба", callback_data=f"nreport:{mid}")],
     ])
 
 
@@ -2609,12 +2656,12 @@ def referral_kb(uid: int | None = None):
 
 
 def ref_settings_kb():
-    return ReplyKeyboardMarkup([
+    return tr_kb(ReplyKeyboardMarkup([
         [KeyboardButton("👑 VIP: дней"), KeyboardButton("👥 VIP: друзей")],
         [KeyboardButton("🛡 Модер: дней"), KeyboardButton("👥 Модер: друзей")],
         [KeyboardButton("📷 Фото"), KeyboardButton("🚫 Убрать фото")],
         [KeyboardButton("⬅️ Назад"), KeyboardButton("🏠 Меню")],
-    ], resize_keyboard=True)
+    ], resize_keyboard=True))
 
 
 def ref_rewards_kb(uid: int, link: str | None = None):
@@ -2728,9 +2775,10 @@ def adm_channels_kb(uid: int | None = None):
     return tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True))
 
 
+# ==== МЕНЮ МОДЕРА: БЕЗ кнопки "Жалобы" (жалобы — только админ) ====
 def moder_menu_kb():
     return tr_kb(ReplyKeyboardMarkup([
-        [KeyboardButton("🚩 Жалобы"), KeyboardButton("🔨 Бан / Разбан")],
+        [KeyboardButton("🔨 Бан / Разбан")],
         [KeyboardButton("📊 Статистика"), KeyboardButton("📤 Выгрузить пользователей")],
         [KeyboardButton("📢 Обязательные каналы")],
         [KeyboardButton("ℹ️ Помощь")],
@@ -2953,7 +3001,7 @@ async def build_start_link(context, code: str) -> str:
     return f"t.me/{await get_bot_username(context)}?start={code}"
 
 
-# ============================ АВТО-ПЕРЕВОД ТОВАРОВ ============================
+# ============================ АВТО-ПЕРЕВОД ============================
 def _translate_sync(text: str, target: str) -> str:
     if not text or not text.strip():
         return text
@@ -2990,11 +3038,12 @@ def item_title(item) -> str:
     except (KeyError, IndexError, TypeError):
         pass
     return item["title"]
-    # ===================== БЛОК 7 / 14 — НАВИГАЦИЯ И УТИЛИТЫ =====================
+    # ===================== БЛОК 7 / 15 — НАВИГАЦИЯ И УТИЛИТЫ =====================
 
 # ============================ НАВИГАЦИЯ ============================
 async def clean_screen(update, context):
-    """Удаляет нажатие пользователя + прошлые сообщения меню."""
+    """Удаляет нажатие юзера + прошлые сообщения меню."""
+    # ФИКС: update.message может быть None на callback-апдейтах
     if update.message is not None:
         try:
             await update.message.delete()
@@ -3008,6 +3057,7 @@ async def clean_screen(update, context):
     if mid:
         await try_delete_message(context, update.effective_chat.id, mid)
 
+    # ФИКС: чистим карточку 𝐍𝐞𝐱𝐭..
     nid = context.user_data.pop("next_card_id", None)
     if nid:
         await try_delete_message(context, update.effective_chat.id, nid)
@@ -3070,11 +3120,11 @@ async def notify_admins_new_user(context, tg_user):
     text = (
         "🆕 <b>Новый пользователь!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Имя: <b>{name}</b>\n"
-        f"ID: <code>{tg_user.id}</code>\n"
-        f"Username: {uname}\n"
-        f"Время: {when} (UTC)\n"
-        f"Всего в боте: <b>{total}</b>"
+        f"📝 Имя: <b>{name}</b>\n"
+        f"🆔 ID: <code>{tg_user.id}</code>\n"
+        f"👤 Username: {uname}\n"
+        f"🕐 Время: {when} (UTC)\n"
+        f"👥 Всего в боте: <b>{total}</b>"
     )
     for admin_id in ADMIN_IDS:
         try:
@@ -3097,10 +3147,10 @@ async def notify_admins_user_event(context, tg_user, kind, extra=None):
     text = (
         f"{head}\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"Имя: <b>{name}</b>\n"
-        f"ID: <code>{uid}</code>\n"
-        f"Username: {uname}\n"
-        f"Время: {when} (UTC)"
+        f"📝 Имя: <b>{name}</b>\n"
+        f"🆔 ID: <code>{uid}</code>\n"
+        f"👤 Username: {uname}\n"
+        f"🕐 Время: {when} (UTC)"
     )
     if extra:
         text += f"\n{extra}"
@@ -3250,6 +3300,7 @@ def can_change_link(user_row):
 
 # ============================ PURGE / DEAD ACCOUNT ============================
 def user_is_disposable(uid: int) -> bool:
+    """True, если аккаунт пустой и его безопасно удалить."""
     if is_admin(uid):
         return False
     u = get_user(uid)
@@ -3264,8 +3315,10 @@ def user_is_disposable(uid: int) -> bool:
         pass
     if conn.execute("SELECT 1 FROM star_purchases WHERE user_id=? LIMIT 1", (uid,)).fetchone():
         return False
+    # ФИКС: если есть анкета 𝐍𝐞𝐱𝐭.. — не удаляем
     if conn.execute("SELECT 1 FROM nearby_profiles WHERE user_id=? LIMIT 1", (uid,)).fetchone():
         return False
+    # ФИКС: если есть мэтчи — не удаляем
     if conn.execute(
         "SELECT 1 FROM nearby_matches WHERE user1_id=? OR user2_id=? LIMIT 1", (uid, uid)
     ).fetchone():
@@ -3274,6 +3327,7 @@ def user_is_disposable(uid: int) -> bool:
 
 
 def purge_user(uid: int, force: bool = False) -> bool:
+    """Удаляет пользователя. Без force — только пустые."""
     try:
         if is_admin(uid):
             return False
@@ -3290,6 +3344,7 @@ def purge_user(uid: int, force: bool = False) -> bool:
             for r in partner_rows
         }
 
+        # Основные
         conn.execute("DELETE FROM users WHERE tg_id=?", (uid,))
         conn.execute("DELETE FROM referrals WHERE referred_id=? OR referrer_id=?", (uid, uid))
         conn.execute("DELETE FROM link_flow WHERE user_id=?", (uid,))
@@ -3300,12 +3355,15 @@ def purge_user(uid: int, force: bool = False) -> bool:
             (now_iso(), uid, uid),
         )
 
+        # ФИКС: чистим 𝐍𝐞𝐱𝐭..
         conn.execute("DELETE FROM nearby_profiles WHERE user_id=?", (uid,))
         conn.execute("DELETE FROM nearby_likes WHERE from_id=? OR to_id=?", (uid, uid))
         conn.execute("DELETE FROM nearby_matches WHERE user1_id=? OR user2_id=?", (uid, uid))
         conn.execute("DELETE FROM nearby_messages WHERE from_id=? OR to_id=?", (uid, uid))
 
+        # ФИКС: чистим наблюдателей /anon
         conn.execute("DELETE FROM anon_watchers WHERE mod_id=? OR target_id=?", (uid, uid))
+        # ФИКС: чистим анонимки (orphan protection)
         conn.execute("DELETE FROM anon_messages WHERE from_id=? OR to_id=?", (uid, uid))
 
         conn.commit()
@@ -3354,7 +3412,8 @@ def safe_purge_dead(uid: int) -> bool:
 BCAST_ALBUMS = {}
 SPECTATORS = {}
 SESSION_SPECTATORS = defaultdict(set)
-# ===================== БЛОК 8 / 14 — /START И ПРОФИЛЬ =====================
+_QUEUE_REMIND = {}
+# ===================== БЛОК 8 / 15 — /START И ПРОФИЛЬ =====================
 
 # ============================ /start ============================
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -3708,7 +3767,7 @@ async def gift_coins_router(update, context):
             main_menu_kb(uid), parse_mode="HTML",
         )
         return
-        # ===================== БЛОК 9 / 14 — ССЫЛКА И АНОНИМКА =====================
+        # ===================== БЛОК 9 / 14 — ССЫЛКА, АНОНИМКА, ЖАЛОБЫ + 🎲 РУЛЕТКА =====================
 
 # ============================ ССЫЛКА ============================
 async def show_link_menu(update, context):
@@ -4279,19 +4338,15 @@ async def process_report_reason(update, context):
     for k in ("report_context", "report_ref_id", "reported_id"):
         context.user_data.pop(k, None)
 
+    # ==== Тело жалобы ====
     if ctx == "anon":
         msg = conn.execute("SELECT * FROM anon_messages WHERE id=?", (ref_id,)).fetchone()
         content_preview = msg["text"] if msg and msg["content_type"] == "text" else "[голосовое]"
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Бан навсегда", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{report_id}"),
-        ]])
-        await notify_staff(
-            context,
-            f"🚩 Жалоба на анонимку #{ref_id}\n"
-            f"Причина: {reason}\nТип: {msg['msg_type'] if msg else '?'}\n"
-            f"Содержание: {content_preview}",
-            reply_markup=kb,
+        body = (
+            f"🚩 Жалоба на анонимку #{report_id}\n"
+            f"📋 Причина: {reason}\n"
+            f"📝 Тип: {msg['msg_type'] if msg else '?'}\n"
+            f"💬 Содержание: {content_preview}"
         )
     elif ctx in ("nearby", "nearby_msg"):
         reported = get_user(reported_id)
@@ -4300,53 +4355,92 @@ async def process_report_reason(update, context):
             m = conn.execute("SELECT * FROM nearby_messages WHERE id=?", (ref_id,)).fetchone()
             if m:
                 preview = m["text"] if m["content_type"] == "text" else "[голосовое]"
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("🔨 Бан в поиске", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{report_id}"),
-        ]])
-        await notify_staff(
-            context,
-            f"⛔ Жалоба #{report_id} (𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭)\n"
-            f"Причина: {reason}\n"
-            f"На: {user_mention(reported)}\n"
-            f"{('Сообщение: ' + preview) if preview else ''}",
-            reply_markup=kb,
+        body = (
+            f"🚩 Жалоба #{report_id} (🎯 𝐍𝐞𝐱𝐭..)\n"
+            f"📋 Причина: {reason}\n"
+            f"👤 На: {user_mention(reported)}\n"
+            f"{('💬 Сообщение: ' + preview) if preview else ''}"
         )
     else:
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton("Бан 30 дн.", callback_data=f"repadm:ok:{report_id}"),
-            InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{report_id}"),
-        ]])
-        await notify_staff(
-            context,
-            f"🚩 Жалоба после рулетки (сессия #{ref_id})\nПричина: {reason}",
-            reply_markup=kb,
-        )
+        body = f"🚩 Жалоба после рулетки (сессия #{ref_id})\n📋 Причина: {reason}"
+
+    # ==== Две кнопки: Бан / Отклонить ====
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton(t("btn_ban"), callback_data=f"repadm:ok:{report_id}")],
+        [InlineKeyboardButton(t("btn_reject_report"), callback_data=f"repadm:no:{report_id}")],
+    ])
+
+    # ==== Только админам ====
+    await notify_admins(context, body, reply_markup=kb, parse_mode="HTML")
 
 
 async def on_report_admin_decision(update, context):
-    """ФИКС: один query.answer() — с алертом если не staff, без него если всё ок."""
+    """Бан ↔ Разбан, Отклонить. Только админ."""
     query = update.callback_query
 
-    if not is_staff(query.from_user.id):
-        await query.answer(t("staff_only"), show_alert=True)
+    if not is_admin(query.from_user.id):
+        await query.answer(t("admin_only"), show_alert=True)
         return
 
-    # Единственный answer (без алерта) — после проверки прав
     await query.answer()
 
-    _, decision, report_id = query.data.split(":")
+    parts = query.data.split(":")
+    if len(parts) < 3:
+        return
+    _, decision, report_id = parts
     report_id = int(report_id)
+
     report = conn.execute("SELECT * FROM reports WHERE id=?", (report_id,)).fetchone()
-    if not report or report["status"] != "pending":
-        await query.edit_message_text(t("report_already_handled"))
+    if not report:
+        try:
+            await query.edit_message_text("⚠️ Жалоба не найдена")
+        except TelegramError:
+            pass
         return
 
+    # ============ UNBAN ============
+    if decision == "unban":
+        conn.execute(
+            "DELETE FROM bans WHERE owner_id=? AND banned_id=?",
+            (report["reporter_id"], report["reported_id"]),
+        )
+        conn.commit()
+
+        u = get_user(report["reported_id"])
+        name = html.escape((u["first_name"] if u else None) or "—")
+
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton(t("btn_ban"), callback_data=f"repadm:ok:{report_id}")],
+            [InlineKeyboardButton(t("btn_reject_report"), callback_data=f"repadm:no:{report_id}")],
+        ])
+        try:
+            await query.edit_message_reply_markup(reply_markup=kb)
+        except TelegramError:
+            pass
+
+        try:
+            _sl = cur_lang()
+            set_cur_lang(get_lang(report["reported_id"]))
+            await context.bot.send_message(report["reported_id"], t("you_were_unbanned"), parse_mode="HTML")
+            set_cur_lang(_sl)
+        except TelegramError:
+            pass
+
+        try:
+            await query.answer(t("report_unbanned_msg", name=name, rid=report_id), show_alert=False)
+        except TelegramError:
+            pass
+        return
+
+    # ============ BAN ============
     if decision == "ok":
         if is_staff(report["reported_id"]):
             conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
             conn.commit()
-            await query.edit_message_text(t("cant_ban_staff"))
+            try:
+                await query.edit_message_text(t("cant_ban_staff"))
+            except TelegramError:
+                pass
             return
 
         is_anon = report["context"] == "anon"
@@ -4398,8 +4492,26 @@ async def on_report_admin_decision(update, context):
         except TelegramError:
             pass
 
-        await query.edit_message_text(t("report_confirmed_staff"))
-    else:
+        # Toggle: Бан → Разбан
+        u = get_user(report["reported_id"])
+        name = html.escape((u["first_name"] if u else None) or "—")
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton(t("btn_unban"), callback_data=f"repadm:unban:{report_id}")],
+            [InlineKeyboardButton(t("btn_reject_report"), callback_data=f"repadm:no:{report_id}")],
+        ])
+        try:
+            await query.edit_message_reply_markup(reply_markup=kb)
+        except TelegramError:
+            pass
+
+        try:
+            await query.answer(t("report_banned_msg", name=name, rid=report_id), show_alert=False)
+        except TelegramError:
+            pass
+        return
+
+    # ============ REJECT ============
+    if decision == "no":
         conn.execute("UPDATE reports SET status='rejected' WHERE id=?", (report_id,))
         conn.commit()
         try:
@@ -4409,7 +4521,11 @@ async def on_report_admin_decision(update, context):
             set_cur_lang(_sl)
         except TelegramError:
             pass
-        await query.edit_message_text(t("report_rejected_staff"))
+        try:
+            await query.edit_message_text(t("report_rejected_msg", rid=report_id))
+        except TelegramError:
+            pass
+        return
 
 
 # ============================ РЕФЕРАЛЫ: НАЧИСЛЕНИЕ ============================
@@ -4498,14 +4614,314 @@ async def reward_link_activity(context, uid: int, kind: str):
     else:
         conn.execute(f"UPDATE users SET {col_total}=? WHERE tg_id=?", (total, uid))
         conn.commit()
-        # ===================== БЛОК 10 / 14 — 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 =====================
-
-NEXT_BRAND = "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭"
 
 
-# ============================ ХЕЛПЕР ОТРИСОВКИ ============================
+# ===================== 🎲 РУЛЕТКА =====================
+
+# ============================ ВХОД ============================
+async def show_roulette_entry(update, context):
+    user = get_user(update.effective_user.id)
+    active = get_active_session(user["tg_id"])
+    await clean_screen(update, context)
+
+    if active:
+        UD[user["tg_id"]]["state"] = "rchat"
+        await context.bot.send_message(
+            update.effective_chat.id, t("roulette_already_chat"), reply_markup=in_chat_kb(),
+        )
+        return
+
+    in_queue = conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (user["tg_id"],)).fetchone()
+    if in_queue:
+        await context.bot.send_message(
+            update.effective_chat.id, t("roulette_searching"), reply_markup=searching_kb(),
+        )
+        return
+
+    context.user_data["state"] = "roulette_pref"
+    await send_menu(update, context, t("roulette_who"), roulette_pref_reply_kb())
+
+
+async def roulette_pref_router(update, context):
+    text = canon(update.message.text)
+
+    if text in ("Назад", "Меню", "Отмена"):
+        context.user_data["state"] = None
+        await nav(update, context, t("main_menu"), main_menu_kb(update.effective_user.id))
+        return
+
+    pref = {"Парня": "m", "Девушку": "f", "Любого": "any"}.get(text)
+    if not pref:
+        await context.bot.send_message(
+            update.effective_chat.id, t("pick_on_kb"), reply_markup=roulette_pref_reply_kb(),
+        )
+        return
+
+    user = get_user(update.effective_user.id)
+    if not user["gender"]:
+        context.user_data["state"] = "set_gender_first"
+        await context.bot.send_message(
+            update.effective_chat.id, t("gender_needed_for_search"),
+            reply_markup=gender_kb(with_back=False),
+        )
+        return
+
+    conn.execute("UPDATE users SET search_pref=? WHERE tg_id=?", (pref, user["tg_id"]))
+    conn.execute(
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
+        "VALUES (?, ?, ?, ?, 'normal', ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
+        "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+        (user["tg_id"], user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
+    )
+    conn.commit()
+    context.user_data["state"] = None
+    await clean_screen(update, context)
+    await context.bot.send_message(
+        update.effective_chat.id, t("roulette_finding_partner"), reply_markup=searching_kb(),
+    )
+
+
+# ============================ МАТЧМЕЙКЕР ============================
+async def roulette_matchmaker(context):
+    rows = conn.execute(
+        "SELECT * FROM roulette_queue WHERE mode='normal' ORDER BY is_vip DESC, joined_at ASC"
+    ).fetchall()
+    matched_ids = set()
+
+    for i, a in enumerate(rows):
+        if a["user_id"] in matched_ids:
+            continue
+        for b in rows[i + 1:]:
+            if b["user_id"] in matched_ids:
+                continue
+            if not compatible(a, b):
+                continue
+            if is_banned_pair(a["user_id"], b["user_id"]):
+                continue
+
+            conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (a["user_id"], b["user_id"]))
+            conn.execute(
+                "INSERT INTO roulette_sessions (user1_id, user2_id, active, mode, started_at) "
+                "VALUES (?, ?, 1, 'normal', ?)",
+                (a["user_id"], b["user_id"], now_iso()),
+            )
+            conn.commit()
+            matched_ids.add(a["user_id"])
+            matched_ids.add(b["user_id"])
+
+            for uid in (a["user_id"], b["user_id"]):
+                try:
+                    _sl = cur_lang()
+                    set_cur_lang(get_lang(uid))
+                    await context.bot.send_message(
+                        uid, t("roulette_found"),
+                        parse_mode="HTML", reply_markup=in_chat_kb(),
+                    )
+                    UD[uid]["state"] = "rchat"
+                    set_cur_lang(_sl)
+                except TelegramError:
+                    pass
+            break
+
+
+# ============================ ЗАВЕРШЕНИЕ СЕССИЙ ============================
+async def end_roulette_session(context, ender_id, requeue_ender=False):
+    session = get_active_session(ender_id)
+    if not session:
+        return None
+
+    other_id = session["user2_id"] if session["user1_id"] == ender_id else session["user1_id"]
+    conn.execute(
+        "UPDATE roulette_sessions SET active=0, ended_by=?, ended_at=? WHERE id=?",
+        (ender_id, now_iso(), session["id"]),
+    )
+    conn.commit()
+
+    await handle_spectators_on_end(context, session["id"])
+
+    UD[other_id]["state"] = "rleft"
+    UD[other_id]["last_session"] = session["id"]
+
+    _sl = cur_lang()
+    set_cur_lang(get_lang(other_id))
+    try:
+        await context.bot.send_message(other_id, t("roulette_left"), reply_markup=left_chat_kb())
+    except TelegramError as e:
+        log.warning("end_roulette_session to %s: %s", other_id, e)
+    set_cur_lang(_sl)
+
+    if requeue_ender:
+        user = get_user(ender_id)
+        if not user or not user["gender"]:
+            return session
+        pref = user["search_pref"] or "any"
+        conn.execute(
+            "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
+            "VALUES (?, ?, ?, ?, 'normal', ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
+            "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+            (ender_id, user["gender"], pref, 1 if is_vip(user) else 0, now_iso()),
+        )
+        conn.commit()
+
+    return session
+
+
+async def force_end_session(context, session_id):
+    s = conn.execute("SELECT * FROM roulette_sessions WHERE id=? AND active=1", (session_id,)).fetchone()
+    if not s:
+        return
+
+    conn.execute("UPDATE roulette_sessions SET active=0, ended_at=? WHERE id=?", (now_iso(), session_id))
+    conn.execute("DELETE FROM roulette_queue WHERE user_id IN (?, ?)", (s["user1_id"], s["user2_id"]))
+    conn.commit()
+
+    await handle_spectators_on_end(context, session_id)
+
+    for uid in (s["user1_id"], s["user2_id"]):
+        st = (UD.get(uid) or {}).get("state")
+        if st in ("rchat", "nearby_chat"):
+            UD[uid]["state"] = "rleft"
+            UD[uid]["last_session"] = session_id
+            try:
+                _sl = cur_lang()
+                set_cur_lang(get_lang(uid))
+                await context.bot.send_message(uid, t("roulette_left"), reply_markup=left_chat_kb())
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+
+
+async def end_dead_sessions(context):
+    rows = conn.execute("SELECT * FROM roulette_sessions WHERE active=1").fetchall()
+    ended = 0
+    for s in rows:
+        if get_user(s["user1_id"]) is None or get_user(s["user2_id"]) is None:
+            await force_end_session(context, s["id"])
+            ended += 1
+    if ended:
+        log.info("end_dead_sessions: завершено %d", ended)
+
+
+# ============================ ОБСЛУЖИВАНИЕ ОЧЕРЕДИ ============================
+async def queue_maintenance(context):
+    now = now_dt()
+    rows = conn.execute("SELECT * FROM roulette_queue").fetchall()
+    alive_ids = set()
+
+    for r in rows:
+        uid = r["user_id"]
+        alive_ids.add(uid)
+        try:
+            joined = datetime.fromisoformat(r["joined_at"])
+        except (ValueError, TypeError):
+            continue
+        mins = (now - joined).total_seconds() / 60.0
+
+        if mins >= SEARCH_TIMEOUT_MIN:
+            conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
+            conn.commit()
+            _QUEUE_REMIND.pop(uid, None)
+            if UD.get(uid):
+                UD[uid]["state"] = None
+            try:
+                _sl = cur_lang()
+                set_cur_lang(get_lang(uid))
+                await context.bot.send_message(
+                    uid, t("search_timeout", min=SEARCH_TIMEOUT_MIN),
+                    parse_mode="HTML", reply_markup=main_menu_kb(uid),
+                )
+                set_cur_lang(_sl)
+            except TelegramError:
+                pass
+        else:
+            last = _QUEUE_REMIND.get(uid, joined)
+            if (now - last).total_seconds() / 60.0 >= SEARCH_REMIND_MIN:
+                _QUEUE_REMIND[uid] = now
+                try:
+                    _sl = cur_lang()
+                    set_cur_lang(get_lang(uid))
+                    await context.bot.send_message(
+                        uid, t("search_still", min=int(mins)),
+                        parse_mode="HTML", reply_markup=searching_kb(),
+                    )
+                    set_cur_lang(_sl)
+                except TelegramError:
+                    pass
+
+    for gone in [k for k in _QUEUE_REMIND if k not in alive_ids]:
+        _QUEUE_REMIND.pop(gone, None)
+
+
+# ============================ КНОПКИ ЧАТА ============================
+async def _requeue_and_search(context, uid: int):
+    user = get_user(uid)
+    conn.execute(
+        "INSERT INTO roulette_queue (user_id, gender, pref, is_vip, mode, joined_at) "
+        "VALUES (?, ?, ?, ?, 'normal', ?) "
+        "ON CONFLICT(user_id) DO UPDATE SET gender=excluded.gender, pref=excluded.pref, "
+        "is_vip=excluded.is_vip, mode=excluded.mode, joined_at=excluded.joined_at",
+        (uid, user["gender"], user["search_pref"] or "any", 1 if is_vip(user) else 0, now_iso()),
+    )
+    conn.commit()
+    UD[uid]["state"] = None
+    await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
+
+
+async def rchat_next(update, context):
+    uid = update.effective_user.id
+    await end_roulette_session(context, uid, requeue_ender=False)
+    context.user_data["state"] = None
+
+    user = get_user(uid)
+    if not user or not user["gender"]:
+        await context.bot.send_message(uid, t("main_menu"), reply_markup=main_menu_kb(uid))
+        return
+    await _requeue_and_search(context, uid)
+
+
+async def rchat_stop(update, context):
+    uid = update.effective_user.id
+    await end_roulette_session(context, uid, requeue_ender=False)
+    context.user_data["state"] = "roulette_pref"
+    await context.bot.send_message(uid, t("roulette_who"), reply_markup=roulette_pref_reply_kb())
+
+
+async def rleft_research(update, context):
+    uid = update.effective_user.id
+    context.user_data["state"] = None
+    context.user_data.pop("last_session", None)
+    if get_active_session(uid):
+        return
+    if conn.execute("SELECT 1 FROM roulette_queue WHERE user_id=?", (uid,)).fetchone():
+        await context.bot.send_message(uid, t("roulette_finding_partner"), reply_markup=searching_kb())
+        return
+    await _requeue_and_search(context, uid)
+
+
+async def rleft_report(update, context):
+    uid = update.effective_user.id
+    sid = context.user_data.get("last_session")
+    session = conn.execute("SELECT * FROM roulette_sessions WHERE id=?", (sid,)).fetchone() if sid else None
+    if not session:
+        context.user_data["state"] = None
+        await update.message.reply_text(t("session_not_found"), reply_markup=main_menu_kb(uid))
+        return
+    reported_id = session["user2_id"] if uid == session["user1_id"] else session["user1_id"]
+    context.user_data["state"] = "awaiting_report_reason"
+    context.user_data["report_context"] = "roulette"
+    context.user_data["report_ref_id"] = sid
+    context.user_data["reported_id"] = reported_id
+    context.user_data.pop("last_session", None)
+    await update.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
+    # ===================== БЛОК 10 / 14 — 🎯 𝐍𝐞𝐱𝐭.. =====================
+
+NEXT_BRAND = "𝐍𝐞𝐱𝐭.."
+
+
+# ============================ ХЕЛПЕР ============================
 async def _next_show(update, context, text, kb, parse_mode="HTML", photo_id=None):
-    """Удаляет нажатие юзера + прошлую карточку Next, шлёт новую."""
     chat_id = update.effective_chat.id
 
     if update.message is not None:
@@ -4591,7 +5007,7 @@ async def next_router(update, context):
     if text in ("🔥 Смотреть анкеты", "Смотреть анкеты"):
         await next_browse(update, context)
         return
-    if text in ("👤 Моя анкета", "Моя анкета"):
+    if text in ("📝 Моя анкета", "Моя анкета"):
         await next_edit_menu(update, context)
         return
     await update.message.reply_text(t("choose_on_kb"), reply_markup=next_menu_kb())
@@ -4619,7 +5035,7 @@ async def next_edit_menu(update, context):
     photo_status = "✅" if prof["photo_id"] else "❌"
 
     text = (
-        f"👤 <b>Моя анкета</b>\n"
+        f"📝 <b>Моя анкета</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "<blockquote>"
         f"📝 Имя: <b>{html.escape(prof['name'])}</b>\n"
@@ -4692,9 +5108,8 @@ async def next_preview(update, context):
     await _next_show(update, context, text, next_edit_kb(), photo_id=prof["photo_id"])
 
 
-# ============================ ОБРАБОТКА ПОЛЕЙ (создание + редактирование) ============================
+# ============================ ЕДИНЫЙ РОУТЕР ПОЛЕЙ ============================
 async def next_field_router(update, context):
-    """Единый роутер для создания и редактирования полей анкеты."""
     state = context.user_data.get("state") or ""
     text = (update.message.text or "").strip()
     uid = update.effective_user.id
@@ -4773,7 +5188,7 @@ async def next_field_router(update, context):
         await next_edit_menu(update, context)
         return
 
-    # === СОЗДАНИЕ (мастер) ===
+    # === СОЗДАНИЕ ===
     p = context.user_data.setdefault("next_new", {})
 
     if state == "next_create_name":
@@ -4937,7 +5352,7 @@ async def next_view_router(update, context):
         await next_browse(update, context)
         return
 
-    if text in ("⛔ Жалоба", "Жалоба", "⛔", "Пожаловаться"):
+    if text in ("🚩 Жалоба", "Жалоба", "🚩", "Пожаловаться"):
         context.user_data["state"] = "awaiting_report_reason"
         context.user_data["report_context"] = "nearby"
         context.user_data["report_ref_id"] = None
@@ -4945,7 +5360,7 @@ async def next_view_router(update, context):
         await update.message.reply_text(t("report_choose"), reply_markup=report_reason_kb())
         return
 
-    if text in ("💬 Написать", "Написать", "💬"):
+    if text in ("💌 Написать", "Написать", "💌"):
         context.user_data["state"] = "next_msg_type"
         await update.message.reply_text(
             t("next_msg_prompt"), parse_mode="HTML", reply_markup=next_cancel_kb(),
@@ -5038,7 +5453,7 @@ async def deliver_next_message(context, from_id, to_id, content_type,
     set_cur_lang(get_lang(to_id))
 
     kb = next_reply_inline_kb(mid)
-    header = f"🌟 <b>{NEXT_BRAND}</b>\n"
+    header = f"🎯 <b>{NEXT_BRAND}</b>\n"
 
     try:
         if content_type == "text":
@@ -5259,9 +5674,9 @@ async def show_referral(update, context):
         mod_thr = cfg_moder_threshold()
         prog_lines = [t("ref_progress_title")]
         if vip_thr > 0:
-            prog_lines.append(f"VIP: {progress_bar(qual, vip_thr)} {min(qual, vip_thr)}/{vip_thr} {fw}")
+            prog_lines.append(f"👑 VIP: {progress_bar(qual, vip_thr)} {min(qual, vip_thr)}/{vip_thr} {fw}")
         if mod_thr > 0:
-            prog_lines.append(f"Moder: {progress_bar(qual, mod_thr)} {min(qual, mod_thr)}/{mod_thr} {fw}")
+            prog_lines.append(f"🛡 Moder: {progress_bar(qual, mod_thr)} {min(qual, mod_thr)}/{mod_thr} {fw}")
         progress_block = "\n".join(prog_lines)
 
     caption = t(
@@ -5350,7 +5765,7 @@ async def show_top(update, context):
     track_extra(context, msg)
 
 
-# ============================ НАГРАДЫ ЗА РЕФЕРАЛОВ ============================
+# ============================ НАГРАДЫ ============================
 async def refresh_ref_rewards(update, context):
     query = update.callback_query
     try:
@@ -5441,16 +5856,16 @@ async def on_ref_info(update, context):
     )
 
 
-# ============================ НАСТРОЙКИ РЕФ-НАГРАД (АДМИН) ============================
+# ============================ НАСТРОЙКИ РЕФ-НАГРАД ============================
 async def show_ref_settings(update, context):
     context.user_data["state"] = "ref_settings"
     photo_state = "есть" if get_setting("ref_photo") else "нет"
     text = (
-        "<b>Настройки реферальных наград</b>\n"
+        "⚙️ <b>Настройки реферальных наград</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        f"VIP: <b>{cfg_vip_days()}</b> дн. за <b>{cfg_vip_threshold()}</b> друзей\n"
-        f"Модер: <b>{cfg_moder_days()}</b> дн. за <b>{cfg_moder_threshold()}</b> друзей\n"
-        f"Фото на экране «Пригласить»: {photo_state}\n\n"
+        f"👑 VIP: <b>{cfg_vip_days()}</b> дн. за <b>{cfg_vip_threshold()}</b> друзей\n"
+        f"🛡 Модер: <b>{cfg_moder_days()}</b> дн. за <b>{cfg_moder_threshold()}</b> друзей\n"
+        f"📷 Фото на экране «Пригласить»: {photo_state}\n\n"
         "Выбери что изменить"
     )
     await nav(update, context, text, ref_settings_kb(), parse_mode="HTML")
@@ -5465,10 +5880,10 @@ async def ref_settings_router(update, context):
         return
 
     mp = {
-        "VIP: дней": ("ref_set_vip_days", "Введите, на сколько ДНЕЙ давать VIP:"),
-        "VIP: друзей": ("ref_set_vip_threshold", "Введите, сколько ДРУЗЕЙ нужно для VIP:"),
-        "Модер: дней": ("ref_set_moder_days", "Введите, на сколько ДНЕЙ давать модерку:"),
-        "Модер: друзей": ("ref_set_moder_threshold", "Введите, сколько ДРУЗЕЙ нужно для модерки:"),
+        "VIP: дней": ("ref_set_vip_days", "📅 Введите, на сколько ДНЕЙ давать VIP:"),
+        "VIP: друзей": ("ref_set_vip_threshold", "👥 Введите, сколько ДРУЗЕЙ нужно для VIP:"),
+        "Модер: дней": ("ref_set_moder_days", "📅 Введите, на сколько ДНЕЙ давать модерку:"),
+        "Модер: друзей": ("ref_set_moder_threshold", "👥 Введите, сколько ДРУЗЕЙ нужно для модерки:"),
     }
 
     if text == "Назад":
@@ -5476,11 +5891,11 @@ async def ref_settings_router(update, context):
         return
     if text == "Фото":
         context.user_data["state"] = "ref_set_photo"
-        await nav(update, context, "Отправьте фото для экрана «Пригласить» (или «Отмена»):", cancel_reply_kb())
+        await nav(update, context, "📷 Отправьте фото для экрана «Пригласить» (или «Отмена»):", cancel_reply_kb())
         return
     if text == "Убрать фото":
         set_setting("ref_photo", "")
-        await update.message.reply_text("Фото убрано.")
+        await update.message.reply_text("✅ Фото убрано.")
         await show_ref_settings(update, context)
         return
     if text in mp:
@@ -5489,7 +5904,7 @@ async def ref_settings_router(update, context):
         await nav(update, context, prompt, cancel_reply_kb())
         return
 
-    await update.message.reply_text("Выбери пункт на клавиатуре", reply_markup=ref_settings_kb())
+    await update.message.reply_text("👇 Выбери пункт на клавиатуре", reply_markup=ref_settings_kb())
 
 
 async def process_ref_setting_value(update, context):
@@ -5500,19 +5915,19 @@ async def process_ref_setting_value(update, context):
         await show_ref_settings(update, context)
         return
     if not text.isdigit() or int(text) <= 0:
-        await update.message.reply_text("Введите положительное число:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🔢 Введите положительное число:", reply_markup=cancel_reply_kb())
         return
 
     val = int(text)
     keymap = {
-        "ref_set_vip_days": ("ref_vip_days", "VIP дней"),
-        "ref_set_vip_threshold": ("ref_vip_threshold", "VIP друзей"),
-        "ref_set_moder_days": ("ref_moder_days", "Модер дней"),
-        "ref_set_moder_threshold": ("ref_moder_threshold", "Модер друзей"),
+        "ref_set_vip_days": ("ref_vip_days", "👑 VIP дней"),
+        "ref_set_vip_threshold": ("ref_vip_threshold", "👥 VIP друзей"),
+        "ref_set_moder_days": ("ref_moder_days", "🛡 Модер дней"),
+        "ref_set_moder_threshold": ("ref_moder_threshold", "👥 Модер друзей"),
     }
     skey, label = keymap[state]
     set_setting(skey, val)
-    await update.message.reply_text(f"{label}: {val}")
+    await update.message.reply_text(f"✅ {label}: {val}")
     await show_ref_settings(update, context)
 
 
@@ -5537,7 +5952,7 @@ async def show_shop(update, context):
 
     base = t("shop_title") if items else t("shop_empty")
     if items and is_unlimited(viewer):
-        base += "\n<i>У вас безлимитный баланс.</i>"
+        base += "\n<i>∞ У вас безлимитный баланс.</i>"
     elif items and is_vip(viewer):
         base += "\n" + t("shop_vip_note")
 
@@ -5564,7 +5979,7 @@ async def shop_router(update, context):
     if text == "Добавить товар" and is_admin(uid):
         context.user_data["state"] = "shop_add_title"
         context.user_data["new_item"] = {}
-        await nav(update, context, "Название товара (текст кнопки):", cancel_reply_kb())
+        await nav(update, context, "📝 Название товара (текст кнопки):", cancel_reply_kb())
         return
 
     if text == "Изменить" and is_admin(uid):
@@ -5648,10 +6063,10 @@ async def do_purchase(update, context, item):
     await notify_admins(
         context,
         "🛒 <b>Покупка</b>\n"
-        f"Покупатель: {user_mention(user)}\n"
-        f"Товар: <b>{html.escape(item['title'])}</b>\n"
-        f"Цена: <b>{price_line}</b>\n"
-        f"Тип награды: <code>{item['reward_type'] or 'manual'}</code>",
+        f"👤 Покупатель: {user_mention(user)}\n"
+        f"📦 Товар: <b>{html.escape(item['title'])}</b>\n"
+        f"💰 Цена: <b>{price_line}</b>\n"
+        f"🎁 Тип: <code>{item['reward_type'] or 'manual'}</code>",
         parse_mode="HTML",
     )
 
@@ -5764,12 +6179,12 @@ async def submit_moder_app(update, context):
 
     text = (
         f"📨 Заявка на модератора #{app_id}\n"
-        f"Пользователь: {user_mention(user)}\n"
-        f"Пол: {html.escape(app.get('gender') or '—')}\n"
-        f"Возраст: {html.escape(app.get('age') or '—')}\n"
-        f"Время в ТГ/день: {html.escape(app.get('tg_time') or '—')}\n"
-        f"Доступность: {html.escape(app.get('availability') or '—')}\n"
-        f"Оплачено: {price}"
+        f"👤 Пользователь: {user_mention(user)}\n"
+        f"⚧ Пол: {html.escape(app.get('gender') or '—')}\n"
+        f"🎂 Возраст: {html.escape(app.get('age') or '—')}\n"
+        f"⏱ Время в ТГ/день: {html.escape(app.get('tg_time') or '—')}\n"
+        f"🕐 Доступность: {html.escape(app.get('availability') or '—')}\n"
+        f"💰 Оплачено: {price}"
     )
     for admin_id in ADMIN_IDS:
         try:
@@ -5841,57 +6256,57 @@ async def process_shop_add(update, context):
 
     if text == "Отмена":
         context.user_data["state"] = None
-        await update.message.reply_text("Отменено.", reply_markup=main_menu_kb(update.effective_user.id))
+        await update.message.reply_text("↩️ Отменено.", reply_markup=main_menu_kb(update.effective_user.id))
         await show_shop(update, context)
         return
 
     if state == "shop_add_title":
-        await update.message.reply_text("Перевожу название на 3 языка…")
+        await update.message.reply_text("🌐 Перевожу название на 3 языка…")
         ru, uz, en = await translate_to_all(text)
         item["title"] = ru
         item["title_uz"] = uz
         item["title_en"] = en
         context.user_data["state"] = "shop_add_price"
         await update.message.reply_text(
-            f"Название сохранено:\n{ru}\n{uz}\n{en}\n\nЦена в коинах:",
+            f"✅ Название сохранено:\n{ru}\n{uz}\n{en}\n\n💰 Цена в коинах:",
             reply_markup=cancel_reply_kb(),
         )
 
     elif state == "shop_add_price":
         if not text.isdigit():
-            await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число:", reply_markup=cancel_reply_kb())
             return
         item["price"] = int(text)
         context.user_data["state"] = "shop_add_reward"
-        await update.message.reply_text("Что получит покупатель?", reply_markup=reward_type_kb())
+        await update.message.reply_text("🎁 Что получит покупатель?", reply_markup=reward_type_kb())
 
     elif state == "shop_add_reward":
         mp = {"Коины": "coins", "VIP": "vip", "Модер": "moder", "Вручную": "manual"}
         rt = mp.get(text)
         if not rt:
-            await update.message.reply_text("Выберите тип награды", reply_markup=reward_type_kb())
+            await update.message.reply_text("👇 Выберите тип награды", reply_markup=reward_type_kb())
             return
         item["reward_type"] = rt
 
         if rt == "coins":
             context.user_data["state"] = "shop_add_amount"
-            await update.message.reply_text("Сколько коинов начислять?", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("💎 Сколько коинов начислять?", reply_markup=cancel_reply_kb())
         elif rt == "vip":
             context.user_data["state"] = "shop_add_days"
-            await update.message.reply_text("На сколько дней давать VIP?", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("⏳ На сколько дней давать VIP?", reply_markup=cancel_reply_kb())
         else:
             await _finalize_new_item(update, context)
 
     elif state == "shop_add_amount":
         if not text.isdigit():
-            await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
         await _finalize_new_item(update, context)
 
     elif state == "shop_add_days":
         if not text.isdigit():
-            await update.message.reply_text("Введите число дней:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число дней:", reply_markup=cancel_reply_kb())
             return
         item["reward_amount"] = int(text)
         await _finalize_new_item(update, context)
@@ -5931,7 +6346,7 @@ async def shop_edit_list(update, context):
     if not items:
         context.user_data["state"] = None
         await update.message.reply_text(
-            "Нет товаров для редактирования.",
+            "📭 Нет товаров для редактирования.",
             reply_markup=main_menu_kb(update.effective_user.id),
         )
         return
@@ -5947,7 +6362,7 @@ async def shop_edit_list(update, context):
     context.user_data["edit_map"] = edit_map
     context.user_data["state"] = "shop_edit_pick"
     await update.message.reply_text(
-        "Выберите товар для изменения",
+        "👇 Выберите товар для изменения",
         reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)),
     )
 
@@ -5963,13 +6378,13 @@ async def shop_edit_router(update, context):
             return
         item_id = context.user_data.get("edit_map", {}).get(text)
         if item_id is None:
-            await update.message.reply_text("Выберите товар на клавиатуре")
+            await update.message.reply_text("👇 Выберите товар на клавиатуре")
             return
         context.user_data["edit_item_id"] = item_id
         context.user_data["state"] = "shop_edit_menu"
         item = conn.execute("SELECT * FROM shop_items WHERE id=?", (item_id,)).fetchone()
         await update.message.reply_text(
-            f"Товар: {item['title']} — {item['price']}\nЧто изменить?",
+            f"📦 Товар: {item['title']} — {item['price']}\nЧто изменить?",
             reply_markup=shop_edit_item_kb(item),
         )
         return
@@ -5985,28 +6400,28 @@ async def shop_edit_router(update, context):
         return
     if text == "Название":
         context.user_data["state"] = "shop_edit_name"
-        await update.message.reply_text("Новое название:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("📝 Новое название:", reply_markup=cancel_reply_kb())
         return
     if text == "Цена":
         context.user_data["state"] = "shop_edit_price"
-        await update.message.reply_text("Новая цена в коинах:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("💰 Новая цена в коинах:", reply_markup=cancel_reply_kb())
         return
     if text == "Сумма коинов":
         context.user_data["state"] = "shop_edit_amount"
-        await update.message.reply_text("Новая сумма коинов:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("💎 Новая сумма коинов:", reply_markup=cancel_reply_kb())
         return
     if text == "Срок VIP":
         context.user_data["state"] = "shop_edit_days"
-        await update.message.reply_text("Новый срок VIP (дней):", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("⏳ Новый срок VIP (дней):", reply_markup=cancel_reply_kb())
         return
     if text == "Удалить товар":
         conn.execute("UPDATE shop_items SET active=0 WHERE id=?", (item_id,))
         conn.commit()
-        await update.message.reply_text("Товар удалён.", reply_markup=main_menu_kb(uid))
+        await update.message.reply_text("🗑 Товар удалён.", reply_markup=main_menu_kb(uid))
         await show_shop(update, context)
         return
 
-    await update.message.reply_text("Выберите действие", reply_markup=shop_edit_item_kb(item))
+    await update.message.reply_text("👇 Выберите действие", reply_markup=shop_edit_item_kb(item))
 
 
 async def process_shop_edit_value(update, context):
@@ -6017,7 +6432,7 @@ async def process_shop_edit_value(update, context):
     if text == "Отмена":
         context.user_data["state"] = "shop_edit_menu"
         item = conn.execute("SELECT * FROM shop_items WHERE id=?", (item_id,)).fetchone()
-        await update.message.reply_text("Отменено.", reply_markup=shop_edit_item_kb(item))
+        await update.message.reply_text("↩️ Отменено.", reply_markup=shop_edit_item_kb(item))
         return
 
     if state == "shop_edit_name":
@@ -6027,40 +6442,40 @@ async def process_shop_edit_value(update, context):
             (ru, uz, en, item_id),
         )
         conn.commit()
-        msg = f"Название изменено:\n{ru}\n{uz}\n{en}"
+        msg = f"✅ Название изменено:\n{ru}\n{uz}\n{en}"
     elif state == "shop_edit_price":
         if not text.isdigit():
-            await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число:", reply_markup=cancel_reply_kb())
             return
         conn.execute("UPDATE shop_items SET price=? WHERE id=?", (int(text), item_id))
         conn.commit()
-        msg = "Цена изменена."
+        msg = "✅ Цена изменена."
     elif state == "shop_edit_amount":
         if not text.isdigit():
-            await update.message.reply_text("Введите число:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число:", reply_markup=cancel_reply_kb())
             return
         conn.execute("UPDATE shop_items SET reward_amount=? WHERE id=?", (int(text), item_id))
         conn.commit()
-        msg = "Сумма коинов изменена."
+        msg = "✅ Сумма коинов изменена."
     elif state == "shop_edit_days":
         if not text.isdigit():
-            await update.message.reply_text("Введите число дней:", reply_markup=cancel_reply_kb())
+            await update.message.reply_text("🔢 Введите число дней:", reply_markup=cancel_reply_kb())
             return
         conn.execute(
             "UPDATE shop_items SET reward_amount=?, duration_days=? WHERE id=?",
             (int(text), int(text), item_id),
         )
         conn.commit()
-        msg = "Срок VIP изменён."
+        msg = "✅ Срок VIP изменён."
     else:
-        msg = "Готово."
+        msg = "✅ Готово."
 
     context.user_data["state"] = "shop_edit_menu"
     item = conn.execute("SELECT * FROM shop_items WHERE id=?", (item_id,)).fetchone()
     await update.message.reply_text(msg, reply_markup=shop_edit_item_kb(item))
     # ===================== БЛОК 12 / 14 — STARS, ВОЗВРАТ, РАСКРЫТИЕ =====================
 
-# ============================ ВИТРИНА ПАКЕТОВ ============================
+# ============================ ВИТРИНА ============================
 async def show_star_shop(update, context):
     pkgs = conn.execute("SELECT * FROM star_packages WHERE active=1").fetchall()
     uid = update.effective_user.id
@@ -6160,11 +6575,11 @@ async def on_successful_payment(update: Update, context: ContextTypes.DEFAULT_TY
         await notify_admins(
             context,
             "⚠️ <b>Платёж не обработан</b>\n"
-            f"User: <code>{uid}</code>\n"
-            f"Payload: <code>{html.escape(payload)}</code>\n"
-            f"Amount: {sp.total_amount} {sp.currency}\n"
-            f"Charge ID: <code>{html.escape(sp.telegram_payment_charge_id)}</code>\n\n"
-            f"Ошибка: <code>{html.escape(str(e)[:200])}</code>",
+            f"👤 User: <code>{uid}</code>\n"
+            f"📦 Payload: <code>{html.escape(payload)}</code>\n"
+            f"💰 Amount: {sp.total_amount} {sp.currency}\n"
+            f"🆔 Charge ID: <code>{html.escape(sp.telegram_payment_charge_id)}</code>\n\n"
+            f"❌ Ошибка: <code>{html.escape(str(e)[:200])}</code>",
             parse_mode="HTML",
         )
 
@@ -6204,9 +6619,9 @@ async def _do_successful_payment(update, context, sp, uid, payload):
         context,
         "💰 Покупка коинов!\n"
         f"{user_mention(user)}\n"
-        f"Пакет: {html.escape(pkg['title']) if pkg else '—'}\n"
-        f"Коинов: {coins} / Звёзд: {sp.total_amount}\n"
-        f"Charge ID: <code>{html.escape(sp.telegram_payment_charge_id)}</code>",
+        f"📦 Пакет: {html.escape(pkg['title']) if pkg else '—'}\n"
+        f"💎 Коинов: {coins} / ⭐ Звёзд: {sp.total_amount}\n"
+        f"🆔 Charge ID: <code>{html.escape(sp.telegram_payment_charge_id)}</code>",
         parse_mode="HTML",
     )
 
@@ -6219,7 +6634,7 @@ async def show_star_admin(update, context):
     ) or "(пакетов нет)"
     context.user_data["state"] = "star_admin"
     await update.message.reply_text(
-        f"Пакеты коинов за Stars:\n{lst}",
+        f"⭐ Пакеты коинов за Stars:\n{lst}",
         reply_markup=star_admin_kb(),
     )
 
@@ -6234,13 +6649,13 @@ async def star_admin_router(update, context):
     if text == "Добавить пакет коинов":
         context.user_data["state"] = "star_add_title"
         context.user_data["new_star"] = {}
-        await update.message.reply_text("Название пакета:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("📝 Название пакета:", reply_markup=cancel_reply_kb())
         return
 
     if text == "Удалить пакет коинов":
         pkgs = conn.execute("SELECT * FROM star_packages WHERE active=1").fetchall()
         if not pkgs:
-            await update.message.reply_text("Пакетов нет.", reply_markup=star_admin_kb())
+            await update.message.reply_text("📭 Пакетов нет.", reply_markup=star_admin_kb())
             return
         smap, rows = {}, []
         for p in pkgs:
@@ -6251,12 +6666,12 @@ async def star_admin_router(update, context):
         context.user_data["star_del_map"] = smap
         context.user_data["state"] = "star_del"
         await update.message.reply_text(
-            "Какой пакет удалить?",
+            "🗑 Какой пакет удалить?",
             reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)),
         )
         return
 
-    await update.message.reply_text("Выбери действие", reply_markup=star_admin_kb())
+    await update.message.reply_text("👇 Выбери действие", reply_markup=star_admin_kb())
 
 
 async def process_star_wizard(update, context):
@@ -6265,18 +6680,18 @@ async def process_star_wizard(update, context):
 
     if text == "Отмена":
         context.user_data["state"] = "star_admin"
-        await update.message.reply_text("Отменено.", reply_markup=star_admin_kb())
+        await update.message.reply_text("↩️ Отменено.", reply_markup=star_admin_kb())
         return
 
     if state == "star_del":
         pid = context.user_data.get("star_del_map", {}).get(text)
         if pid is None:
-            await update.message.reply_text("Выбери пакет на клавиатуре.")
+            await update.message.reply_text("👇 Выбери пакет на клавиатуре.")
             return
         conn.execute("UPDATE star_packages SET active=0 WHERE id=?", (pid,))
         conn.commit()
         context.user_data["state"] = "star_admin"
-        await update.message.reply_text("Пакет удалён.", reply_markup=star_admin_kb())
+        await update.message.reply_text("🗑 Пакет удалён.", reply_markup=star_admin_kb())
         return
 
     item = context.user_data.setdefault("new_star", {})
@@ -6284,19 +6699,19 @@ async def process_star_wizard(update, context):
     if state == "star_add_title":
         item["title"] = text
         context.user_data["state"] = "star_add_coins"
-        await update.message.reply_text("Сколько коинов даёт пакет?", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("💎 Сколько коинов даёт пакет?", reply_markup=cancel_reply_kb())
     elif state == "star_add_coins":
         if not text.isdigit():
-            await update.message.reply_text("Введи число:")
+            await update.message.reply_text("🔢 Введи число:")
             return
         item["coins"] = int(text)
         context.user_data["state"] = "star_add_price"
-        await update.message.reply_text("Цена в звёздах:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("⭐ Цена в звёздах:", reply_markup=cancel_reply_kb())
     elif state == "star_add_price":
         if not text.isdigit():
-            await update.message.reply_text("Введи число:")
+            await update.message.reply_text("🔢 Введи число:")
             return
-        await update.message.reply_text("Перевожу название…")
+        await update.message.reply_text("🌐 Перевожу название…")
         ru, uz, en = await translate_to_all(item["title"])
         conn.execute(
             "INSERT INTO star_packages (title, title_uz, title_en, coins, price_stars) "
@@ -6306,12 +6721,12 @@ async def process_star_wizard(update, context):
         conn.commit()
         context.user_data["state"] = "star_admin"
         await update.message.reply_text(
-            f"Пакет добавлен!\n{ru}\n{uz}\n{en}",
+            f"✅ Пакет добавлен!\n{ru}\n{uz}\n{en}",
             reply_markup=star_admin_kb(),
         )
 
 
-# ============================ ВОЗВРАТ STARS (ТОЛЬКО SUPER_ADMIN) ============================
+# ============================ ВОЗВРАТ STARS ============================
 async def show_stars_refund(update, context):
     if not is_super_admin(update.effective_user.id):
         await update.message.reply_text(t("super_admin_only"))
@@ -6387,7 +6802,7 @@ async def on_refund_pick(update, context):
     purchases = context.user_data.get("admin_refunds", {})
     p = purchases.get(idx)
     if not p:
-        await query.answer("Данные устарели. Введи кнопку заново.", show_alert=True)
+        await query.answer("⚠️ Данные устарели. Введи кнопку заново.", show_alert=True)
         return
 
     await query.answer()
@@ -6399,10 +6814,10 @@ async def on_refund_pick(update, context):
     ])
     await query.edit_message_text(
         "⚠️ <b>Подтверждение возврата</b>\n\n"
-        f"Пользователь: <code>{p['user_id']}</code>\n"
-        f"Звёзд к возврату: <b>⭐{p['stars']}</b>\n"
-        f"Коинов спишется: <b>{refund_coins}</b> ({STARS_REFUND_PERCENT}% от {p['coins']})\n"
-        f"Charge ID: <code>{html.escape(p['charge_id'][:24])}...</code>\n\n"
+        f"👤 Пользователь: <code>{p['user_id']}</code>\n"
+        f"⭐ Звёзд к возврату: <b>{p['stars']}</b>\n"
+        f"💎 Коинов спишется: <b>{refund_coins}</b> ({STARS_REFUND_PERCENT}% от {p['coins']})\n"
+        f"🆔 Charge ID: <code>{html.escape(p['charge_id'][:24])}...</code>\n\n"
         "<i>Действие необратимо. Возврат возможен в течение 21 дня от покупки.</i>",
         parse_mode="HTML",
         reply_markup=kb,
@@ -6426,7 +6841,7 @@ async def on_refund_do(update, context):
     purchases = context.user_data.get("admin_refunds", {})
     p = purchases.get(idx)
     if not p:
-        await query.answer("Данные устарели.", show_alert=True)
+        await query.answer("⚠️ Данные устарели.", show_alert=True)
         return
 
     await query.answer()
@@ -6496,7 +6911,7 @@ async def on_refund_cancel(update, context):
     await query.edit_message_text("❌ Возврат отменён.")
 
 
-# ============================ РАСКРЫТИЕ ОТПРАВИТЕЛЯ ============================
+# ============================ РАСКРЫТИЕ ============================
 def reveal_sender_text(row) -> str | None:
     sender = get_user(row["from_id"])
     if not sender:
@@ -6665,7 +7080,7 @@ async def adm_stats_msg(update, context):
     kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
 
     await update.message.reply_text(
-        "<b>📊 Статистика бота</b>\n"
+        "📊 <b>Статистика бота</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "<blockquote>"
         f"👥 Пользователей: <b>{users_count}</b>\n"
@@ -6674,7 +7089,7 @@ async def adm_stats_msg(update, context):
         "────────────\n"
         f"🔗 Анон-ссылок: <b>{anon_links}</b>\n"
         f"📨 Рефералов: <b>{ref_links}</b>\n"
-        f"📍 Анкет 𝐍𝐞𝐱𝐭: <b>{nearby_count}</b>\n"
+        f"🎯 Анкет 𝐍𝐞𝐱𝐭..: <b>{nearby_count}</b>\n"
         f"💕 Мэтчей: <b>{matches_count}</b>\n"
         "────────────\n"
         f"💬 Анон-сообщений: <b>{msgs_count}</b>\n"
@@ -6699,7 +7114,7 @@ async def adm_export_msg(update, context):
         await context.bot.send_document(update.effective_user.id, document=f)
 
 
-# ============================ VIP ПО ID И МАССОВО ============================
+# ============================ VIP ============================
 async def admin_vip_router(update, context):
     text = canon(update.message.text.strip())
     state = context.user_data.get("state")
@@ -6912,9 +7327,9 @@ async def show_admin_moder(update, context):
     ).fetchall()
 
     if not rows:
-        text = "<b>Модераторы</b>\n━━━━━━━━━━━━━━━━━━━━\nПока нет ни одного модератора."
+        text = "🛡 <b>Модераторы</b>\n━━━━━━━━━━━━━━━━━━━━\nПока нет ни одного модератора."
     else:
-        lines = [f"<b>Модераторы</b> — всего: <b>{len(rows)}</b>", "━━━━━━━━━━━━━━━━━━━━"]
+        lines = [f"🛡 <b>Модераторы</b> — всего: <b>{len(rows)}</b>", "━━━━━━━━━━━━━━━━━━━━"]
         for i, u in enumerate(rows, 1):
             name = u["first_name"] or "—"
             uname = f"@{u['username']}" if u["username"] else "без юзернейма"
@@ -6940,13 +7355,13 @@ async def admin_moder_router(update, context):
         return
     if text == "Выдать модера":
         context.user_data["state"] = "moder_give_id"
-        await update.message.reply_text("Введите ID для выдачи модерки:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🆔 Введите ID для выдачи модерки:", reply_markup=cancel_reply_kb())
         return
     if text == "Забрать модера":
         context.user_data["state"] = "moder_take_id"
-        await update.message.reply_text("Введите ID для снятия модерки:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🆔 Введите ID для снятия модерки:", reply_markup=cancel_reply_kb())
         return
-    await update.message.reply_text("Выберите действие", reply_markup=admin_moder_kb())
+    await update.message.reply_text("👇 Выберите действие", reply_markup=admin_moder_kb())
 
 
 async def process_moder_give_take(update, context):
@@ -6957,13 +7372,13 @@ async def process_moder_give_take(update, context):
         await show_admin_moder(update, context)
         return
     if not text.isdigit():
-        await update.message.reply_text("ID должен быть числом:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🔢 ID должен быть числом:", reply_markup=cancel_reply_kb())
         return
 
     target = int(text)
     if not get_user(target):
         await update.message.reply_text(
-            "Пользователь не найден (он должен хоть раз запустить бота).",
+            "❌ Пользователь не найден (он должен хоть раз запустить бота).",
             reply_markup=admin_moder_kb(),
         )
         context.user_data["state"] = "admin_moder"
@@ -6980,7 +7395,7 @@ async def process_moder_give_take(update, context):
         except TelegramError:
             pass
         await update.message.reply_text(
-            f"Модерка выдана пользователю {target}.", reply_markup=admin_moder_kb(),
+            f"✅ Модерка выдана пользователю {target}.", reply_markup=admin_moder_kb(),
         )
     else:
         conn.execute("UPDATE users SET is_moder=0 WHERE tg_id=?", (target,))
@@ -6993,7 +7408,7 @@ async def process_moder_give_take(update, context):
         except TelegramError:
             pass
         await update.message.reply_text(
-            f"Модерка снята у пользователя {target}.", reply_markup=admin_moder_kb(),
+            f"✅ Модерка снята у пользователя {target}.", reply_markup=admin_moder_kb(),
         )
     context.user_data["state"] = "admin_moder"
 
@@ -7003,7 +7418,7 @@ async def start_ban(update, context, back_state: str):
     context.user_data["ban_back"] = back_state
     context.user_data["state"] = "ban_id"
     await update.message.reply_text(
-        "Введите ID для бана/разбана (повторный ввод снимет бан):",
+        "🔨 Введите ID для бана/разбана (повторный ввод снимет бан):",
         reply_markup=cancel_reply_kb(),
     )
 
@@ -7015,20 +7430,20 @@ async def process_ban(update, context):
 
     if text == "Отмена":
         context.user_data["state"] = back_state
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        await update.message.reply_text("↩️ Отменено.", reply_markup=back_kb)
         return
     if not text.isdigit():
-        await update.message.reply_text("ID должен быть числом:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🔢 ID должен быть числом:", reply_markup=cancel_reply_kb())
         return
 
     target = int(text)
     u = get_user(target)
     if not u:
-        await update.message.reply_text("Пользователь не найден.", reply_markup=back_kb)
+        await update.message.reply_text("❌ Пользователь не найден.", reply_markup=back_kb)
         context.user_data["state"] = back_state
         return
     if is_admin(target):
-        await update.message.reply_text("Нельзя забанить администратора.", reply_markup=back_kb)
+        await update.message.reply_text("🛡 Нельзя забанить администратора.", reply_markup=back_kb)
         context.user_data["state"] = back_state
         return
 
@@ -7039,17 +7454,17 @@ async def process_ban(update, context):
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (target,))
         conn.commit()
         try:
-            await context.bot.send_message(target, "Вы заблокированы в боте.")
+            await context.bot.send_message(target, "🚫 Вы заблокированы в боте.")
         except TelegramError:
             pass
-        await update.message.reply_text(f"Пользователь {target} забанен.", reply_markup=back_kb)
+        await update.message.reply_text(f"🔨 Пользователь {target} забанен.", reply_markup=back_kb)
     else:
         conn.commit()
         try:
-            await context.bot.send_message(target, "Вы разблокированы.", reply_markup=main_menu_kb(target))
+            await context.bot.send_message(target, "✅ Вы разблокированы.", reply_markup=main_menu_kb(target))
         except TelegramError:
             pass
-        await update.message.reply_text(f"Пользователь {target} разблокирован.", reply_markup=back_kb)
+        await update.message.reply_text(f"✅ Пользователь {target} разблокирован.", reply_markup=back_kb)
 
     context.user_data["state"] = back_state
 
@@ -7063,9 +7478,7 @@ async def moder_panel_router(update, context):
         context.user_data["state"] = None
         await update.message.reply_text(t("main_menu"), reply_markup=main_menu_kb(uid))
         return
-    if text == "Жалобы":
-        await show_pending_reports(update, context)
-        return
+    # Жалобы — только у админа, здесь ветки НЕТ
     if text == "Бан / Разбан":
         await start_ban(update, context, "moder")
         return
@@ -7083,20 +7496,24 @@ async def moder_panel_router(update, context):
             t("moder_help"), parse_mode="HTML", reply_markup=moder_menu_kb(),
         )
         return
-    await update.message.reply_text("Выберите действие", reply_markup=moder_menu_kb())
+    await update.message.reply_text("👇 Выберите действие", reply_markup=moder_menu_kb())
 
 
 async def show_pending_reports(update, context):
+    """Только для админов."""
+    if not is_admin(update.effective_user.id):
+        return
+
     reports = conn.execute(
         "SELECT * FROM reports WHERE status='pending' ORDER BY id DESC LIMIT 20"
     ).fetchall()
-    back_kb = admin_menu_kb() if is_admin(update.effective_user.id) else moder_menu_kb()
+    back_kb = admin_menu_kb()
 
     if not reports:
-        await update.message.reply_text("Нет необработанных жалоб", reply_markup=back_kb)
+        await update.message.reply_text("📭 Нет необработанных жалоб", reply_markup=back_kb)
         return
 
-    await update.message.reply_text(f"Необработанных жалоб: {len(reports)}", reply_markup=back_kb)
+    await update.message.reply_text(f"📋 Необработанных жалоб: {len(reports)}", reply_markup=back_kb)
 
     for r in reports:
         if r["context"] == "anon":
@@ -7104,7 +7521,7 @@ async def show_pending_reports(update, context):
             preview = (
                 msg["text"] if msg and msg["content_type"] == "text" else "[голосовое]"
             ) if msg else "—"
-            body = f"🚩 Жалоба #{r['id']} (анон)\nПричина: {r['reason']}\nСодержание: {preview}"
+            body = f"🚩 Жалоба #{r['id']} (анон)\n📋 Причина: {r['reason']}\n💬 Содержание: {preview}"
         elif r["context"] in ("nearby", "nearby_msg"):
             reported = get_user(r["reported_id"])
             preview = ""
@@ -7113,28 +7530,22 @@ async def show_pending_reports(update, context):
                 if m:
                     preview = m["text"] if m["content_type"] == "text" else "[голосовое]"
             body = (
-                f"⛔ Жалоба #{r['id']} (𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭)\n"
-                f"Причина: {r['reason']}\n"
-                f"На: {user_mention(reported)}\n"
-                f"{('Сообщение: ' + preview) if preview else ''}"
+                f"🚩 Жалоба #{r['id']} (🎯 𝐍𝐞𝐱𝐭..)\n"
+                f"📋 Причина: {r['reason']}\n"
+                f"👤 На: {user_mention(reported)}\n"
+                f"{('💬 Сообщение: ' + preview) if preview else ''}"
             )
         else:
-            body = f"🚩 Жалоба #{r['id']} (рулетка)\nПричина: {r['reason']}"
+            body = f"🚩 Жалоба #{r['id']} (рулетка)\n📋 Причина: {r['reason']}"
 
-        # ФИКС: бан-навсегда для анона и 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭
-        if r["context"] in ("anon", "nearby", "nearby_msg"):
-            ban_label = "Бан навсегда"
-        else:
-            ban_label = "Бан 30 дн."
-
-        kb = InlineKeyboardMarkup([[
-            InlineKeyboardButton(ban_label, callback_data=f"repadm:ok:{r['id']}"),
-            InlineKeyboardButton("Отклонить", callback_data=f"repadm:no:{r['id']}"),
-        ]])
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton(t("btn_ban"), callback_data=f"repadm:ok:{r['id']}")],
+            [InlineKeyboardButton(t("btn_reject_report"), callback_data=f"repadm:no:{r['id']}")],
+        ])
         await context.bot.send_message(update.effective_chat.id, body, reply_markup=kb)
 
 
-# ============================ ОБЯЗАТЕЛЬНЫЕ КАНАЛЫ ============================
+# ============================ КАНАЛЫ ============================
 async def adm_channels_msg(update, context):
     channels = await get_mandatory_channels()
     if channels:
@@ -7147,7 +7558,7 @@ async def adm_channels_msg(update, context):
 
     context.user_data["state"] = "adm_channels_menu"
     await update.message.reply_text(
-        f"<b>Обязательные каналы</b> ({len(channels)}/10)\n"
+        f"📢 <b>Обязательные каналы</b> ({len(channels)}/10)\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         f"<blockquote>{lst}</blockquote>\n"
         "Это каналы/чаты/боты, на которые нужно подписаться, чтобы <b>удалить сообщение</b>.\n"
@@ -7185,14 +7596,14 @@ async def adm_channels_router(update, context):
         if "Подписка для входа" in ctext:
             if not is_admin(uid):
                 await update.message.reply_text(
-                    "Эта настройка доступна только администратору.",
+                    "🔒 Эта настройка доступна только администратору.",
                     reply_markup=adm_channels_kb(uid),
                 )
                 return
             cur = get_setting("subgate_enabled", "0") == "1"
             set_setting("subgate_enabled", "0" if cur else "1")
             await update.message.reply_text(
-                "Подписка для входа ВЫКЛЮЧЕНА." if cur else "Подписка для входа ВКЛЮЧЕНА.",
+                "🔓 Подписка для входа ВЫКЛЮЧЕНА." if cur else "🔒 Подписка для входа ВКЛЮЧЕНА.",
                 reply_markup=adm_channels_kb(uid),
             )
             return
@@ -7201,13 +7612,13 @@ async def adm_channels_router(update, context):
             cnt = conn.execute("SELECT COUNT(*) c FROM mandatory_channels").fetchone()["c"]
             if cnt >= 10:
                 await update.message.reply_text(
-                    "Достигнут максимум — 10 каналов.", reply_markup=adm_channels_kb(uid),
+                    "⚠️ Достигнут максимум — 10 каналов.", reply_markup=adm_channels_kb(uid),
                 )
                 return
             context.user_data["new_channel"] = {}
             context.user_data["state"] = "adm_ch_name"
             await update.message.reply_text(
-                "Введите <b>название кнопки</b>:",
+                "📝 Введите <b>название кнопки</b>:",
                 parse_mode="HTML", reply_markup=cancel_reply_kb(),
             )
             return
@@ -7216,8 +7627,8 @@ async def adm_channels_router(update, context):
             channels = channels_deletable_by(uid)
             if not channels:
                 msg = (
-                    "Каналов нет." if is_admin(uid)
-                    else "У тебя нет каналов для удаления."
+                    "📭 Каналов нет." if is_admin(uid)
+                    else "📭 У тебя нет каналов для удаления."
                 )
                 await update.message.reply_text(msg, reply_markup=adm_channels_kb(uid))
                 return
@@ -7230,19 +7641,19 @@ async def adm_channels_router(update, context):
             context.user_data["del_map"] = del_map
             context.user_data["state"] = "adm_ch_delete"
             await update.message.reply_text(
-                "Выбери канал для удаления",
+                "🗑 Выбери канал для удаления",
                 reply_markup=tr_kb(ReplyKeyboardMarkup(rows, resize_keyboard=True)),
             )
             return
 
-        await update.message.reply_text("Выбери действие", reply_markup=adm_channels_kb(uid))
+        await update.message.reply_text("👇 Выбери действие", reply_markup=adm_channels_kb(uid))
         return
 
     if state == "adm_ch_name":
         context.user_data["new_channel"]["title"] = text
         context.user_data["state"] = "adm_ch_link"
         await update.message.reply_text(
-            "Теперь вставь <b>@канал</b> или ссылку (https://t.me/...):",
+            "🔗 Теперь вставь <b>@канал</b> или ссылку (https://t.me/...):",
             parse_mode="HTML", reply_markup=cancel_reply_kb(),
         )
         return
@@ -7252,7 +7663,7 @@ async def adm_channels_router(update, context):
         url = channel_url(link)
         if not is_valid_btn_url(url):
             await update.message.reply_text(
-                "Ссылка выглядит неправильно. Пришли <b>@username</b> или ссылку <code>https://t.me/...</code>:",
+                "❌ Ссылка выглядит неправильно. Пришли <b>@username</b> или ссылку <code>https://t.me/...</code>:",
                 parse_mode="HTML", reply_markup=cancel_reply_kb(),
             )
             return
@@ -7266,19 +7677,19 @@ async def adm_channels_router(update, context):
         try:
             preview_kb = InlineKeyboardMarkup([[InlineKeyboardButton(title, url=url)]])
             await update.message.reply_text(
-                "<b>Предпросмотр кнопки:</b>\n"
+                "👁 <b>Предпросмотр кнопки:</b>\n"
                 f"Название: <b>{html.escape(title)}</b>\n"
                 f"Ссылка: {html.escape(url)}\n\nВсё верно?",
                 parse_mode="HTML", reply_markup=preview_kb,
             )
         except TelegramError:
             await update.message.reply_text(
-                "<b>Предпросмотр:</b>\n"
+                "👁 <b>Предпросмотр:</b>\n"
                 f"Название: <b>{html.escape(title)}</b>\n"
                 f"Ссылка: {html.escape(url)}",
                 parse_mode="HTML",
             )
-        await update.message.reply_text("Сохранить канал?", reply_markup=save_kb)
+        await update.message.reply_text("💾 Сохранить канал?", reply_markup=save_kb)
         return
 
     if state == "adm_ch_confirm":
@@ -7287,7 +7698,7 @@ async def adm_channels_router(update, context):
             link = nc.get("link") or ""
             if not link:
                 context.user_data["state"] = "adm_channels_menu"
-                await update.message.reply_text("Данные канала потерялись. Начни заново.", reply_markup=adm_channels_kb(uid))
+                await update.message.reply_text("⚠️ Данные канала потерялись. Начни заново.", reply_markup=adm_channels_kb(uid))
                 return
             saved = False
             try:
@@ -7312,17 +7723,17 @@ async def adm_channels_router(update, context):
 
             if saved:
                 await update.message.reply_text(
-                    "Канал добавлен!",
+                    "✅ Канал добавлен!",
                     reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb(),
                 )
             else:
                 await update.message.reply_text(
-                    "Не удалось сохранить канал.",
+                    "❌ Не удалось сохранить канал.",
                     reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb(),
                 )
             await adm_channels_msg(update, context)
             return
-        await update.message.reply_text("Нажми «Сохранить» или «Отмена».")
+        await update.message.reply_text("⚠️ Нажми «Сохранить» или «Отмена».")
         return
 
     if state == "adm_ch_delete":
@@ -7331,12 +7742,12 @@ async def adm_channels_router(update, context):
             return
         cid = context.user_data.get("del_map", {}).get(text)
         if cid is None:
-            await update.message.reply_text("Выбери канал на клавиатуре")
+            await update.message.reply_text("👇 Выбери канал на клавиатуре")
             return
         ch = conn.execute("SELECT * FROM mandatory_channels WHERE id=?", (cid,)).fetchone()
         if ch is not None and not is_admin(uid) and _ch_added_by(ch) != int(uid):
             await update.message.reply_text(
-                "Удалять можно только те каналы, которые добавил ты сам.",
+                "🔒 Удалять можно только те каналы, которые добавил ты сам.",
                 reply_markup=adm_channels_kb(uid),
             )
             context.user_data.pop("del_map", None)
@@ -7346,7 +7757,7 @@ async def adm_channels_router(update, context):
         conn.commit()
         context.user_data.pop("del_map", None)
         await update.message.reply_text(
-            "Канал удалён.",
+            "🗑 Канал удалён.",
             reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb(),
         )
         await adm_channels_msg(update, context)
@@ -7361,7 +7772,7 @@ async def process_bcast_audience_text(update, context):
     if text == "Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
         await update.message.reply_text(
-            "Отменено.",
+            "↩️ Отменено.",
             reply_markup=admin_menu_kb() if is_admin(uid) else moder_menu_kb(),
         )
         return
@@ -7369,13 +7780,13 @@ async def process_bcast_audience_text(update, context):
     mp = {"Всем": "all", "Мужчинам": "m", "Женщинам": "f"}
     aud = mp.get(text)
     if not aud:
-        await update.message.reply_text("Выбери вариант:", reply_markup=bcast_audience_kb())
+        await update.message.reply_text("👇 Выбери вариант:", reply_markup=bcast_audience_kb())
         return
 
     context.user_data["bcast_aud"] = aud
     context.user_data["state"] = "adm_bcast_content"
     await update.message.reply_text(
-        "Отправь сообщение для рассылки (текст/фото/голосовое):",
+        "📨 Отправь сообщение для рассылки (текст/фото/голосовое):",
         reply_markup=cancel_reply_kb(),
     )
 
@@ -7386,7 +7797,7 @@ async def process_bcast_content(update, context):
 
     if canon(update.message.text) == "Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        await update.message.reply_text("↩️ Отменено.", reply_markup=back_kb)
         return
 
     msg = update.message
@@ -7417,7 +7828,7 @@ async def process_bcast_content(update, context):
     }
     context.user_data["state"] = "adm_bcast_btn_ask"
     await update.message.reply_text(
-        "Добавить кнопку к рассылке?\nОтветьте «Да» или «-» (без кнопки):",
+        "🔘 Добавить кнопку к рассылке?\nОтветьте «Да» или «-» (без кнопки):",
         reply_markup=tr_kb(ReplyKeyboardMarkup(
             [[KeyboardButton("✅ Да")], [KeyboardButton("❌ Отмена")]],
             resize_keyboard=True,
@@ -7432,12 +7843,12 @@ async def process_bcast_btn_ask(update, context):
 
     if text == "Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        await update.message.reply_text("↩️ Отменено.", reply_markup=back_kb)
         return
 
     if text == "Да":
         context.user_data["state"] = "adm_bcast_btn_text"
-        await update.message.reply_text("Введите текст кнопки:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("📝 Введите текст кнопки:", reply_markup=cancel_reply_kb())
         return
 
     await _do_bcast_send(update, context, button_text=None, button_url=None)
@@ -7450,12 +7861,12 @@ async def process_bcast_btn_text(update, context):
 
     if canon(text) == "Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        await update.message.reply_text("↩️ Отменено.", reply_markup=back_kb)
         return
 
     context.user_data["bcast_btn_text"] = text
     context.user_data["state"] = "adm_bcast_btn_url"
-    await update.message.reply_text("Введите URL для кнопки:", reply_markup=cancel_reply_kb())
+    await update.message.reply_text("🔗 Введите URL для кнопки:", reply_markup=cancel_reply_kb())
 
 
 async def process_bcast_btn_url(update, context):
@@ -7465,7 +7876,7 @@ async def process_bcast_btn_url(update, context):
 
     if canon(text) == "Отмена":
         context.user_data["state"] = "admin" if is_admin(uid) else "moder"
-        await update.message.reply_text("Отменено.", reply_markup=back_kb)
+        await update.message.reply_text("↩️ Отменено.", reply_markup=back_kb)
         return
 
     btn_text = context.user_data.get("bcast_btn_text", "")
@@ -7489,7 +7900,7 @@ async def _do_bcast_send(update, context, button_text, button_url):
 
     sent, failed = 0, 0
     dead_ids = []
-    prefix_text = "Админ:\n\n"
+    prefix_text = "📨 Админ:\n\n"
 
     for r in rows:
         try:
@@ -7518,7 +7929,7 @@ async def _do_bcast_send(update, context, button_text, button_url):
 
     context.user_data["state"] = "admin" if is_admin(uid) else "moder"
     await update.message.reply_text(
-        f"📢 Рассылка завершена.\nДоставлено: {sent}\nНе удалось: {failed}\nУдалено недоступных: {removed}",
+        f"📢 Рассылка завершена.\n✅ Доставлено: {sent}\n❌ Не удалось: {failed}\n🗑 Удалено: {removed}",
         reply_markup=back_kb,
     )
 
@@ -7542,7 +7953,7 @@ async def _flush_bcast_album(context, key):
     else:
         rows = conn.execute("SELECT tg_id FROM users WHERE gender=?", (aud,)).fetchall()
 
-    prefix_text = "Админ:\n\n"
+    prefix_text = "📨 Админ:\n\n"
     caption = prefix_text + (buf["caption"] or "")
     file_ids = buf["file_ids"][:10]
 
@@ -7570,7 +7981,7 @@ async def _flush_bcast_album(context, key):
         await context.bot.send_message(
             uid,
             f"📢 Рассылка завершена (альбом из {len(file_ids)} фото).\n"
-            f"Доставлено: {sent}\nНе удалось: {failed}\nУдалено: {removed}",
+            f"✅ Доставлено: {sent}\n❌ Не удалось: {failed}\n🗑 Удалено: {removed}",
             reply_markup=back_kb,
         )
     except TelegramError:
@@ -7589,7 +8000,7 @@ async def process_adm_reveal_price(update, context):
         if val < 1:
             raise ValueError
     except ValueError:
-        await update.message.reply_text("Введите целое число ≥ 1:", reply_markup=cancel_reply_kb())
+        await update.message.reply_text("🔢 Введите целое число ≥ 1:", reply_markup=cancel_reply_kb())
         return
     set_setting("reveal_stars", val)
     context.user_data["state"] = None
@@ -7605,44 +8016,44 @@ async def process_adm_coins_wizard(update, context):
 
     if text == "Отмена":
         context.user_data["state"] = None
-        await update.message.reply_text("Отменено.", reply_markup=admin_menu_kb())
+        await update.message.reply_text("↩️ Отменено.", reply_markup=admin_menu_kb())
         return
 
     if state == "adm_coins_id":
         target = resolve_user_ref(update.message.text.strip())
         if target is None:
             await update.message.reply_text(
-                "Пользователь не найден. Введите ID или @username:",
+                "❌ Пользователь не найден. Введите ID или @username:",
                 reply_markup=cancel_reply_kb(),
             )
             return
         context.user_data["coins_target"] = target
         context.user_data["state"] = "adm_coins_amount"
         await update.message.reply_text(
-            "На сколько изменить баланс (можно отрицательное число)?",
+            "💰 На сколько изменить баланс (можно отрицательное число)?",
             reply_markup=cancel_reply_kb(),
         )
     elif state == "adm_coins_amount":
         try:
             amount = int(text)
         except ValueError:
-            await update.message.reply_text("Введи целое число:")
+            await update.message.reply_text("🔢 Введи целое число:")
             return
         target = context.user_data["coins_target"]
         conn.execute("UPDATE users SET coins = coins + ? WHERE tg_id=?", (amount, target))
         conn.commit()
         context.user_data["state"] = None
         await update.message.reply_text(
-            f"Баланс пользователя {target} изменён на {amount}",
+            f"✅ Баланс пользователя {target} изменён на {amount}",
             reply_markup=admin_menu_kb(),
         )
         try:
-            await context.bot.send_message(target, f"Твой баланс коинов изменён на {amount}")
+            await context.bot.send_message(target, f"💰 Твой баланс коинов изменён на {amount}")
         except TelegramError:
             pass
             # ===================== БЛОК 14 / 14 — КОМАНДЫ / РОУТЕРЫ / ЗАПУСК =====================
 
-# ============================ /tg ============================
+# ============================ /tg — МОНИТОРИНГ РУЛЕТКИ ============================
 def tg_watch_kb():
     return tr_kb(ReplyKeyboardMarkup([[KeyboardButton("🚪 Выйти")]], resize_keyboard=True))
 
@@ -7816,7 +8227,7 @@ async def on_tg_ban(update, context):
         pass
 
 
-# ============================ /next ============================
+# ============================ /next — НАПИСАТЬ ЮЗЕРУ ============================
 async def modmsg_start(update, context):
     context.user_data["state"] = "modmsg_id"
     await update.message.reply_text("Введите ID пользователя, которому написать:", reply_markup=cancel_reply_kb())
@@ -7878,7 +8289,7 @@ async def process_modmsg_text(update, context):
     )
 
 
-# ============================ /anon ============================
+# ============================ /anon — НАБЛЮДЕНИЕ ============================
 async def anon_start(update, context):
     context.user_data["state"] = "anon_pick"
     await update.message.reply_text(
@@ -8284,7 +8695,57 @@ async def sex_room_router(update, context):
     await update.message.reply_text("Пиши текст, голосовое или фото:", reply_markup=sex_room_kb())
 
 
-# ============================ НАВИГАЦИЯ В ШАПКЕ (ДО _CALLBACKS!) ============================
+async def sex_rename_router(update, context):
+    text = canon(update.message.text.strip())
+    uid = update.effective_user.id
+    if text in ("Отмена", "Назад"):
+        context.user_data["state"] = "sex_room"
+        await update.message.reply_text(t("main_menu"), reply_markup=sex_room_kb())
+        return
+    new_title = (update.message.text or "").strip()
+    if len(new_title) < 2 or len(new_title) > 40:
+        await update.message.reply_text("Название 2-40 символов:", reply_markup=cancel_reply_kb())
+        return
+    room_id = context.user_data.get("sex_room_id")
+    conn.execute("UPDATE sex_rooms SET title=? WHERE id=?", (new_title, room_id))
+    conn.commit()
+    context.user_data["state"] = "sex_room"
+    await update.message.reply_text(
+        t("sex_room_renamed", title=html.escape(new_title)),
+        parse_mode="HTML", reply_markup=sex_room_kb(),
+    )
+
+
+async def sex_approve_cmd(update, context, user_id):
+    uid = update.effective_user.id
+    u = get_user(uid)
+    if not is_moder(u):
+        return
+    room = conn.execute("SELECT * FROM sex_rooms ORDER BY id LIMIT 1").fetchone()
+    if not room:
+        await update.message.reply_text(t("sex_no_room"))
+        return
+    req = conn.execute(
+        "SELECT * FROM sex_exit_requests WHERE room_id=? AND user_id=? AND status='pending'",
+        (room["id"], user_id),
+    ).fetchone()
+    if not req:
+        await update.message.reply_text("Запрос не найден.")
+        return
+    conn.execute("UPDATE sex_exit_requests SET status='approved' WHERE id=?", (req["id"],))
+    conn.execute("DELETE FROM sex_members WHERE room_id=? AND user_id=?", (room["id"], user_id))
+    conn.commit()
+    try:
+        _sl = cur_lang()
+        set_cur_lang(get_lang(user_id))
+        await context.bot.send_message(user_id, t("sex_exit_approved"))
+        set_cur_lang(_sl)
+    except TelegramError:
+        pass
+    await update.message.reply_text(f"✅ Выход одобрен для {user_id}.", reply_markup=sex_room_kb())
+
+
+# ============================ ФУНКЦИИ ДЛЯ _CALLBACKS (ДО СПИСКА!) ============================
 async def on_subgate_check(update, context):
     query = update.callback_query
     await query.answer()
@@ -8367,7 +8828,7 @@ _CALLBACKS = [
     ("refund_do:", on_refund_do, False),
     ("refund_cancel", on_refund_cancel, True),
     ("anon_watch_leave", on_anon_watch_leave, True),
-    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+    # === 𝐍𝐞𝐱𝐭.. ===
     ("nreply:", on_next_reply, False),
     ("nreport:", on_next_report, False),
 ]
@@ -8384,6 +8845,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(t("banned"))
         return
 
+    # Скрытая команда /sex_approve <id>
     if raw_text and raw_text.startswith("/sex_approve"):
         uid = update.effective_user.id
         if is_moder(get_user(uid)):
@@ -8394,6 +8856,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("Использование: /sex_approve <user_id>")
         return
 
+    # Восстановление незавершённого анона по ссылке
     if not state:
         _fl = load_link_flow(update.effective_user.id)
         if _fl:
@@ -8410,7 +8873,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "shop_add_title", "shop_edit_name",
         "adm_bcast_content", "adm_bcast_btn_ask", "adm_bcast_btn_text", "adm_bcast_btn_url",
         "adm_ch_name", "adm_ch_link", "adm_ch_confirm",
-        # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+        # === 𝐍𝐞𝐱𝐭.. ===
         "next_create_name", "next_create_age", "next_create_gender",
         "next_create_looking", "next_create_bio", "next_create_photo",
         "next_edit_name", "next_edit_age", "next_edit_bio",
@@ -8421,7 +8884,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     _NAV = {
         "Моя ссылка": show_link_menu,
-        "𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭": next_menu,
+        "🎯 𝐍𝐞𝐱𝐭..": next_menu,
         "Чат-рулетка": show_roulette_entry,
         "Профиль": show_profile,
         "Магазин": show_shop,
@@ -8439,7 +8902,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await _NAV[text](update, context)
         return
 
-    # --- Рулетка ---
+    # --- Чат-рулетка ---
     if state == "rchat":
         if text == "Далее":
             await rchat_next(update, context)
@@ -8492,7 +8955,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await process_report_reason(update, context)
         return
 
-    # --- 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ---
+    # --- 𝐍𝐞𝐱𝐭.. ---
     if state and state.startswith("next_create_"):
         await next_field_router(update, context)
         return
@@ -8520,15 +8983,22 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await roulette_pref_router(update, context)
         return
 
+    # --- Язык ---
     if state == "language":
         await language_router(update, context)
         return
+
+    # --- Ссылка-меню ---
     if state == "link_menu":
         await link_menu_router(update, context)
         return
+
+    # --- Профиль ---
     if state == "profile":
         await profile_router(update, context)
         return
+
+    # --- Подарок коинов ---
     if state in ("giftcoins_id", "giftcoins_amount"):
         await gift_coins_router(update, context)
         return
@@ -8551,6 +9021,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await shop_edit_router(update, context)
         return
 
+    # --- Анкета модера ---
     if state and state.startswith("moder_q_"):
         await moder_q_router(update, context)
         return
@@ -8584,6 +9055,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await star_admin_router(update, context)
         return
 
+    # --- Бан ---
     if state == "ban_id":
         await process_ban(update, context)
         return
@@ -8661,6 +9133,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if await relay_roulette_message(update, context):
         return
 
+    # --- Отмена поиска ---
     if text == "Отменить поиск":
         uid = update.effective_user.id
         conn.execute("DELETE FROM roulette_queue WHERE user_id=?", (uid,))
@@ -8721,7 +9194,7 @@ async def text_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "Моя ссылка":
         await show_link_menu(update, context)
         return
-    if text in ("𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭", "Next Meet", "Поблизости"):
+    if text in ("🎯 𝐍𝐞𝐱𝐭..", "Next..", "Next Meet", "𝐍𝐞𝐱𝐭..", "Поблизости"):
         await next_menu(update, context)
         return
     if text == "Чат-рулетка":
@@ -8802,7 +9275,7 @@ async def media_router(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await process_bcast_content(update, context)
         return
 
-    # === 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 ===
+    # === 𝐍𝐞𝐱𝐭.. ===
     if state in ("next_create_photo", "next_edit_photo"):
         await next_photo_handler(update, context)
         return
@@ -9039,7 +9512,7 @@ def run_safe_cleanup():
         conn.execute("UPDATE users SET old_link=NULL, old_link_until=NULL WHERE old_link_until IS NOT NULL AND old_link_until < ?", (now_iso(),))
         three_h = (now_dt() - timedelta(hours=3)).isoformat()
         conn.execute("DELETE FROM sex_exit_requests WHERE status='pending' AND created_at < ?", (three_h,))
-        # 𝐍𝐞𝐱𝐭 𝐌𝐞𝐞𝐭 — чистим старые ЛС (90 дней)
+        # 𝐍𝐞𝐱𝐭.. — чистим старые ЛС (90 дней)
         old_nbmsg = (now_dt() - timedelta(days=90)).isoformat()
         conn.execute("DELETE FROM nearby_messages WHERE created_at < ?", (old_nbmsg,))
         conn.commit()
