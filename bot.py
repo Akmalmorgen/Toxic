@@ -242,7 +242,7 @@ else:
     except Exception as e: boot.warning("SQLite pragma: %s", e)
     boot.info("🗄 БД: SQLite (%s)", DB_PATH)
 def db(): return conn
-    def init_db():
+def init_db():
     cur = conn.cursor()
     cur.executescript("""
     CREATE TABLE IF NOT EXISTS users (
