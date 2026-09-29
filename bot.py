@@ -6304,7 +6304,7 @@ async def adm_stats_msg(update, context):
 
         if USE_PG:
             db_line = (
-                f"💾 <b>База данных (Neon Free)</b>\n"
+                f"💾 <b>База данных</b>\n"
                 f"   Лимит:    <b>{_fmt(total_bytes)}</b>\n"
                 f"   Занято:   <b>{_fmt(used_bytes)}</b>\n"
                 f"   Свободно: <b>{_fmt(free_bytes)}</b>\n"
