@@ -1839,18 +1839,18 @@ T = {
             "<b>Награды за друзей</b>\n"
             "Приведи друзей по ссылке (чтобы они создали свою ссылку) и забери:\n"
             "<b>VIP бесплатно</b> — за {vip_n} друзей ({vip_d} дн.)\n"
-            "<b>Модерка на неделю</b> — за {mod_n} друзей ({mod_d} дн.)\n"
+            "<b>Модерка</b> — за {mod_n} друзей ({mod_d} дн.)\n"
             "Жми кнопку, когда наберёшь"
         ),
         "uz": (
             "<b>Do'stlar uchun mukofotlar</b>\n"
             "<b>Bepul VIP</b> — {vip_n} do'st uchun ({vip_d} kun)\n"
-            "<b>Bir haftalik moder</b> — {mod_n} do'st uchun ({mod_d} kun)"
+            "<b>Moder</b> — {mod_n} do'st uchun ({mod_d} kun)"
         ),
         "en": (
             "<b>Rewards for friends</b>\n"
             "<b>Free VIP</b> — for {vip_n} friends ({vip_d} days)\n"
-            "<b>Moderator for a week</b> — for {mod_n} friends ({mod_d} days)"
+            "<b>Moderator</b> — for {mod_n} friends ({mod_d} days)"
         ),
     },
     "ref_claim_coins_btn": {"ru": "{n} за друга · VIP {v}", "uz": "do'st uchun {n} · VIP {v}", "en": "{n} per friend · VIP {v}"},
